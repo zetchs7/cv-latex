@@ -1,11 +1,11 @@
 # CV LaTeX Builder
 
-Aplicacion web local, pequena y portable para construir curriculums vitae profesionales con formularios web y plantillas LaTeX propias. El proyecto se trabaja por etapas auditables; esta version inicial corresponde a la Etapa 0 y solo incluye la base tecnica.
+Aplicacion web local, pequena y portable para construir curriculums vitae profesionales con formularios web y plantillas LaTeX propias. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 2 y genera contenido `.tex` sin compilar PDF.
 
 ## Estado actual
 
-- Version: `0.2.0`
-- Etapa: `1 - CV Builder Core`
+- Version: `0.3.0`
+- Etapa: `2 - Plantillas LaTeX y sanitizacion`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 
@@ -17,7 +17,7 @@ Aplicacion web local, pequena y portable para construir curriculums vitae profes
 - Persistencia: SQLite en `/data/app.db`
 - Contenedores: Docker Compose
 
-HTMX queda previsto para interacciones progresivas en etapas posteriores. En Etapa 0 no se agrega comportamiento dinamico falso porque el alcance es solo la base tecnica.
+HTMX queda previsto para interacciones progresivas en etapas posteriores. Las funcionalidades actuales se mantienen server-side con HTML simple.
 
 ## Requisitos
 
@@ -87,6 +87,14 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |-- routes/
 |   |   |-- cvs.py
 |   |   `-- dashboard.py
+|   |-- services/
+|   |   `-- latex_service.py
+|   |-- latex_templates/
+|   |   `-- cv/
+|   |       |-- classic.tex
+|   |       |-- modern.tex
+|   |       |-- compact.tex
+|   |       `-- tech.tex
 |   |-- templates/
 |   |   |-- layout.html
 |   |   |-- dashboard.html
@@ -94,9 +102,11 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |       |-- index.html
 |   |       |-- form.html
 |   |       |-- detail.html
+|   |       |-- tex_preview.html
 |   |       `-- confirm_delete.html
 |   |-- validations/
-|   |   `-- cv_validations.py
+|   |   |-- cv_validations.py
+|   |   `-- latex_sanitizer.py
 |   `-- static/
 |       |-- css/
 |       |   `-- app.css
@@ -108,7 +118,8 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |-- development/
 |   `-- adr/
 |-- tests/
-|   `-- .gitkeep
+|   |-- test_latex_sanitizer.py
+|   `-- test_latex_service.py
 |-- docker-compose.yml
 |-- Dockerfile
 |-- requirements.txt
@@ -121,7 +132,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 
 - Etapa 0: Base tecnica, Docker, SQLite preparado y documentacion inicial. Completada.
 - Etapa 1: CV Builder Core. Completada.
-- Etapa 2: Plantillas LaTeX propias y sanitizacion.
+- Etapa 2: Plantillas LaTeX propias y sanitizacion. Completada.
 - Etapa 3: Export Engine PDF/TEX/JSON.
 - Etapa 4: Cartas de presentacion.
 - Etapa 5: Tracker de postulaciones.
@@ -141,8 +152,22 @@ Rutas disponibles:
 - `POST /cvs/{cv_id}/duplicate`: duplicar CV.
 - `GET /cvs/{cv_id}/delete`: confirmacion de eliminacion.
 - `POST /cvs/{cv_id}/delete`: eliminacion logica.
+- `GET /cvs/{cv_id}/tex?template_key=classic`: previsualizar contenido `.tex`.
 
 La eliminacion no borra fisicamente el registro; marca `deleted_at` en SQLite.
+
+## Plantillas LaTeX
+
+Plantillas propias disponibles:
+
+- `classic`
+- `modern`
+- `compact`
+- `tech`
+
+La ruta `/cvs/{cv_id}/tex` genera una previsualizacion del contenido `.tex` desde un CV guardado. Esta etapa no implementa descarga, exportacion ni compilacion PDF.
+
+La sanitizacion esta en `app/validations/latex_sanitizer.py` y escapa caracteres especiales de LaTeX como `%`, `&`, `$`, `_`, `#`, `{`, `}`, `~`, `^` y `\`, preservando caracteres comunes en espanol mediante UTF-8.
 
 ## Prueba manual rapida
 
@@ -152,7 +177,9 @@ La eliminacion no borra fisicamente el registro; marca `deleted_at` en SQLite.
 4. Editarlo.
 5. Duplicarlo.
 6. Eliminarlo desde la pantalla de confirmacion.
-7. Confirmar que no aparece en el listado activo.
+7. Abrir `Ver TEX` desde el detalle de un CV.
+8. Cambiar entre plantillas.
+9. Confirmar que no aparece en el listado activo si se elimina.
 
 ## Troubleshooting basico
 
@@ -163,6 +190,6 @@ La eliminacion no borra fisicamente el registro; marca `deleted_at` en SQLite.
 
 ## Alcance de esta version
 
-Incluye dashboard, CV Builder Core, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion inicial.
+Incluye dashboard, CV Builder Core, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion.
 
-No incluye LaTeX, PDF, exportaciones TEX/JSON, cartas, postulaciones, ATS ni IA.
+No incluye compilacion PDF, descarga PDF, export TEX, export JSON, import JSON, cartas, postulaciones, ATS ni IA.

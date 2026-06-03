@@ -1,0 +1,37 @@
+\documentclass[9pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{enumitem}
+\geometry{margin=1.4cm}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.25em}
+\setlist[itemize]{leftmargin=1em,noitemsep,topsep=0pt}
+
+\begin{document}
+
+\textbf{\Large [[ full_name ]]} \hfill [[ title ]]\\
+[% if personal_details %]
+{\small [[ personal_details | join(" | ") ]]}
+[% endif %]
+
+\vspace{0.6em}
+\hrule
+\vspace{0.6em}
+
+[% for section in sections %]
+\textbf{[[ section.title ]]}\\
+[% if section.item_list %]
+\begin{itemize}
+[% for item in section.item_list %]
+  \item [[ item ]]
+[% endfor %]
+\end{itemize}
+[% else %]
+{\small [[ section.body ]]}
+[% endif %]
+
+[% endfor %]
+
+\end{document}

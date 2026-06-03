@@ -112,3 +112,60 @@ No se implemento CV Builder, LaTeX, PDF, cartas de presentacion, postulaciones, 
 ### Limites de alcance confirmados Etapa 1
 
 No se implemento LaTeX, generacion PDF, export TEX, export JSON, cartas de presentacion, tracker de postulaciones, ATS ni IA.
+
+## Etapa 2 - Plantillas LaTeX y sanitizacion
+
+- Fecha: 2026-06-02
+- Rama: `feature/latex-templates`
+- Objetivo: implementar plantillas LaTeX propias, sanitizacion y generacion de contenido `.tex` desde CVs guardados.
+- Modulos afectados: `latex_templates`, `latex_service`, `latex_sanitizer`, `cv-builder`, `docs`, `tests`.
+- Resumen de cambios:
+  - Se agrego `app/latex_templates/cv/`.
+  - Se crearon plantillas propias `classic.tex`, `modern.tex`, `compact.tex` y `tech.tex`.
+  - Se agrego `app/services/latex_service.py`.
+  - Se agrego `app/validations/latex_sanitizer.py`.
+  - Se agrego vista de previsualizacion TEX en `/cvs/{cv_id}/tex`.
+  - Se agrego boton `Ver TEX` en el detalle de CV.
+  - Se agregaron tests basicos de sanitizacion y servicio.
+  - Se actualizo la version a `0.3.0`.
+- Archivos principales:
+  - `app/latex_templates/cv/classic.tex`
+  - `app/latex_templates/cv/modern.tex`
+  - `app/latex_templates/cv/compact.tex`
+  - `app/latex_templates/cv/tech.tex`
+  - `app/services/latex_service.py`
+  - `app/validations/latex_sanitizer.py`
+  - `app/templates/cvs/tex_preview.html`
+  - `tests/test_latex_sanitizer.py`
+  - `tests/test_latex_service.py`
+  - `docs/development/LATEX_TEMPLATES.md`
+  - `docs/adr/ADR-0004-latex-rendering.md`
+- Validaciones ejecutadas:
+  - `python -m compileall app tests`
+  - `python -m unittest discover -s tests`
+  - `git diff --check`
+  - `rg -n -P "[^\\x00-\\x7F]"`
+  - `docker compose build`
+  - `docker compose up -d`
+  - `docker compose ps`
+  - `Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing`
+  - `Invoke-WebRequest -Uri http://localhost:8000/cvs/ -UseBasicParsing`
+  - POST de creacion de CV con caracteres en espanol y especiales LaTeX
+  - GET de `/cvs/{id}/tex` con `classic`, `modern`, `compact` y `tech`
+  - GET de plantilla invalida con respuesta 404
+  - Verificacion directa del contenido TEX dentro del contenedor
+  - Eliminacion logica del CV de prueba de la etapa
+- Resultado: completado localmente. El contenedor queda `healthy`, `/health` devuelve `version: 0.3.0`, las cuatro plantillas generan vista TEX y el sanitizador escapa caracteres especiales preservando texto comun en espanol.
+- Pendientes:
+  - Esperar validacion explicita del usuario antes de Etapa 3.
+  - Preparar push o PR solo si el usuario lo indica.
+
+### Observaciones de validacion Etapa 2
+
+- La primera validacion local de `test_latex_service.py` fallo porque el Python local no tiene `jinja2`; se ajusto el test para saltar solo esa prueba cuando falta la dependencia local. La generacion del servicio fue validada en Docker, donde `jinja2` esta instalado por `requirements.txt`.
+- La primera validacion de vistas TEX fallo por usar `section.items`, que colisionaba con el metodo `dict.items` de Jinja. Se corrigio usando `section.item_list`.
+- Se creo y elimino logicamente un CV de prueba de Etapa 2. Se conservo un CV activo preexistente (`SysAdmin Linux`) porque no corresponde a datos de prueba de esta etapa.
+
+### Limites de alcance confirmados Etapa 2
+
+No se implemento compilacion PDF final, descarga PDF, export TEX, export JSON, import JSON, cartas de presentacion, tracker de postulaciones, ATS ni IA.

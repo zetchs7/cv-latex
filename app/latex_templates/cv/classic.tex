@@ -1,0 +1,38 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\geometry{margin=2.2cm}
+\setlength{\parindent}{0pt}
+\setlist[itemize]{leftmargin=1.2em}
+
+\begin{document}
+
+{\LARGE \textbf{[[ full_name ]]}}\\[0.35em]
+{\large [[ title ]]}\\[0.35em]
+[% if personal_details %]
+[[ personal_details | join(" \\textbullet{} ") ]]
+[% endif %]
+
+\vspace{1.2em}
+\hrule
+\vspace{1.2em}
+
+[% for section in sections %]
+\section*{[[ section.title ]]}
+[% if section.item_list %]
+\begin{itemize}
+[% for item in section.item_list %]
+  \item [[ item ]]
+[% endfor %]
+\end{itemize}
+[% else %]
+[[ section.body ]]
+[% endif %]
+
+[% endfor %]
+
+\end{document}

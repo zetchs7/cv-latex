@@ -1,5 +1,41 @@
 # Changelog General
 
+## 0.3.0 - 2026-06-02
+
+### Agregado
+
+- Estructura `app/latex_templates/cv/`.
+- Plantillas LaTeX propias:
+  - `classic.tex`
+  - `modern.tex`
+  - `compact.tex`
+  - `tech.tex`
+- Servicio `app/services/latex_service.py`.
+- Sanitizador `app/validations/latex_sanitizer.py`.
+- Previsualizacion de contenido `.tex` desde un CV guardado.
+- Manejo de secciones vacias.
+- Soporte para caracteres comunes en espanol mediante UTF-8.
+- Tests basicos de sanitizacion.
+- Documentacion especifica de plantillas LaTeX.
+- ADR de rendering LaTeX.
+
+### Cambiado
+
+- Version del proyecto actualizada a `0.3.0`.
+- Detalle de CV actualizado con accion `Ver TEX`.
+
+### No incluido en esta version
+
+- Compilacion PDF final.
+- Descarga PDF.
+- Export TEX.
+- Export JSON.
+- Import JSON.
+- Cartas de presentacion.
+- Tracker de postulaciones.
+- ATS Basic Check.
+- IA.
+
 ## 0.2.0 - 2026-06-02
 
 ### Agregado

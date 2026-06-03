@@ -1043,3 +1043,431 @@ Argumentos:
 - `-Body`: datos incompletos y email invalido.
 
 Resultado: respuesta HTTP `422`.
+
+## 2026-06-02 - Preparacion de Etapa 2
+
+Accion:
+Revisar estado actual del repositorio.
+
+Motivo:
+Confirmar que Etapa 1 estaba aprobada y el arbol estaba limpio antes de crear la nueva rama.
+
+Comando: `git status --short --branch`
+
+Argumentos:
+- `--short`: salida resumida.
+- `--branch`: incluye rama activa.
+
+Resultado: rama `feature/cv-builder-core`, arbol limpio.
+
+---
+
+Accion:
+Listar ramas locales y remotas.
+
+Motivo:
+Verificar que no hubo merge hacia `development` y que correspondia partir desde la rama aprobada de Etapa 1.
+
+Comando: `git branch --all`
+
+Argumentos:
+- `--all`: muestra ramas locales y remotas.
+
+Resultado: existen `development`, `feature/base-docker-app`, `feature/cv-builder-core`, `main`, `origin/main` y `origin/HEAD`.
+
+---
+
+Accion:
+Revisar historial reciente.
+
+Motivo:
+Confirmar que `feature/cv-builder-core` contiene Etapa 1 y `development` sigue sin merge.
+
+Comando: `git log --oneline --decorate --graph --all -n 10`
+
+Argumentos:
+- `--oneline`: formato compacto.
+- `--decorate`: muestra ramas.
+- `--graph`: muestra relaciones.
+- `--all`: incluye todas las ramas.
+- `-n 10`: limita a diez commits.
+
+Resultado: `feature/cv-builder-core` contiene `eb6e82b`; `development` sigue en el commit inicial.
+
+---
+
+Accion:
+Crear rama de Etapa 2.
+
+Motivo:
+Implementar plantillas LaTeX sin trabajar directo en ramas previas ni hacer merge.
+
+Comando: `git switch -c feature/latex-templates`
+
+Argumentos:
+- `switch`: cambia de rama.
+- `-c feature/latex-templates`: crea la rama local de trabajo de Etapa 2.
+
+Resultado: `Switched to a new branch 'feature/latex-templates'`.
+
+## 2026-06-02 - Implementacion de plantillas LaTeX
+
+Accion:
+Crear servicio, sanitizador, plantillas y vista TEX.
+
+Motivo:
+Implementar el alcance de Etapa 2: plantillas propias, sanitizacion y generacion de contenido `.tex` desde CV guardado.
+
+Comando: `apply_patch`
+
+Argumentos:
+- Agrega `app/services/latex_service.py`.
+- Agrega `app/validations/latex_sanitizer.py`.
+- Agrega `app/latex_templates/cv/classic.tex`.
+- Agrega `app/latex_templates/cv/modern.tex`.
+- Agrega `app/latex_templates/cv/compact.tex`.
+- Agrega `app/latex_templates/cv/tech.tex`.
+- Agrega `app/templates/cvs/tex_preview.html`.
+- Actualiza rutas y detalle de CV.
+
+Resultado: base de generacion TEX creada.
+
+---
+
+Accion:
+Agregar tests de sanitizacion y servicio.
+
+Motivo:
+Validar escapes LaTeX, caracteres comunes en espanol y generacion basica.
+
+Comando: `apply_patch`
+
+Argumentos:
+- Agrega `tests/test_latex_sanitizer.py`.
+- Agrega `tests/test_latex_service.py`.
+
+Resultado: tests agregados.
+
+---
+
+Accion:
+Compilar Python.
+
+Motivo:
+Detectar errores de sintaxis.
+
+Comando: `python -m compileall app tests`
+
+Argumentos:
+- `app tests`: carpetas objetivo.
+
+Resultado: compilacion correcta.
+
+---
+
+Accion:
+Ejecutar tests unitarios.
+
+Motivo:
+Validar sanitizacion y pruebas disponibles localmente.
+
+Comando: `python -m unittest discover -s tests`
+
+Argumentos:
+- `discover`: descubre tests.
+- `-s tests`: usa carpeta `tests`.
+
+Resultado: fallo inicial porque el Python local no tenia `jinja2`, requerido por `latex_service.py`.
+
+---
+
+Accion:
+Ajustar test del servicio para dependencia local faltante.
+
+Motivo:
+Permitir ejecutar tests de sanitizacion localmente sin instalar dependencias fuera de Docker.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `tests/test_latex_service.py` salta tests del servicio solo si falta `jinja2`.
+
+Resultado: suite local pasa con `4` tests ejecutados y `2` saltados.
+
+---
+
+Accion:
+Revisar whitespace del diff.
+
+Motivo:
+Detectar espacios conflictivos antes de validar Docker.
+
+Comando: `git diff --check`
+
+Argumentos:
+- `--check`: valida whitespace y conflictos.
+
+Resultado: sin errores; solo advertencias normales de CRLF en Windows.
+
+---
+
+Accion:
+Buscar caracteres no ASCII accidentales.
+
+Motivo:
+Mantener codigo y docs en ASCII salvo contenido LaTeX/test donde se validan caracteres en espanol.
+
+Comando: `rg -n -P "[^\\x00-\\x7F]"`
+
+Argumentos:
+- `-n`: muestra linea.
+- `-P`: usa PCRE.
+- Patron: busca caracteres no ASCII.
+
+Resultado: sin coincidencias no esperadas.
+
+## 2026-06-02 - Validaciones Docker y TEX Etapa 2
+
+Accion:
+Construir imagen Docker.
+
+Motivo:
+Validar que la app con plantillas LaTeX construye correctamente.
+
+Comando: `docker compose build`
+
+Argumentos:
+- `compose`: usa Docker Compose v2.
+- `build`: construye imagen local.
+
+Resultado: build correcto.
+
+---
+
+Accion:
+Levantar servicio actualizado.
+
+Motivo:
+Validar arranque real de Etapa 2.
+
+Comando: `docker compose up -d`
+
+Argumentos:
+- `up`: crea o recrea servicios.
+- `-d`: ejecuta en segundo plano.
+
+Resultado: contenedor iniciado.
+
+---
+
+Accion:
+Validar contenedor y healthcheck.
+
+Motivo:
+Confirmar estado del servicio.
+
+Comando: `docker compose ps`
+
+Argumentos:
+- `ps`: lista servicios.
+
+Resultado: `cv_latex_app` quedo `Up` y `healthy`.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing`
+
+Argumentos:
+- `-Uri`: endpoint de salud.
+- `-UseBasicParsing`: parseo compatible.
+
+Resultado: `StatusCode: 200`, `version: 0.3.0`.
+
+---
+
+Accion:
+Crear CV de prueba para TEX.
+
+Motivo:
+Validar acentos, caracteres especiales LaTeX y secciones vacias.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000/cvs/ -Method Post -UseBasicParsing -Body @{ ... }`
+
+Argumentos:
+- `-Method Post`: crea CV.
+- `-Body`: incluye `María`, `Español`, `&`, `%`, `_`, `#`, `$` y una seccion `education_summary` vacia.
+
+Resultado: redireccion a `http://localhost:8000/cvs/5?message=CV+creado+correctamente.`
+
+---
+
+Accion:
+Validar plantillas TEX.
+
+Motivo:
+Confirmar que las cuatro plantillas generan vista desde el CV guardado.
+
+Comando: `Invoke-WebRequest -Uri 'http://localhost:8000/cvs/5/tex?template_key=classic' -UseBasicParsing`
+
+Argumentos:
+- `template_key=classic`: plantilla classic.
+
+Resultado: fallo inicial `500 Internal Server Error`.
+
+Comando: `docker compose logs app`
+
+Argumentos:
+- `logs app`: lee error del servicio principal.
+
+Resultado: error `TypeError: 'builtin_function_or_method' object is not iterable` por usar `section.items` en Jinja.
+
+---
+
+Accion:
+Corregir contexto de plantillas.
+
+Motivo:
+Evitar colision con el metodo `dict.items` de Jinja.
+
+Comando: `apply_patch`
+
+Argumentos:
+- Cambia clave de contexto `items` a `item_list`.
+- Actualiza las cuatro plantillas.
+
+Resultado: correccion aplicada.
+
+---
+
+Accion:
+Reconstruir y levantar servicio corregido.
+
+Motivo:
+Validar plantillas luego de la correccion.
+
+Comando: `docker compose build`
+
+Argumentos:
+- `build`: reconstruye imagen local.
+
+Resultado: build correcto.
+
+Comando: `docker compose up -d`
+
+Argumentos:
+- `up -d`: recrea e inicia el servicio.
+
+Resultado: contenedor iniciado y healthy.
+
+---
+
+Accion:
+Validar previsualizacion de las cuatro plantillas.
+
+Motivo:
+Confirmar generacion TEX para `classic`, `modern`, `compact` y `tech`.
+
+Comando: `Invoke-WebRequest -Uri 'http://localhost:8000/cvs/5/tex?template_key=classic' -UseBasicParsing`
+
+Argumentos:
+- `template_key=classic`: plantilla classic.
+
+Resultado: `StatusCode: 200`.
+
+Comando: `Invoke-WebRequest -Uri 'http://localhost:8000/cvs/5/tex?template_key=modern' -UseBasicParsing`
+
+Argumentos:
+- `template_key=modern`: plantilla modern.
+
+Resultado: `StatusCode: 200`.
+
+Comando: `Invoke-WebRequest -Uri 'http://localhost:8000/cvs/5/tex?template_key=compact' -UseBasicParsing`
+
+Argumentos:
+- `template_key=compact`: plantilla compact.
+
+Resultado: `StatusCode: 200`.
+
+Comando: `Invoke-WebRequest -Uri 'http://localhost:8000/cvs/5/tex?template_key=tech' -UseBasicParsing`
+
+Argumentos:
+- `template_key=tech`: plantilla tech.
+
+Resultado: `StatusCode: 200`.
+
+---
+
+Accion:
+Validar plantilla inexistente.
+
+Motivo:
+Confirmar manejo de error de template no permitido.
+
+Comando: `Invoke-WebRequest -Uri 'http://localhost:8000/cvs/5/tex?template_key=invalid' -UseBasicParsing`
+
+Argumentos:
+- `template_key=invalid`: valor no registrado.
+
+Resultado: `404`.
+
+---
+
+Accion:
+Verificar contenido TEX generado dentro del contenedor.
+
+Motivo:
+Confirmar escapes y preservacion de caracteres comunes en espanol.
+
+Comando: `docker compose exec app python -c "from app.repositories.cv_repository import get_cv; from app.services.latex_service import generate_cv_tex_document; cv=get_cv(5); content=generate_cv_tex_document(cv, 'classic').content; print('María' in content); print('Español' in content); print('\\\\&' in content); print('50\\\\%' in content); print('Python\\\\_FastAPI' in content); print('Educacion' in content); print(content[:500])"`
+
+Argumentos:
+- `get_cv(5)`: obtiene CV de prueba.
+- `generate_cv_tex_document`: genera TEX classic.
+- Checks booleanos: valida acentos, escapes y ausencia de seccion vacia.
+
+Resultado: `True` para acentos y escapes; `False` para `Educacion`, confirmando omision de seccion vacia.
+
+---
+
+Accion:
+Eliminar logicamente CV de prueba.
+
+Motivo:
+No dejar activo el registro usado en validacion.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000/cvs/5/delete -Method Post -UseBasicParsing -Body @{ confirm_delete = 'yes' }`
+
+Argumentos:
+- `-Method Post`: ejecuta eliminacion.
+- `confirm_delete = 'yes'`: confirma accion.
+
+Resultado: redireccion a `http://localhost:8000/cvs/?message=CV+eliminado+correctamente.`
+
+---
+
+Accion:
+Verificar CVs activos restantes.
+
+Motivo:
+Confirmar estado de la base local luego de pruebas.
+
+Comando: `docker compose exec app python -c "import sqlite3; con=sqlite3.connect('/data/app.db'); print(con.execute('select count(*) from cvs where deleted_at is null').fetchone()[0]); print(con.execute('select count(*) from cvs where deleted_at is not null').fetchone()[0])"`
+
+Argumentos:
+- Primera consulta: CVs activos.
+- Segunda consulta: CVs eliminados logicamente.
+
+Resultado: `1` activo y `4` eliminados logicamente.
+
+---
+
+Accion:
+Identificar CV activo restante.
+
+Motivo:
+Evitar borrar datos que no pertenecen a pruebas de esta etapa.
+
+Comando: `docker compose exec app python -c "import sqlite3; con=sqlite3.connect('/data/app.db'); con.row_factory=sqlite3.Row; rows=con.execute('select id,title,full_name,created_at from cvs where deleted_at is null').fetchall(); [print(dict(row)) for row in rows]"`
+
+Argumentos:
+- Consulta CVs activos con datos basicos.
+
+Resultado: CV activo `SysAdmin Linux` de `Franco Pablo Damian`; se conservo porque no corresponde a datos de prueba de Etapa 2.

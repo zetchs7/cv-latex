@@ -1,0 +1,43 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\geometry{margin=1.9cm}
+\definecolor{techblue}{HTML}{1D4ED8}
+\definecolor{techgray}{HTML}{334155}
+\setlength{\parindent}{0pt}
+\setlist[itemize]{leftmargin=1.2em}
+
+\begin{document}
+
+\begin{center}
+{\Huge \textbf{[[ full_name ]]}}\\[0.25em]
+{\color{techblue}\large [[ title ]]}\\[0.5em]
+[% if personal_details %]
+{\small\color{techgray} [[ personal_details | join(" / ") ]]}
+[% endif %]
+\end{center}
+
+\vspace{0.8em}
+
+[% for section in sections %]
+\noindent\colorbox{techblue}{\parbox{\dimexpr\textwidth-2\fboxsep\relax}{\color{white}\textbf{[[ section.title ]]}}}
+\vspace{0.45em}
+
+[% if section.item_list %]
+\begin{itemize}
+[% for item in section.item_list %]
+  \item [[ item ]]
+[% endfor %]
+\end{itemize}
+[% else %]
+[[ section.body ]]
+[% endif %]
+
+\vspace{0.8em}
+[% endfor %]
+
+\end{document}

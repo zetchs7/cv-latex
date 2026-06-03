@@ -4,6 +4,12 @@ from fastapi.templating import Jinja2Templates
 
 from app.repositories import cv_repository
 from app.schemas import CVFormData
+from app.services.latex_service import (
+    DEFAULT_TEMPLATE_KEY,
+    LatexTemplateError,
+    available_cv_templates,
+    generate_cv_tex_document,
+)
 from app.validations.cv_validations import build_cv_form_data, validate_cv_form
 
 
@@ -86,6 +92,33 @@ def cv_detail(request: Request, cv_id: int, message: str | None = None) -> HTMLR
             "request": request,
             "cv": cv,
             "message": message,
+        },
+    )
+
+
+@router.get("/{cv_id}/tex", response_class=HTMLResponse, name="cvs_tex_preview")
+def cv_tex_preview(
+    request: Request,
+    cv_id: int,
+    template_key: str = DEFAULT_TEMPLATE_KEY,
+) -> HTMLResponse:
+    cv = cv_repository.get_cv(cv_id)
+    if cv is None:
+        raise HTTPException(status_code=404, detail="CV no encontrado.")
+
+    try:
+        generated_document = generate_cv_tex_document(cv, template_key)
+    except LatexTemplateError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    return templates.TemplateResponse(
+        "cvs/tex_preview.html",
+        {
+            "request": request,
+            "cv": cv,
+            "generated_document": generated_document,
+            "templates": available_cv_templates(),
+            "selected_template": template_key,
         },
     )
 

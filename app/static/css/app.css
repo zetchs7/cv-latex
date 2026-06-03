@@ -331,6 +331,7 @@ label {
 }
 
 input,
+select,
 textarea {
   width: 100%;
   border: 1px solid var(--border);
@@ -391,6 +392,43 @@ dd {
   white-space: pre-wrap;
 }
 
+.template-selector {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  margin-bottom: 18px;
+  padding: 18px;
+}
+
+.template-selector label {
+  min-width: min(320px, 100%);
+}
+
+.tex-preview-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  margin-bottom: 18px;
+  padding: 18px;
+}
+
+.tex-preview {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  margin: 14px 0 0;
+  padding: 18px;
+  white-space: pre;
+}
+
 @media (max-width: 900px) {
   .dashboard-hero,
   .module-grid,
@@ -417,7 +455,8 @@ dd {
   }
 
   .header-content,
-  .page-header {
+  .page-header,
+  .template-selector {
     flex-direction: column;
     align-items: flex-start;
   }

@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+
+{% block title %}TEX de {{ cv.title }} - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Plantillas LaTeX</p>
+    <h1>{{ generated_document.filename }}</h1>
+    <p class="hero-copy">Previsualizacion del archivo .tex generado desde el CV guardado.</p>
+  </div>
+  <div class="action-row">
+    <a class="button" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Volver al CV</a>
+  </div>
+</section>
+
+<form class="template-selector" method="get" action="{{ url_for('cvs_tex_preview', cv_id=cv.id) }}">
+  <label>
+    <span>Plantilla</span>
+    <select name="template_key">
+      {% for template in templates %}
+      <option value="{{ template.key }}" {% if template.key == selected_template %}selected{% endif %}>
+        {{ template.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </label>
+  <button class="button primary" type="submit">Generar vista TEX</button>
+</form>
+
+<section class="tex-preview-panel">
+  <div class="module-card-header">
+    <h2>Contenido TEX</h2>
+    <span>Sin descarga</span>
+  </div>
+  <pre class="tex-preview"><code>{{ generated_document.content }}</code></pre>
+</section>
+
+<section class="notice">
+  <h2>Alcance de Etapa 2</h2>
+  <p>
+    Esta vista genera contenido .tex desde un CV existente y una plantilla propia.
+    La compilacion PDF, descarga PDF, export TEX y export JSON se mantienen fuera de alcance.
+  </p>
+</section>
+{% endblock %}

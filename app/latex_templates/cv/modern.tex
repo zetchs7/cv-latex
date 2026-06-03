@@ -1,0 +1,39 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\geometry{margin=1.8cm}
+\definecolor{primary}{HTML}{0F766E}
+\setlength{\parindent}{0pt}
+\setlist[itemize]{leftmargin=1.1em}
+
+\begin{document}
+
+{\Huge \textcolor{primary}{\textbf{[[ full_name ]]}}}\\[0.25em]
+{\Large [[ title ]]}\\[0.5em]
+[% if personal_details %]
+{\small [[ personal_details | join(" \\quad ") ]]}
+[% endif %]
+
+\vspace{1.4em}
+
+[% for section in sections %]
+{\large \textcolor{primary}{\textbf{[[ section.title ]]}}}\\[-0.25em]
+\textcolor{primary}{\rule{\textwidth}{0.6pt}}\\[0.45em]
+[% if section.item_list %]
+\begin{itemize}
+[% for item in section.item_list %]
+  \item [[ item ]]
+[% endfor %]
+\end{itemize}
+[% else %]
+[[ section.body ]]
+[% endif %]
+
+\vspace{0.8em}
+[% endfor %]
+
+\end{document}
