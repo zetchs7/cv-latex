@@ -1,0 +1,46 @@
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
+from app.database import get_database_status
+
+
+router = APIRouter()
+templates = Jinja2Templates(directory="app/templates")
+
+
+@router.get("/", response_class=HTMLResponse, name="dashboard")
+def dashboard(request: Request) -> HTMLResponse:
+    modules = [
+        {
+            "name": "CVs",
+            "status": "Pendiente - Etapa 1",
+            "description": "Creacion, edicion, duplicado y listado de curriculums.",
+        },
+        {
+            "name": "Cartas de presentacion",
+            "status": "Pendiente - Etapa 4",
+            "description": "Cartas asociables a CVs y exportables en etapas futuras.",
+        },
+        {
+            "name": "Postulaciones",
+            "status": "Pendiente - Etapa 5",
+            "description": "Seguimiento de oportunidades laborales, estados y proximas acciones.",
+        },
+        {
+            "name": "Configuracion",
+            "status": "Pendiente",
+            "description": "Opciones locales de la aplicacion cuando el MVP lo requiera.",
+        },
+    ]
+
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {
+            "request": request,
+            "app_name": "CV LaTeX Builder",
+            "app_status": "MVP base funcionando",
+            "database_status": get_database_status(),
+            "modules": modules,
+        },
+    )

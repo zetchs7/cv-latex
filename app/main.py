@@ -1,0 +1,42 @@
+from contextlib import asynccontextmanager
+import os
+
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
+from app.database import get_database_status, initialize_database
+from app.routes.dashboard import router as dashboard_router
+
+
+APP_VERSION = os.getenv("APP_VERSION", "0.1.0")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    initialize_database()
+    yield
+
+
+app = FastAPI(
+    title="CV LaTeX Builder",
+    version=APP_VERSION,
+    lifespan=lifespan,
+)
+
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.include_router(dashboard_router)
+
+
+@app.get("/health", name="health")
+def health() -> dict[str, object]:
+    database_status = get_database_status()
+
+    return {
+        "status": "ok",
+        "version": APP_VERSION,
+        "database": {
+            "path": database_status.path,
+            "exists": database_status.exists,
+            "directory_exists": database_status.directory_exists,
+        },
+    }

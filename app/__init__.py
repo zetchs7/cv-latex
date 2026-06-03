@@ -1,0 +1,1 @@
+"""Aplicacion CV LaTeX Builder."""

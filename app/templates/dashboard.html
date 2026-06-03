@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="dashboard-hero" aria-labelledby="dashboard-title">
+  <div>
+    <p class="eyebrow">Aplicacion local portable</p>
+    <h1 id="dashboard-title">{{ app_name }}</h1>
+    <p class="hero-copy">
+      Base tecnica para construir curriculums profesionales con formularios web,
+      SQLite y plantillas LaTeX propias en etapas posteriores.
+    </p>
+  </div>
+
+  <div class="status-panel" aria-label="Estado de la aplicacion">
+    <span class="status-label">Estado</span>
+    <strong>{{ app_status }}</strong>
+    <span class="database-path">SQLite: {{ database_status.path }}</span>
+  </div>
+</section>
+
+<section class="module-grid" aria-label="Modulos planificados">
+  {% for module in modules %}
+  <article class="module-card">
+    <div class="module-card-header">
+      <h2>{{ module.name }}</h2>
+      <span>{{ module.status }}</span>
+    </div>
+    <p>{{ module.description }}</p>
+  </article>
+  {% endfor %}
+</section>
+
+<section class="notice">
+  <h2>Alcance de Etapa 0</h2>
+  <p>
+    Estos modulos son placeholders funcionales de navegacion visual. El CV Builder,
+    LaTeX, PDF, cartas, postulaciones, ATS e IA se implementaran solo en etapas
+    futuras con validacion explicita.
+  </p>
+</section>
+{% endblock %}
