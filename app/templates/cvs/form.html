@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ page_title }} - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">CV Builder Core</p>
+    <h1>{{ page_title }}</h1>
+  </div>
+  <a class="button" href="{{ url_for('cvs_list') }}">Volver al listado</a>
+</section>
+
+<form class="form-panel" method="post" action="{{ action_url }}" novalidate>
+  <div class="form-grid">
+    <label>
+      <span>Titulo interno *</span>
+      <input name="title" value="{{ form_data.title }}" maxlength="120" required>
+      {% if errors.title %}<small class="field-error">{{ errors.title }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>Nombre completo *</span>
+      <input name="full_name" value="{{ form_data.full_name }}" maxlength="160" required>
+      {% if errors.full_name %}<small class="field-error">{{ errors.full_name }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>Email</span>
+      <input name="email" type="email" value="{{ form_data.email }}" maxlength="180">
+      {% if errors.email %}<small class="field-error">{{ errors.email }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>Telefono</span>
+      <input name="phone" value="{{ form_data.phone }}" maxlength="80">
+      {% if errors.phone %}<small class="field-error">{{ errors.phone }}</small>{% endif %}
+    </label>
+  </div>
+
+  <label>
+    <span>Perfil profesional</span>
+    <textarea name="professional_summary" rows="5" maxlength="1200">{{ form_data.professional_summary }}</textarea>
+    {% if errors.professional_summary %}<small class="field-error">{{ errors.professional_summary }}</small>{% endif %}
+  </label>
+
+  <label>
+    <span>Experiencia laboral</span>
+    <textarea name="experience_summary" rows="6" maxlength="2000">{{ form_data.experience_summary }}</textarea>
+    {% if errors.experience_summary %}<small class="field-error">{{ errors.experience_summary }}</small>{% endif %}
+  </label>
+
+  <label>
+    <span>Educacion</span>
+    <textarea name="education_summary" rows="5" maxlength="1600">{{ form_data.education_summary }}</textarea>
+    {% if errors.education_summary %}<small class="field-error">{{ errors.education_summary }}</small>{% endif %}
+  </label>
+
+  <label>
+    <span>Skills</span>
+    <textarea name="skills" rows="4" maxlength="1200">{{ form_data.skills }}</textarea>
+    {% if errors.skills %}<small class="field-error">{{ errors.skills }}</small>{% endif %}
+  </label>
+
+  <div class="form-actions">
+    <button class="button primary" type="submit">{{ submit_label }}</button>
+    {% if cv_id %}
+    <a class="button" href="{{ url_for('cvs_detail', cv_id=cv_id) }}">Cancelar</a>
+    {% else %}
+    <a class="button" href="{{ url_for('cvs_list') }}">Cancelar</a>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}

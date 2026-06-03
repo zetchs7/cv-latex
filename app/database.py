@@ -23,6 +23,12 @@ def get_database_path() -> Path:
     return get_data_dir() / os.getenv("APP_DB_FILENAME", DEFAULT_DB_FILENAME)
 
 
+def get_connection() -> sqlite3.Connection:
+    connection = sqlite3.connect(get_database_path())
+    connection.row_factory = sqlite3.Row
+    return connection
+
+
 def initialize_database() -> DatabaseStatus:
     data_dir = get_data_dir()
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -42,10 +48,34 @@ def initialize_database() -> DatabaseStatus:
         connection.execute(
             """
             INSERT INTO app_metadata (metadata_key, metadata_value)
-            VALUES ('schema_version', '0')
+            VALUES ('schema_version', '1')
             ON CONFLICT(metadata_key) DO UPDATE SET
                 metadata_value = excluded.metadata_value,
                 updated_at = CURRENT_TIMESTAMP
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS cvs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                full_name TEXT NOT NULL,
+                email TEXT NOT NULL DEFAULT '',
+                phone TEXT NOT NULL DEFAULT '',
+                professional_summary TEXT NOT NULL DEFAULT '',
+                experience_summary TEXT NOT NULL DEFAULT '',
+                education_summary TEXT NOT NULL DEFAULT '',
+                skills TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                deleted_at TEXT
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_cvs_deleted_at_updated_at
+            ON cvs (deleted_at, updated_at)
             """
         )
         connection.commit()

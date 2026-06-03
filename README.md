@@ -4,8 +4,8 @@ Aplicacion web local, pequena y portable para construir curriculums vitae profes
 
 ## Estado actual
 
-- Version: `0.1.0`
-- Etapa: `0 - Base tecnica, Docker y documentacion inicial`
+- Version: `0.2.0`
+- Etapa: `1 - CV Builder Core`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 
@@ -73,18 +73,30 @@ La carpeta local `./data` se monta como `/data` dentro del contenedor. La base S
 
 El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reales ni datos personales.
 
-## Estructura inicial
+## Estructura actual
 
 ```text
 .
 |-- app/
 |   |-- main.py
 |   |-- database.py
+|   |-- models.py
+|   |-- schemas.py
+|   |-- repositories/
+|   |   `-- cv_repository.py
 |   |-- routes/
+|   |   |-- cvs.py
 |   |   `-- dashboard.py
 |   |-- templates/
 |   |   |-- layout.html
-|   |   `-- dashboard.html
+|   |   |-- dashboard.html
+|   |   `-- cvs/
+|   |       |-- index.html
+|   |       |-- form.html
+|   |       |-- detail.html
+|   |       `-- confirm_delete.html
+|   |-- validations/
+|   |   `-- cv_validations.py
 |   `-- static/
 |       |-- css/
 |       |   `-- app.css
@@ -107,14 +119,40 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 
 ## Roadmap
 
-- Etapa 0: Base tecnica, Docker, SQLite preparado y documentacion inicial.
-- Etapa 1: CV Builder Core.
+- Etapa 0: Base tecnica, Docker, SQLite preparado y documentacion inicial. Completada.
+- Etapa 1: CV Builder Core. Completada.
 - Etapa 2: Plantillas LaTeX propias y sanitizacion.
 - Etapa 3: Export Engine PDF/TEX/JSON.
 - Etapa 4: Cartas de presentacion.
 - Etapa 5: Tracker de postulaciones.
 - Etapa 6: ATS Basic Check.
 - Etapa 7: Pulido final del MVP.
+
+## CV Builder Core
+
+Rutas disponibles:
+
+- `GET /cvs/`: listar CVs activos.
+- `GET /cvs/new`: formulario de creacion.
+- `POST /cvs/`: crear CV.
+- `GET /cvs/{cv_id}`: detalle.
+- `GET /cvs/{cv_id}/edit`: formulario de edicion.
+- `POST /cvs/{cv_id}/edit`: actualizar CV.
+- `POST /cvs/{cv_id}/duplicate`: duplicar CV.
+- `GET /cvs/{cv_id}/delete`: confirmacion de eliminacion.
+- `POST /cvs/{cv_id}/delete`: eliminacion logica.
+
+La eliminacion no borra fisicamente el registro; marca `deleted_at` en SQLite.
+
+## Prueba manual rapida
+
+1. Abrir `http://localhost:8000`.
+2. Entrar a `CVs`.
+3. Crear un CV.
+4. Editarlo.
+5. Duplicarlo.
+6. Eliminarlo desde la pantalla de confirmacion.
+7. Confirmar que no aparece en el listado activo.
 
 ## Troubleshooting basico
 
@@ -125,6 +163,6 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 
 ## Alcance de esta version
 
-Incluye solo dashboard placeholder, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion inicial.
+Incluye dashboard, CV Builder Core, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion inicial.
 
-No incluye CV Builder, LaTeX, PDF, cartas, postulaciones, ATS ni IA.
+No incluye LaTeX, PDF, exportaciones TEX/JSON, cartas, postulaciones, ATS ni IA.

@@ -28,16 +28,19 @@
       <span>{{ module.status }}</span>
     </div>
     <p>{{ module.description }}</p>
+    {% if module.is_active and module.url_name %}
+    <a class="text-link" href="{{ url_for(module.url_name) }}">Abrir modulo</a>
+    {% endif %}
   </article>
   {% endfor %}
 </section>
 
 <section class="notice">
-  <h2>Alcance de Etapa 0</h2>
+  <h2>Alcance actual</h2>
   <p>
-    Estos modulos son placeholders funcionales de navegacion visual. El CV Builder,
-    LaTeX, PDF, cartas, postulaciones, ATS e IA se implementaran solo en etapas
-    futuras con validacion explicita.
+    El modulo CV Builder Core esta disponible para crear, listar, editar,
+    duplicar y eliminar logicamente CVs. LaTeX, PDF, cartas, postulaciones,
+    ATS e IA se implementaran solo en etapas futuras con validacion explicita.
   </p>
 </section>
 {% endblock %}

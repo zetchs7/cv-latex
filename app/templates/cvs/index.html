@@ -1,0 +1,59 @@
+{% extends "layout.html" %}
+
+{% block title %}CVs - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">CV Builder Core</p>
+    <h1>CVs</h1>
+    <p class="hero-copy">Crea, edita, duplica y elimina logicamente curriculums guardados en SQLite.</p>
+  </div>
+  <a class="button primary" href="{{ url_for('cvs_new') }}">Crear CV</a>
+</section>
+
+{% if message %}
+<div class="flash-message" role="status">{{ message }}</div>
+{% endif %}
+
+{% if cvs %}
+<section class="table-wrap" aria-label="Listado de CVs">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Titulo</th>
+        <th>Nombre</th>
+        <th>Email</th>
+        <th>Actualizado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cv in cvs %}
+      <tr>
+        <td><a class="text-link" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">{{ cv.title }}</a></td>
+        <td>{{ cv.full_name }}</td>
+        <td>{{ cv.email or "Sin email" }}</td>
+        <td>{{ cv.updated_at }}</td>
+        <td>
+          <div class="action-row">
+            <a class="button small" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar</a>
+            <form method="post" action="{{ url_for('cvs_duplicate', cv_id=cv.id) }}">
+              <button class="button small" type="submit">Duplicar</button>
+            </form>
+            <a class="button small danger" href="{{ url_for('cvs_confirm_delete', cv_id=cv.id) }}">Eliminar</a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<section class="empty-state">
+  <h2>No hay CVs cargados</h2>
+  <p>El primer CV se guarda en SQLite y queda disponible para edicion y duplicado.</p>
+  <a class="button primary" href="{{ url_for('cvs_new') }}">Crear primer CV</a>
+</section>
+{% endif %}
+{% endblock %}

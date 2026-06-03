@@ -51,3 +51,64 @@
 ### Limites de alcance confirmados
 
 No se implemento CV Builder, LaTeX, PDF, cartas de presentacion, postulaciones, ATS ni IA.
+
+## Etapa 1 - CV Builder Core
+
+- Fecha: 2026-06-02
+- Rama: `feature/cv-builder-core`
+- Objetivo: implementar el modulo base de CVs con CRUD simple, formularios HTML y persistencia SQLite.
+- Modulos afectados: `app`, `dashboard`, `database`, `cv-builder`, `validations`, `docs`, `docker`.
+- Resumen de cambios:
+  - Se agrego modelo base `CV`.
+  - Se agrego schema de formulario `CVFormData`.
+  - Se creo tabla SQLite `cvs` con timestamps y eliminacion logica mediante `deleted_at`.
+  - Se implementaron rutas para listar, crear, ver detalle, editar, duplicar, confirmar eliminacion y eliminar logicamente.
+  - Se agregaron templates HTML simples para listado, formulario, detalle y confirmacion.
+  - Se agrego navegacion desde dashboard y header hacia `CVs`.
+  - Se centralizaron validaciones del formulario en `app/validations/cv_validations.py`.
+  - Se actualizo la version a `0.2.0`.
+- Archivos principales:
+  - `app/models.py`
+  - `app/schemas.py`
+  - `app/database.py`
+  - `app/repositories/cv_repository.py`
+  - `app/routes/cvs.py`
+  - `app/templates/cvs/index.html`
+  - `app/templates/cvs/form.html`
+  - `app/templates/cvs/detail.html`
+  - `app/templates/cvs/confirm_delete.html`
+  - `app/validations/cv_validations.py`
+  - `app/static/css/app.css`
+  - `docs/development/CV_BUILDER_CORE.md`
+- Validaciones ejecutadas:
+  - `python -m compileall app`
+  - `rg -n -P "[^\\x00-\\x7F]"`
+  - `git diff --check`
+  - `docker compose build`
+  - `docker compose up -d`
+  - `docker compose ps`
+  - `docker compose logs app`
+  - `Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing`
+  - `Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing`
+  - `Invoke-WebRequest -Uri http://localhost:8000/cvs/ -UseBasicParsing`
+  - `Invoke-WebRequest -Uri http://localhost:8000/cvs/new -UseBasicParsing`
+  - POST de creacion de CV
+  - POST de edicion de CV
+  - POST de duplicado de CV
+  - GET de confirmacion de eliminacion
+  - POST de eliminacion logica
+  - Verificacion SQLite de CVs activos e inactivos
+  - POST invalido con respuesta 422
+- Resultado: completado localmente. El contenedor queda `healthy`, la version de `/health` es `0.2.0`, el flujo CRUD basico funciona y los registros eliminados logicamente no aparecen activos.
+- Pendientes:
+  - Esperar validacion explicita del usuario antes de Etapa 2.
+  - Preparar push o PR solo si el usuario lo indica.
+
+### Observaciones de validacion Etapa 1
+
+- El primer arranque fallo por anotaciones de retorno `HTMLResponse | RedirectResponse` en rutas FastAPI. Causa: FastAPI intento construir un response model Pydantic con esa union. Correccion aplicada: quitar esas anotaciones en las rutas POST afectadas.
+- Los CVs de prueba creados durante validacion quedaron eliminados logicamente. El listado activo quedo en cero; SQLite conserva dos registros con `deleted_at` por trazabilidad local.
+
+### Limites de alcance confirmados Etapa 1
+
+No se implemento LaTeX, generacion PDF, export TEX, export JSON, cartas de presentacion, tracker de postulaciones, ATS ni IA.

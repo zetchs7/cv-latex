@@ -11,7 +11,11 @@
   <header class="site-header">
     <div class="container header-content">
       <a class="brand" href="{{ url_for('dashboard') }}">CV LaTeX Builder</a>
-      <span class="version">v0.1.0</span>
+      <nav class="header-nav" aria-label="Navegacion principal">
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('cvs_list') }}">CVs</a>
+      </nav>
+      <span class="version">v0.2.0</span>
     </div>
   </header>
 

@@ -542,3 +542,504 @@ Argumentos:
 - `--branch`: incluye rama activa.
 
 Resultado: rama `feature/base-docker-app` con cambios de Etapa 0 pendientes de commit.
+
+## 2026-06-02 - Preparacion de Etapa 1
+
+Accion:
+Revisar estado actual del repositorio.
+
+Motivo:
+Confirmar rama, limpieza del arbol y base disponible antes de crear la rama de Etapa 1.
+
+Comando: `git status --short --branch`
+
+Argumentos:
+- `--short`: salida resumida.
+- `--branch`: incluye rama activa.
+
+Resultado: rama `feature/base-docker-app`, arbol limpio.
+
+---
+
+Accion:
+Listar ramas locales y remotas.
+
+Motivo:
+Verificar que existe `development` y confirmar que no hubo merge de Etapa 0.
+
+Comando: `git branch --all`
+
+Argumentos:
+- `--all`: muestra ramas locales y remotas.
+
+Resultado: existen `development`, `feature/base-docker-app`, `main`, `origin/main` y `origin/HEAD`.
+
+---
+
+Accion:
+Revisar historial reciente.
+
+Motivo:
+Confirmar que `development` seguia en el commit inicial y que Etapa 0 estaba solo en `feature/base-docker-app`.
+
+Comando: `git log --oneline --decorate --graph --all -n 8`
+
+Argumentos:
+- `--oneline`: formato compacto.
+- `--decorate`: muestra ramas.
+- `--graph`: muestra relacion de commits.
+- `--all`: incluye todas las ramas.
+- `-n 8`: limita a ocho commits.
+
+Resultado: `feature/base-docker-app` contiene `6a1408f`; `development` sigue en el commit inicial.
+
+---
+
+Accion:
+Listar archivos existentes.
+
+Motivo:
+Identificar la estructura aprobada de Etapa 0 antes de extenderla.
+
+Comando: `rg --files`
+
+Argumentos:
+- Sin argumentos: lista archivos bajo el directorio actual.
+
+Resultado: estructura base FastAPI/Docker/docs disponible.
+
+---
+
+Accion:
+Crear rama de Etapa 1.
+
+Motivo:
+Implementar CV Builder Core sin trabajar directo en `main`, `development` ni `feature/base-docker-app`. Se creo desde la rama aprobada de Etapa 0 porque no habia merge autorizado hacia `development`.
+
+Comando: `git switch -c feature/cv-builder-core`
+
+Argumentos:
+- `switch`: cambia de rama.
+- `-c feature/cv-builder-core`: crea la rama local de trabajo de Etapa 1.
+
+Resultado: `Switched to a new branch 'feature/cv-builder-core'`.
+
+## 2026-06-02 - Implementacion de CV Builder Core
+
+Accion:
+Crear modelo, schema, repositorio, rutas, templates y validaciones de CVs.
+
+Motivo:
+Implementar el alcance de Etapa 1: modelo base, CRUD, formularios, duplicado, eliminacion con confirmacion y persistencia SQLite.
+
+Comando: `apply_patch`
+
+Argumentos:
+- Modifico `app/database.py` para crear tabla `cvs`.
+- Agrego `app/models.py`.
+- Agrego `app/schemas.py`.
+- Agrego `app/repositories/cv_repository.py`.
+- Agrego `app/validations/cv_validations.py`.
+- Agrego `app/routes/cvs.py`.
+- Agrego templates bajo `app/templates/cvs/`.
+- Actualiza dashboard, layout y CSS.
+
+Resultado: modulo CV Builder Core creado.
+
+---
+
+Accion:
+Actualizar version del proyecto.
+
+Motivo:
+Etapa 1 agrega funcionalidad nueva compatible, por lo que corresponde pasar de `0.1.0` a `0.2.0`.
+
+Comando: `apply_patch`
+
+Argumentos:
+- Actualiza `VERSION`.
+- Actualiza `Dockerfile`.
+- Actualiza `docker-compose.yml`.
+- Actualiza `.env.example`.
+- Actualiza `README.md`.
+- Actualiza version visible en layout.
+
+Resultado: version `0.2.0` aplicada.
+
+---
+
+Accion:
+Compilar archivos Python.
+
+Motivo:
+Detectar errores de sintaxis antes de validar con Docker.
+
+Comando: `python -m compileall app`
+
+Argumentos:
+- `-m compileall`: ejecuta el modulo de compilacion.
+- `app`: carpeta objetivo.
+
+Resultado: compilacion correcta.
+
+---
+
+Accion:
+Buscar caracteres no ASCII accidentales.
+
+Motivo:
+Mantener archivos portables y consistentes con la politica de edicion.
+
+Comando: `rg -n -P "[^\\x00-\\x7F]"`
+
+Argumentos:
+- `-n`: muestra linea.
+- `-P`: usa expresiones PCRE.
+- Patron: busca caracteres fuera de ASCII.
+
+Resultado: sin coincidencias.
+
+---
+
+Accion:
+Revisar whitespace del diff.
+
+Motivo:
+Detectar espacios conflictivos antes de commit.
+
+Comando: `git diff --check`
+
+Argumentos:
+- `--check`: valida whitespace y marcadores conflictivos.
+
+Resultado: sin errores; Git mostro advertencias normales de CRLF en Windows.
+
+## 2026-06-02 - Validaciones Docker y CRUD Etapa 1
+
+Accion:
+Construir imagen Docker con Etapa 1.
+
+Motivo:
+Validar que el contenedor puede construirse con el modulo CVs.
+
+Comando: `docker compose build`
+
+Argumentos:
+- `compose`: usa Docker Compose v2.
+- `build`: construye la imagen local.
+
+Resultado: build correcto.
+
+---
+
+Accion:
+Levantar servicio actualizado.
+
+Motivo:
+Validar arranque real de la app.
+
+Comando: `docker compose up -d`
+
+Argumentos:
+- `up`: crea o recrea servicios.
+- `-d`: ejecuta en segundo plano.
+
+Resultado: el contenedor se recreo, pero entro en reinicio.
+
+---
+
+Accion:
+Revisar estado y logs del fallo.
+
+Motivo:
+Identificar causa del reinicio del contenedor.
+
+Comando: `docker compose ps`
+
+Argumentos:
+- `ps`: muestra estado del servicio.
+
+Resultado: `cv_latex_app` aparecio como `Restarting (1)`.
+
+Comando: `docker compose logs app`
+
+Argumentos:
+- `logs`: muestra logs.
+- `app`: limita al servicio principal.
+
+Resultado: error `FastAPIError: Invalid args for response field` por anotacion `HTMLResponse | RedirectResponse` en rutas POST.
+
+---
+
+Accion:
+Corregir anotaciones de rutas FastAPI.
+
+Motivo:
+FastAPI intento construir un response model Pydantic con una union de clases Response.
+
+Comando: `apply_patch`
+
+Argumentos:
+- Se quitaron las anotaciones `HTMLResponse | RedirectResponse` en rutas POST afectadas.
+
+Resultado: correccion aplicada.
+
+---
+
+Accion:
+Recompilar Python despues de la correccion.
+
+Motivo:
+Confirmar que el cambio no introdujo errores de sintaxis.
+
+Comando: `python -m compileall app`
+
+Argumentos:
+- `app`: carpeta objetivo.
+
+Resultado: compilacion correcta.
+
+---
+
+Accion:
+Reconstruir imagen corregida.
+
+Motivo:
+Actualizar el contenedor con la correccion.
+
+Comando: `docker compose build`
+
+Argumentos:
+- `build`: reconstruye imagen local.
+
+Resultado: build correcto.
+
+---
+
+Accion:
+Levantar servicio corregido.
+
+Motivo:
+Validar que la app arranca correctamente.
+
+Comando: `docker compose up -d`
+
+Argumentos:
+- `up`: crea o recrea servicios.
+- `-d`: ejecuta en segundo plano.
+
+Resultado: contenedor recreado e iniciado.
+
+---
+
+Accion:
+Revisar contenedor corregido.
+
+Motivo:
+Confirmar healthcheck.
+
+Comando: `docker compose ps`
+
+Argumentos:
+- `ps`: muestra estado de servicios.
+
+Resultado: `cv_latex_app` quedo `Up` y `healthy`, con puerto `8000:8000`.
+
+---
+
+Accion:
+Validar endpoint de salud.
+
+Motivo:
+Confirmar version, base y arranque.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing`
+
+Argumentos:
+- `-Uri`: endpoint `/health`.
+- `-UseBasicParsing`: parseo compatible desde PowerShell.
+
+Resultado: `StatusCode: 200`, `version: 0.2.0`, SQLite existente.
+
+---
+
+Accion:
+Validar dashboard.
+
+Motivo:
+Confirmar navegacion hacia CVs.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing`
+
+Argumentos:
+- `-Uri`: dashboard.
+- `-UseBasicParsing`: parseo compatible.
+
+Resultado: `StatusCode: 200`, links a `/cvs/` presentes.
+
+---
+
+Accion:
+Validar listado de CVs.
+
+Motivo:
+Confirmar ruta principal del modulo.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000/cvs/ -UseBasicParsing`
+
+Argumentos:
+- `-Uri`: listado de CVs.
+- `-UseBasicParsing`: parseo compatible.
+
+Resultado: `StatusCode: 200`.
+
+---
+
+Accion:
+Validar formulario de creacion.
+
+Motivo:
+Confirmar que el formulario HTML carga.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000/cvs/new -UseBasicParsing`
+
+Argumentos:
+- `-Uri`: formulario nuevo CV.
+- `-UseBasicParsing`: parseo compatible.
+
+Resultado: `StatusCode: 200`.
+
+---
+
+Accion:
+Crear CV de prueba.
+
+Motivo:
+Validar POST de creacion y persistencia SQLite.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000/cvs/ -Method Post -UseBasicParsing -Body @{ ... }`
+
+Argumentos:
+- `-Uri`: endpoint de creacion.
+- `-Method Post`: envia formulario.
+- `-Body`: campos `title`, `full_name`, `email`, `phone`, `professional_summary`, `experience_summary`, `education_summary`, `skills`.
+
+Resultado: redireccion a `http://localhost:8000/cvs/1?message=CV+creado+correctamente.`
+
+---
+
+Accion:
+Editar CV de prueba.
+
+Motivo:
+Validar POST de actualizacion.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000/cvs/1/edit -Method Post -UseBasicParsing -Body @{ ... }`
+
+Argumentos:
+- `-Uri`: endpoint de edicion del CV `1`.
+- `-Method Post`: envia formulario.
+- `-Body`: campos actualizados.
+
+Resultado: redireccion a `http://localhost:8000/cvs/1?message=CV+actualizado+correctamente.`
+
+---
+
+Accion:
+Duplicar CV de prueba.
+
+Motivo:
+Validar accion de duplicado.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000/cvs/1/duplicate -Method Post -UseBasicParsing`
+
+Argumentos:
+- `-Uri`: endpoint de duplicado del CV `1`.
+- `-Method Post`: ejecuta la accion.
+
+Resultado: redireccion a `http://localhost:8000/cvs/2?message=CV+duplicado+correctamente.`
+
+---
+
+Accion:
+Abrir confirmacion de eliminacion.
+
+Motivo:
+Validar que la eliminacion requiere confirmacion.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000/cvs/2/delete -UseBasicParsing`
+
+Argumentos:
+- `-Uri`: pantalla de confirmacion para CV `2`.
+- `-UseBasicParsing`: parseo compatible.
+
+Resultado: `StatusCode: 200`.
+
+---
+
+Accion:
+Eliminar logicamente CV duplicado.
+
+Motivo:
+Validar eliminacion con confirmacion.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000/cvs/2/delete -Method Post -UseBasicParsing -Body @{ confirm_delete = 'yes' }`
+
+Argumentos:
+- `-Uri`: endpoint de eliminacion.
+- `-Method Post`: ejecuta accion.
+- `confirm_delete = 'yes'`: confirma eliminacion.
+
+Resultado: redireccion a `http://localhost:8000/cvs/?message=CV+eliminado+correctamente.`
+
+---
+
+Accion:
+Eliminar logicamente CV original de prueba.
+
+Motivo:
+Dejar el listado visible sin datos de prueba activos.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000/cvs/1/delete -Method Post -UseBasicParsing -Body @{ confirm_delete = 'yes' }`
+
+Argumentos:
+- `-Uri`: endpoint de eliminacion del CV `1`.
+- `-Method Post`: ejecuta accion.
+- `confirm_delete = 'yes'`: confirma eliminacion.
+
+Resultado: redireccion a `http://localhost:8000/cvs/?message=CV+eliminado+correctamente.`
+
+---
+
+Accion:
+Verificar conteo SQLite.
+
+Motivo:
+Confirmar que la eliminacion es logica y que no quedan CVs activos.
+
+Comando: `docker compose exec app python -c "import sqlite3; con=sqlite3.connect('/data/app.db'); print(con.execute('select count(*) from cvs where deleted_at is null').fetchone()[0]); print(con.execute('select count(*) from cvs where deleted_at is not null').fetchone()[0])"`
+
+Argumentos:
+- `exec app`: ejecuta dentro del contenedor.
+- `python -c`: consulta SQLite.
+- Primera consulta: cuenta CVs activos.
+- Segunda consulta: cuenta CVs eliminados logicamente.
+
+Resultado: `0` activos y `2` eliminados logicamente.
+
+---
+
+Accion:
+Validar formulario invalido.
+
+Motivo:
+Confirmar errores de validacion del lado servidor.
+
+Comando: `Invoke-WebRequest -Uri http://localhost:8000/cvs/ -Method Post -UseBasicParsing -Body @{ title = ''; full_name = ''; email = 'email-invalido'; ... }`
+
+Argumentos:
+- `-Uri`: endpoint de creacion.
+- `-Method Post`: envia formulario invalido.
+- `-Body`: datos incompletos y email invalido.
+
+Resultado: respuesta HTTP `422`.

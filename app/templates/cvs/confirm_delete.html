@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+
+{% block title %}Eliminar CV - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="confirm-panel">
+  <p class="eyebrow">Confirmacion requerida</p>
+  <h1>Eliminar CV</h1>
+  <p>
+    Vas a eliminar logicamente el CV <strong>{{ cv.title }}</strong>. El registro se oculta del listado,
+    pero no se borra fisicamente de SQLite.
+  </p>
+
+  <form class="form-actions" method="post" action="{{ url_for('cvs_delete', cv_id=cv.id) }}">
+    <input type="hidden" name="confirm_delete" value="yes">
+    <button class="button danger" type="submit">Confirmar eliminacion</button>
+    <a class="button" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Cancelar</a>
+  </form>
+</section>
+{% endblock %}

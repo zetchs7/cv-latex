@@ -14,23 +14,31 @@ def dashboard(request: Request) -> HTMLResponse:
     modules = [
         {
             "name": "CVs",
-            "status": "Pendiente - Etapa 1",
+            "status": "Activo - Etapa 1",
             "description": "Creacion, edicion, duplicado y listado de curriculums.",
+            "url_name": "cvs_list",
+            "is_active": True,
         },
         {
             "name": "Cartas de presentacion",
             "status": "Pendiente - Etapa 4",
             "description": "Cartas asociables a CVs y exportables en etapas futuras.",
+            "url_name": None,
+            "is_active": False,
         },
         {
             "name": "Postulaciones",
             "status": "Pendiente - Etapa 5",
             "description": "Seguimiento de oportunidades laborales, estados y proximas acciones.",
+            "url_name": None,
+            "is_active": False,
         },
         {
             "name": "Configuracion",
             "status": "Pendiente",
             "description": "Opciones locales de la aplicacion cuando el MVP lo requiera.",
+            "url_name": None,
+            "is_active": False,
         },
     ]
 

@@ -5,10 +5,11 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.database import get_database_status, initialize_database
+from app.routes.cvs import router as cvs_router
 from app.routes.dashboard import router as dashboard_router
 
 
-APP_VERSION = os.getenv("APP_VERSION", "0.1.0")
+APP_VERSION = os.getenv("APP_VERSION", "0.2.0")
 
 
 @asynccontextmanager
@@ -25,6 +26,7 @@ app = FastAPI(
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(dashboard_router)
+app.include_router(cvs_router)
 
 
 @app.get("/health", name="health")

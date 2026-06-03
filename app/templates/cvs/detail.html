@@ -1,0 +1,66 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ cv.title }} - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">CV Builder Core</p>
+    <h1>{{ cv.title }}</h1>
+    <p class="hero-copy">{{ cv.full_name }}</p>
+  </div>
+  <div class="action-row">
+    <a class="button" href="{{ url_for('cvs_list') }}">Listado</a>
+    <a class="button primary" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar</a>
+  </div>
+</section>
+
+{% if message %}
+<div class="flash-message" role="status">{{ message }}</div>
+{% endif %}
+
+<section class="detail-grid">
+  <article class="detail-panel">
+    <h2>Datos personales</h2>
+    <dl>
+      <dt>Email</dt>
+      <dd>{{ cv.email or "Sin email" }}</dd>
+      <dt>Telefono</dt>
+      <dd>{{ cv.phone or "Sin telefono" }}</dd>
+      <dt>Creado</dt>
+      <dd>{{ cv.created_at }}</dd>
+      <dt>Actualizado</dt>
+      <dd>{{ cv.updated_at }}</dd>
+    </dl>
+  </article>
+
+  <article class="detail-panel">
+    <h2>Acciones</h2>
+    <div class="stack-actions">
+      <form method="post" action="{{ url_for('cvs_duplicate', cv_id=cv.id) }}">
+        <button class="button" type="submit">Duplicar CV</button>
+      </form>
+      <a class="button danger" href="{{ url_for('cvs_confirm_delete', cv_id=cv.id) }}">Eliminar CV</a>
+    </div>
+  </article>
+</section>
+
+<section class="content-sections">
+  <article>
+    <h2>Perfil profesional</h2>
+    <p>{{ cv.professional_summary or "Sin perfil profesional cargado." }}</p>
+  </article>
+  <article>
+    <h2>Experiencia laboral</h2>
+    <p>{{ cv.experience_summary or "Sin experiencia cargada." }}</p>
+  </article>
+  <article>
+    <h2>Educacion</h2>
+    <p>{{ cv.education_summary or "Sin educacion cargada." }}</p>
+  </article>
+  <article>
+    <h2>Skills</h2>
+    <p>{{ cv.skills or "Sin skills cargadas." }}</p>
+  </article>
+</section>
+{% endblock %}
