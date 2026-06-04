@@ -2501,3 +2501,100 @@ Resultado:
 - Creacion, edicion, detalle, cambio de estado y eliminacion de postulaciones validados por HTTP.
 - Asociaciones a CV y cover letter verificadas.
 - Persistencia comprobada en SQLite, incluyendo `deleted_at` para eliminacion logica.
+
+---
+
+Accion:
+Crear rama de Etapa 6 desde `development`.
+
+Motivo:
+Respetar Git Flow y no trabajar directo sobre `main` ni `development`.
+
+Comandos:
+- `git status --short --branch`
+- `git fetch origin`
+- `git rev-list --left-right --count development...origin/development`
+- `git switch development`
+- `git switch -c feature/ats-basic-check`
+
+Resultado: rama `feature/ats-basic-check` creada desde `development` sincronizada.
+
+---
+
+Accion:
+Agregar servicio ATS basico, ruta dedicada y template de analisis para CVs.
+
+Motivo:
+Implementar el chequeo ATS de forma modular, sin IA y sin mezclar la logica funcional dentro de `cvs.py`.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/services/ats_service.py`: score, checklist, advertencias y recomendaciones.
+- `app/routes/ats.py`: endpoint para analizar un CV existente.
+- `app/templates/ats/cv_analysis.html`: vista del resultado ATS.
+- `app/templates/cvs/detail.html`: nueva accion `Analizar ATS`.
+- `app/main.py`, `app/routes/dashboard.py`, `app/templates/dashboard.html`, `app/static/css/app.css`: integracion visual minima.
+
+Resultado: modulo ATS Basic Check integrado a CVs existentes sin dependencias externas.
+
+---
+
+Accion:
+Agregar tests y documentacion de Etapa 6.
+
+Motivo:
+Cubrir el servicio ATS, la ruta de analisis y dejar trazabilidad del alcance real de la etapa.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `tests/test_ats_service.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/ATS_BASIC_CHECK.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/COMMAND_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `VERSION`, `.env.example`, `Dockerfile`, `docker-compose.yml`
+
+Resultado: version `0.7.0` documentada y modulo ATS cubierto en docs y tests.
+
+---
+
+Accion:
+Agregar dependencia de testing para rutas.
+
+Motivo:
+`fastapi.testclient` requiere `httpx` para ejecutar la prueba basica de la ruta ATS dentro del contenedor.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `requirements.txt`
+- `docs/development/CHANGELOG_GENERAL.md`
+
+Resultado: dependencia `httpx==0.28.1` agregada para soportar tests de rutas.
+
+---
+
+Accion:
+Validar el modulo ATS Basic Check en Docker y por HTTP.
+
+Motivo:
+Confirmar que el score, checklist, advertencias y recomendaciones se muestran correctamente sobre CVs completos e incompletos.
+
+Comandos:
+- `docker compose build`
+- `docker compose up -d`
+- `docker compose ps`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest http://localhost:8000`
+- Requests HTTP `POST` y `GET` a `/cvs/` y `/ats/cvs/{cv_id}`
+
+Resultado:
+- Contenedor `cv_latex_app` healthy en `127.0.0.1:8000`.
+- Suite `pytest` en Docker: `31 passed`.
+- CV completo validado con link visible `Analizar ATS`, score visible, checklist y recomendaciones presentes.
+- CV incompleto validado con estado `Insuficiente`, advertencias de email, telefono, resumen y skills, mas recomendaciones de completitud.

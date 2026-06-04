@@ -428,6 +428,90 @@ dd {
   white-space: pre-wrap;
 }
 
+.ats-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.ats-score-card {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ats-score {
+  color: var(--accent-strong);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.ats-status,
+.ats-check-head span {
+  align-self: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 8px;
+}
+
+.ats-meta {
+  margin: 0;
+  color: var(--muted);
+}
+
+.ats-checklist-panel {
+  margin-bottom: 16px;
+}
+
+.ats-checklist {
+  display: grid;
+  gap: 12px;
+}
+
+.ats-check-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.ats-check-item.passed {
+  border-color: #99f6e4;
+  background: #ecfeff;
+}
+
+.ats-check-item.failed {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.ats-check-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ats-check-item p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.ats-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.ats-list li + li {
+  margin-top: 8px;
+}
+
 .template-selector {
   display: flex;
   align-items: flex-end;
@@ -470,6 +554,7 @@ dd {
   .module-grid,
   .form-grid,
   .detail-grid,
+  .ats-summary-grid,
   .export-panel,
   .import-panel {
     grid-template-columns: 1fr 1fr;
@@ -489,6 +574,7 @@ dd {
   .module-grid,
   .form-grid,
   .detail-grid,
+  .ats-summary-grid,
   .export-panel,
   .import-panel {
     grid-template-columns: 1fr;

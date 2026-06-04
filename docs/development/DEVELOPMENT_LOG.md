@@ -407,6 +407,43 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
   - Preparar push de la rama feature y PR hacia `development`.
   - Pedir `@codex review` manual despues del PR.
 
+## Etapa 6 - ATS Basic Check
+
+- Fecha: 2026-06-04
+- Rama: `feature/ats-basic-check`
+- Objetivo: agregar un chequeo ATS basico sobre CVs existentes con score simple, checklist, advertencias y recomendaciones sin IA.
+- Modulos afectados: `ats`, `cvs`, `dashboard`, `docs`, `tests`.
+- Resumen de cambios:
+  - Se agrego `app/services/ats_service.py` con reglas deterministicas de validacion basica.
+  - Se creo la ruta `app/routes/ats.py` para analizar CVs existentes sin mezclar la logica en `cvs.py`.
+  - Se agrego un template dedicado bajo `app/templates/ats/`.
+  - Se incorporo la accion `Analizar ATS` en el detalle del CV.
+  - Se actualizaron dashboard, README, module index y logs a `0.7.0`.
+  - Se agregaron tests del servicio ATS y una prueba basica de ruta.
+  - Se agrego `httpx` a `requirements.txt` para soportar `TestClient` en los tests de rutas.
+- Archivos principales:
+  - `app/services/ats_service.py`
+  - `app/routes/ats.py`
+  - `app/templates/ats/cv_analysis.html`
+  - `app/templates/cvs/detail.html`
+  - `tests/test_ats_service.py`
+  - `tests/test_ats_routes.py`
+  - `docs/development/ATS_BASIC_CHECK.md`
+- Validaciones ejecutadas:
+  - `docker compose build`
+  - `docker compose up -d`
+  - `docker compose ps`
+  - `docker compose exec app python -m pytest`
+  - Analisis ATS de un CV completo
+  - Analisis ATS de un CV incompleto
+  - Verificacion visual de checklist, score, recomendaciones y advertencias
+  - `git diff --check`
+- Resultado: etapa implementada y validada localmente. El chequeo ATS queda operativo solo sobre CVs guardados y sin dependencias externas.
+- Pendientes:
+  - Esperar validacion explicita del usuario antes de cualquier merge.
+  - Preparar push de la rama feature y PR hacia `development`.
+  - Pedir `@codex review` manual despues del PR.
+
 ## Fix P1 - Cap cover-letter export filenames
 
 - Fecha: 2026-06-04

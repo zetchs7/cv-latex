@@ -11,6 +11,7 @@
   </div>
   <div class="action-row">
     <a class="button" href="{{ url_for('cvs_list') }}">Listado</a>
+    <a class="button" href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}">Analizar ATS</a>
     <a class="button" href="{{ url_for('cvs_tex_preview', cv_id=cv.id) }}">Ver TEX</a>
     <a class="button" href="{{ url_for('cvs_export_json', cv_id=cv.id) }}">Descargar JSON</a>
     <a class="button primary" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar</a>

@@ -1,5 +1,31 @@
 # Changelog General
 
+## 0.7.0 - 2026-06-04
+
+### Agregado
+
+- Modulo ATS Basic Check para CVs existentes.
+- Servicio `app/services/ats_service.py` con score simple, checklist, advertencias y recomendaciones deterministicas.
+- Ruta `GET /ats/cvs/{cv_id}` y template dedicado para mostrar el analisis ATS.
+- Boton `Analizar ATS` desde el detalle de cada CV.
+- Tests basicos del servicio ATS y de la ruta de analisis.
+- Documentacion especifica en `docs/development/ATS_BASIC_CHECK.md`.
+
+### Cambiado
+
+- Dashboard y README actualizados a Etapa 6.
+- Module index y logs de desarrollo alineados con el nuevo modulo.
+- `requirements.txt` incorpora `httpx` para habilitar tests de rutas con `TestClient`.
+- Version del proyecto actualizada a `0.7.0`.
+
+### No incluido en esta version
+
+- IA.
+- OpenAI API.
+- Parsing de PDFs externos.
+- Scoring avanzado de ATS comerciales.
+- Recomendaciones generativas.
+
 ## 0.6.0 - 2026-06-04
 
 ### Agregado
@@ -43,7 +69,7 @@
 - ATS Basic Check.
 - IA.
 
-# 0.5.0 - 2026-06-04
+## 0.5.0 - 2026-06-04
 
 ### Agregado
 

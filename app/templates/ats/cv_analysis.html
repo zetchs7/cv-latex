@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+
+{% block title %}ATS - {{ cv.title }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">ATS Basic Check</p>
+    <h1>{{ cv.title }}</h1>
+    <p class="hero-copy">Chequeo basico sin IA sobre contenido, contacto, secciones clave y longitud aproximada.</p>
+  </div>
+  <div class="action-row">
+    <a class="button" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Volver al CV</a>
+    <a class="button primary" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar CV</a>
+  </div>
+</section>
+
+<section class="ats-summary-grid">
+  <article class="detail-panel">
+    <h2>Estado general</h2>
+    <div class="ats-score-card">
+      <strong class="ats-score">{{ analysis.score }}/{{ analysis.max_score }}</strong>
+      <span class="ats-status">{{ analysis.status }}</span>
+    </div>
+    <p class="ats-meta">Longitud estimada: {{ analysis.total_characters }} caracteres.</p>
+  </article>
+
+  <article class="detail-panel">
+    <h2>Resumen rapido</h2>
+    <dl>
+      <dt>Checklist</dt>
+      <dd>{{ analysis.checklist|length }} controles</dd>
+      <dt>Secciones vacias</dt>
+      <dd>{{ analysis.empty_sections|length }}</dd>
+      <dt>Recomendaciones</dt>
+      <dd>{{ analysis.recommendations|length }}</dd>
+    </dl>
+  </article>
+</section>
+
+<section class="detail-panel ats-checklist-panel">
+  <h2>Checklist</h2>
+  <div class="ats-checklist">
+    {% for item in analysis.checklist %}
+    <article class="ats-check-item {{ 'passed' if item.passed else 'failed' }}">
+      <div class="ats-check-head">
+        <strong>{{ item.label }}</strong>
+        <span>{{ "OK" if item.passed else "Revisar" }}</span>
+      </div>
+      <p>{{ item.detail }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="detail-grid">
+  <article class="detail-panel">
+    <h2>Recomendaciones</h2>
+    {% if analysis.recommendations %}
+    <ul class="ats-list">
+      {% for recommendation in analysis.recommendations %}
+      <li>{{ recommendation }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>Sin recomendaciones.</p>
+    {% endif %}
+  </article>
+
+  <article class="detail-panel">
+    <h2>Advertencias</h2>
+    {% if analysis.warnings %}
+    <ul class="ats-list">
+      {% for warning in analysis.warnings %}
+      <li>{{ warning }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>Sin advertencias relevantes.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

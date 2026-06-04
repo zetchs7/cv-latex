@@ -1,11 +1,11 @@
 # CV LaTeX Builder
 
-Aplicacion web local, pequena y portable para construir CVs, cartas de presentacion y seguimiento de postulaciones profesionales con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 5.
+Aplicacion web local, pequena y portable para construir CVs, cartas de presentacion, seguimiento de postulaciones y chequeos ATS basicos con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 6.
 
 ## Estado actual
 
-- Version: `0.6.0`
-- Etapa: `5 - Application Tracker`
+- Version: `0.7.0`
+- Etapa: `6 - ATS Basic Check`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 - Exportaciones: `/data/exports` dentro del contenedor, visible en `./data/exports` en el host
@@ -98,10 +98,12 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |   `-- cover_letter_repository.py
 |   |-- routes/
 |   |   |-- applications.py
+|   |   |-- ats.py
 |   |   |-- cover_letters.py
 |   |   |-- cvs.py
 |   |   `-- dashboard.py
 |   |-- services/
+|   |   |-- ats_service.py
 |   |   |-- export_service.py
 |   |   |-- file_naming.py
 |   |   |-- latex_service.py
@@ -120,6 +122,8 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |   |   |-- detail.html
 |   |   |   |-- form.html
 |   |   |   `-- index.html
+|   |   |-- ats/
+|   |   |   `-- cv_analysis.html
 |   |   |-- cover_letters/
 |   |   |   |-- confirm_delete.html
 |   |   |   |-- detail.html
@@ -151,6 +155,8 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |-- tests/
 |   |-- test_application_repository.py
 |   |-- test_application_validations.py
+|   |-- test_ats_routes.py
+|   |-- test_ats_service.py
 |   |-- test_cover_letter_repository.py
 |   |-- test_cv_repository.py
 |   |-- test_export_service.py
@@ -175,7 +181,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 3.2: Baseline Hardening & Consistency. Completada.
 - Etapa 4: Cartas de presentacion. Completada.
 - Etapa 5: Tracker de postulaciones. Completada.
-- Etapa 6: ATS Basic Check.
+- Etapa 6: ATS Basic Check. Completada.
 - Etapa 7: Pulido final del MVP.
 
 ## Modulos disponibles
@@ -226,6 +232,12 @@ Rutas disponibles:
 - `POST /applications/{application_id}/edit`: actualizar postulacion.
 - `GET /applications/{application_id}/delete`: confirmacion de eliminacion.
 - `POST /applications/{application_id}/delete`: eliminacion logica.
+
+### ATS Basic Check
+
+Rutas disponibles:
+
+- `GET /ats/cvs/{cv_id}`: mostrar score, checklist y recomendaciones ATS basicas para un CV existente.
 
 Campos del modulo:
 
@@ -280,16 +292,18 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 
 1. Abrir `http://localhost:8000`.
 2. Entrar a `CVs` y crear o reutilizar un CV.
-3. Entrar a `Cartas` y crear o reutilizar una carta.
-4. Entrar a `Postulaciones`.
-5. Crear una postulacion y asociarla opcionalmente a un CV y a una carta.
-6. Editar la postulacion y cambiar su estado.
-7. Abrir el detalle.
-8. Eliminarla desde la pantalla de confirmacion.
-9. Confirmar persistencia en SQLite.
-10. Confirmar que los archivos de export siguen quedando en `./data/exports`.
-11. Exportar un CV a JSON e importarlo de nuevo.
-12. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
+3. Abrir el detalle del CV y usar `Analizar ATS`.
+4. Confirmar score, checklist, recomendaciones y advertencias.
+5. Entrar a `Cartas` y crear o reutilizar una carta.
+6. Entrar a `Postulaciones`.
+7. Crear una postulacion y asociarla opcionalmente a un CV y a una carta.
+8. Editar la postulacion y cambiar su estado.
+9. Abrir el detalle.
+10. Eliminarla desde la pantalla de confirmacion.
+11. Confirmar persistencia en SQLite.
+12. Confirmar que los archivos de export siguen quedando en `./data/exports`.
+13. Exportar un CV a JSON e importarlo de nuevo.
+14. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
 
 ## Troubleshooting basico
 
@@ -301,6 +315,6 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 
 ## Alcance de esta version
 
-Incluye dashboard, CV Builder Core, cover letters, application tracker, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion.
+Incluye dashboard, CV Builder Core, cover letters, application tracker, ATS Basic Check, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion.
 
-No incluye ATS, IA, login, PostgreSQL ni deploy cloud.
+No incluye IA, login, PostgreSQL ni deploy cloud.
