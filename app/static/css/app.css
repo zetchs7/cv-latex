@@ -277,7 +277,7 @@ h1 {
 .data-table th,
 .data-table td {
   border-bottom: 1px solid var(--border);
-  padding: 14px;
+  padding: 10px 12px;
   text-align: left;
   vertical-align: top;
 }
@@ -300,6 +300,10 @@ h1 {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.action-row.compact {
+  gap: 6px;
 }
 
 .action-row form,
@@ -465,6 +469,53 @@ dd {
   color: var(--muted);
 }
 
+.ats-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ats-metric {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  padding: 12px;
+}
+
+.ats-metric span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ats-metric strong {
+  color: var(--text);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.ats-metric small {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.cv-main-cell {
+  display: grid;
+  gap: 3px;
+}
+
+.cv-main-cell strong {
+  font-size: 0.95rem;
+}
+
+.cv-main-cell span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .ats-checklist-panel {
   margin-bottom: 16px;
 }
@@ -555,6 +606,7 @@ dd {
   .form-grid,
   .detail-grid,
   .ats-summary-grid,
+  .ats-metrics,
   .export-panel,
   .import-panel {
     grid-template-columns: 1fr 1fr;
@@ -575,6 +627,7 @@ dd {
   .form-grid,
   .detail-grid,
   .ats-summary-grid,
+  .ats-metrics,
   .export-panel,
   .import-panel {
     grid-template-columns: 1fr;

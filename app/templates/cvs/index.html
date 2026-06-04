@@ -46,11 +46,15 @@
       {% for cv in cvs %}
       <tr>
         <td><a class="text-link" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">{{ cv.title }}</a></td>
-        <td>{{ cv.full_name }}</td>
-        <td>{{ cv.email or "Sin email" }}</td>
+        <td>
+          <div class="cv-main-cell">
+            <strong>{{ cv.full_name }}</strong>
+            <span>{{ cv.email or "Sin email" }}</span>
+          </div>
+        </td>
         <td>{{ cv.updated_at }}</td>
         <td>
-          <div class="action-row">
+          <div class="action-row compact">
             <a class="button small" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar</a>
             <a class="button small" href="{{ url_for('cvs_export_json', cv_id=cv.id) }}">JSON</a>
             <form method="post" action="{{ url_for('cvs_duplicate', cv_id=cv.id) }}">

@@ -27,14 +27,23 @@
 
   <article class="detail-panel">
     <h2>Resumen rapido</h2>
-    <dl>
-      <dt>Checklist</dt>
-      <dd>{{ analysis.checklist|length }} controles</dd>
-      <dt>Secciones vacias</dt>
-      <dd>{{ analysis.empty_sections|length }}</dd>
-      <dt>Recomendaciones</dt>
-      <dd>{{ analysis.recommendations|length }}</dd>
-    </dl>
+    <div class="ats-metrics">
+      <div class="ats-metric">
+        <span>Checklist</span>
+        <strong>{{ analysis.checklist|length }}</strong>
+        <small>controles</small>
+      </div>
+      <div class="ats-metric">
+        <span>Secciones vacias</span>
+        <strong>{{ analysis.empty_sections|length }}</strong>
+        <small>detectadas</small>
+      </div>
+      <div class="ats-metric">
+        <span>Recomendaciones</span>
+        <strong>{{ analysis.recommendations|length }}</strong>
+        <small>acciones</small>
+      </div>
+    </div>
   </article>
 </section>
 
