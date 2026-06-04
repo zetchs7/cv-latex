@@ -5,22 +5,22 @@
 {% block content %}
 <section class="dashboard-hero" aria-labelledby="dashboard-title">
   <div>
-    <p class="eyebrow">Aplicacion local portable</p>
+    <p class="eyebrow">MVP local portable</p>
     <h1 id="dashboard-title">{{ app_name }}</h1>
     <p class="hero-copy">
-      Base tecnica para construir curriculums profesionales con formularios web,
+      Gestion local de CVs, cartas, postulaciones y analisis ATS con formularios web,
       SQLite, plantillas LaTeX propias y exportaciones TEX/PDF/JSON.
     </p>
   </div>
 
   <div class="status-panel" aria-label="Estado de la aplicacion">
-    <span class="status-label">Estado</span>
+    <span class="status-label">Estado local</span>
     <strong>{{ app_status }}</strong>
     <span class="database-path">SQLite: {{ database_status.path }}</span>
   </div>
 </section>
 
-<section class="module-grid" aria-label="Modulos planificados">
+<section class="module-grid" aria-label="Modulos del MVP">
   {% for module in modules %}
   <article class="module-card">
     <div class="module-card-header">
@@ -29,22 +29,22 @@
     </div>
     <p>{{ module.description }}</p>
     {% if module.is_active and module.url_name %}
-    <a class="text-link" href="{{ url_for(module.url_name) }}">Abrir modulo</a>
+    <a class="text-link" href="{{ url_for(module.url_name) }}">{{ module.action_label or "Abrir modulo" }}</a>
     {% endif %}
   </article>
   {% endfor %}
 </section>
 
 <section class="notice">
-  <h2>Alcance actual</h2>
+  <h2>Estado del MVP</h2>
   <p>
     El modulo CVs permite crear, listar, editar, duplicar, eliminar logicamente,
     importar JSON y exportar TEX, PDF y JSON. El modulo de cartas permite crear,
     listar, editar, asociar opcionalmente a un CV y exportar TEX/PDF. El modulo de
     postulaciones permite registrar oportunidades, cambiar estados y asociarlas
-    opcionalmente a CVs y cartas. ATS Basic Check ya permite revisar CVs guardados
-    con checklist, score simple y recomendaciones. La IA se implementara solo en
-    una etapa futura con validacion explicita.
+    opcionalmente a CVs y cartas. ATS Basic Check permite revisar CVs guardados
+    con checklist, score simple, advertencias y recomendaciones. El alcance actual
+    sigue siendo local, sin IA, login ni integraciones externas.
   </p>
 </section>
 {% endblock %}

@@ -1,11 +1,11 @@
 # CV LaTeX Builder
 
-Aplicacion web local, pequena y portable para construir CVs, cartas de presentacion, seguimiento de postulaciones y chequeos ATS basicos con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 6.
+Aplicacion web local, pequena y portable para construir CVs, cartas de presentacion, seguimiento de postulaciones y chequeos ATS basicos con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabajo por etapas auditables; esta version corresponde al pulido final del MVP local.
 
 ## Estado actual
 
-- Version: `0.7.0`
-- Etapa: `6 - ATS Basic Check`
+- Version: `0.8.0`
+- Etapa: `7 - Pulido final del MVP`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 - Exportaciones: `/data/exports` dentro del contenedor, visible en `./data/exports` en el host
@@ -53,6 +53,13 @@ Abrir:
 http://localhost:8000
 ```
 
+## Reconstruir la app
+
+```bash
+docker compose build
+docker compose up -d
+```
+
 ## Ver logs
 
 ```bash
@@ -63,6 +70,12 @@ docker compose logs app
 
 ```bash
 docker compose down
+```
+
+## Correr tests
+
+```bash
+docker compose exec app python -m pytest
 ```
 
 Advertencia: `docker compose down -v` elimina volumenes nombrados si existieran. En esta etapa la persistencia usa bind mount `./data:/data`, por lo que no debe usarse para limpiar datos sin revisar antes.
@@ -79,6 +92,49 @@ Las exportaciones persistidas se guardan en:
 
 ```text
 /data/exports
+```
+
+## Backup basico
+
+Base SQLite:
+
+```bash
+mkdir -p backups
+cp data/app.db backups/app-YYYYMMDD-HHMMSS.db
+```
+
+Exportaciones:
+
+```bash
+mkdir -p backups
+cp -r data/exports backups/exports-YYYYMMDD-HHMMSS
+```
+
+## Restore basico
+
+Detener la app:
+
+```bash
+docker compose down
+```
+
+Restaurar base:
+
+```bash
+cp backups/app-YYYYMMDD-HHMMSS.db data/app.db
+```
+
+Restaurar exportaciones:
+
+```bash
+rm -rf data/exports
+cp -r backups/exports-YYYYMMDD-HHMMSS data/exports
+```
+
+Volver a levantar:
+
+```bash
+docker compose up -d
 ```
 
 El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reales ni datos personales.
@@ -182,7 +238,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 4: Cartas de presentacion. Completada.
 - Etapa 5: Tracker de postulaciones. Completada.
 - Etapa 6: ATS Basic Check. Completada.
-- Etapa 7: Pulido final del MVP.
+- Etapa 7: Pulido final del MVP. Completada en la rama de trabajo actual.
 
 ## Modulos disponibles
 
@@ -237,6 +293,7 @@ Rutas disponibles:
 
 Rutas disponibles:
 
+- `GET /ats/`: listar CVs disponibles para analisis ATS.
 - `GET /ats/cvs/{cv_id}`: mostrar score, checklist y recomendaciones ATS basicas para un CV existente.
 
 Campos del modulo:
@@ -291,16 +348,16 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 ## Prueba manual rapida
 
 1. Abrir `http://localhost:8000`.
-2. Entrar a `CVs` y crear o reutilizar un CV.
-3. Abrir el detalle del CV y usar `Analizar ATS`.
-4. Confirmar score, checklist, recomendaciones y advertencias.
-5. Entrar a `Cartas` y crear o reutilizar una carta.
-6. Entrar a `Postulaciones`.
-7. Crear una postulacion y asociarla opcionalmente a un CV y a una carta.
-8. Editar la postulacion y cambiar su estado.
-9. Abrir el detalle.
-10. Eliminarla desde la pantalla de confirmacion.
-11. Confirmar persistencia en SQLite.
+2. Revisar el dashboard y la navegacion superior.
+3. Entrar a `CVs` y crear o reutilizar un CV.
+4. Abrir el detalle del CV, exportar TEX/PDF/JSON y usar `Analizar ATS`.
+5. Entrar a `ATS` y repetir el analisis sobre un CV completo y uno incompleto.
+6. Entrar a `Cartas` y crear o reutilizar una carta.
+7. Exportar TEX y PDF de la carta.
+8. Entrar a `Postulaciones`.
+9. Crear una postulacion y asociarla opcionalmente a un CV y a una carta.
+10. Editar la postulacion y cambiar su estado.
+11. Abrir el detalle y confirmar persistencia en SQLite.
 12. Confirmar que los archivos de export siguen quedando en `./data/exports`.
 13. Exportar un CV a JSON e importarlo de nuevo.
 14. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
@@ -315,6 +372,6 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 
 ## Alcance de esta version
 
-Incluye dashboard, CV Builder Core, cover letters, application tracker, ATS Basic Check, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion.
+Incluye dashboard, CV Builder Core, cover letters, application tracker, ATS Basic Check, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion minima de operacion local del MVP.
 
 No incluye IA, login, PostgreSQL ni deploy cloud.

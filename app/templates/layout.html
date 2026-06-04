@@ -16,8 +16,9 @@
         <a href="{{ url_for('cvs_list') }}">CVs</a>
         <a href="{{ url_for('cover_letters_list') }}">Cartas</a>
         <a href="{{ url_for('applications_list') }}">Postulaciones</a>
+        <a href="{{ url_for('ats_index') }}">ATS</a>
       </nav>
-      <span class="version">v0.7.0</span>
+      <span class="version">v{{ request.app.version }}</span>
     </div>
   </header>
 

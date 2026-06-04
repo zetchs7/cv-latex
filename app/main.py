@@ -12,7 +12,7 @@ from app.routes.cvs import router as cvs_router
 from app.routes.dashboard import router as dashboard_router
 
 
-APP_VERSION = os.getenv("APP_VERSION", "0.7.0")
+APP_VERSION = os.getenv("APP_VERSION", "0.8.0")
 
 
 @asynccontextmanager

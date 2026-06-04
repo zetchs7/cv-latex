@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+
+{% block title %}ATS - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">ATS Basic Check</p>
+    <h1>Analisis ATS</h1>
+    <p class="hero-copy">Selecciona un CV guardado para revisar contacto, secciones clave, score simple y recomendaciones.</p>
+  </div>
+  <a class="button" href="{{ url_for('cvs_list') }}">Ir a CVs</a>
+</section>
+
+{% if cvs %}
+<section class="table-wrap" aria-label="CVs disponibles para analisis ATS">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Titulo</th>
+        <th>Nombre</th>
+        <th>Actualizado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cv in cvs %}
+      <tr>
+        <td><a class="text-link" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">{{ cv.title }}</a></td>
+        <td>{{ cv.full_name }}</td>
+        <td>{{ cv.updated_at }}</td>
+        <td>
+          <div class="action-row compact">
+            <a class="button small" href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}">Analizar ATS</a>
+            <a class="button small" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Ver CV</a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<section class="empty-state">
+  <h2>No hay CVs para analizar</h2>
+  <p>Crea un CV desde el modulo principal y luego vuelve aqui para ejecutar el chequeo ATS.</p>
+  <a class="button primary" href="{{ url_for('cvs_new') }}">Crear primer CV</a>
+</section>
+{% endif %}
+{% endblock %}

@@ -2,8 +2,8 @@
 
 ## Version
 
-- Version del modulo: `0.7.0`
-- Etapa: `6 - ATS Basic Check`
+- Version del modulo: `0.8.0`
+- Etapa: `7 - Pulido final del MVP`
 
 ## Objetivo
 
@@ -20,6 +20,7 @@ Agregar un chequeo ATS basico, sin IA ni servicios externos, para analizar CVs y
 
 ## Ruta HTTP
 
+- `GET /ats/`: listar CVs disponibles para analisis ATS.
 - `GET /ats/cvs/{cv_id}`: mostrar analisis ATS del CV indicado.
 
 ## Controles implementados

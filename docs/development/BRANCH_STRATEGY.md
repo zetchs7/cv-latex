@@ -22,6 +22,7 @@ Lectura: cada rama `feature/*` nace desde `development`, y `development` se inte
 - No se hace push directo a `main` ni a `development` sin validacion explicita del usuario.
 - La integracion aprobada se hace por fast-forward controlado desde `feature/*` hacia `development` y luego hacia `main`.
 - No se mergea sin validacion explicita del usuario.
+- La revision manual se hace sobre PR hacia `development`; si corresponde, despues se solicita `@codex review`.
 - No se hace force push.
 - No se borran ramas remotas.
 

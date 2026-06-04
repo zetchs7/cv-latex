@@ -563,6 +563,11 @@ dd {
   margin-top: 8px;
 }
 
+.section-copy {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
 .template-selector {
   display: flex;
   align-items: flex-end;

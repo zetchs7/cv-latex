@@ -12,6 +12,31 @@ from app.schemas import CVFormData
 
 
 class AtsRoutesTest(unittest.TestCase):
+    def test_renders_ats_index_for_existing_cvs(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                create_cv(
+                    CVFormData(
+                        title="CV ATS Index",
+                        full_name="Persona ATS Index",
+                        email="persona.index@example.com",
+                        phone="+54 11 4000 1111",
+                        professional_summary="Perfil orientado a operaciones.",
+                        experience_summary="Experiencia en soporte y documentacion.",
+                        education_summary="Tecnicatura en sistemas.",
+                        skills="Python, SQL, Documentacion",
+                    )
+                )
+
+                with TestClient(app) as client:
+                    response = client.get("/ats/")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("Analisis ATS", response.text)
+                self.assertIn("CV ATS Index", response.text)
+                self.assertIn("Analizar ATS", response.text)
+
     def test_renders_analysis_page_for_existing_cv(self):
         with tempfile.TemporaryDirectory() as data_directory:
             with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
@@ -33,7 +58,7 @@ class AtsRoutesTest(unittest.TestCase):
                     response = client.get(f"/ats/cvs/{cv_id}")
 
                 self.assertEqual(response.status_code, 200)
-                self.assertIn("ATS Basic Check", response.text)
+                self.assertIn("Analisis ATS", response.text)
                 self.assertIn("Checklist", response.text)
                 self.assertIn("CV ATS", response.text)
 

@@ -2619,3 +2619,124 @@ Resultado:
 - Se agrego cap de score para secciones criticas faltantes.
 - Ningun CV con secciones core faltantes puede quedar en `Bueno`.
 - Si faltan experiencia y educacion juntas, el estado queda forzado a `Insuficiente`.
+
+---
+
+## 2026-06-04 - Etapa 7 MVP final polish
+
+Accion:
+Crear rama de Etapa 7 desde `development`.
+
+Motivo:
+Respetar Git Flow y no trabajar directo sobre `main` ni `development`.
+
+Comandos:
+- `git status --short --branch`
+- `git fetch origin`
+- `git switch development`
+- `git rev-list --left-right --count development...origin/development`
+- `git switch -c feature/mvp-final-polish`
+
+Resultado: rama `feature/mvp-final-polish` creada desde `development` sincronizada.
+
+---
+
+Accion:
+Agregar acceso dedicado a ATS, alinear textos visibles y actualizar versionado del MVP.
+
+Motivo:
+Cerrar inconsistencias de navegacion, copy y version visible antes del cierre funcional del MVP.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/routes/ats.py`: nueva ruta `GET /ats/`.
+- `app/routes/dashboard.py`: estados, descripciones y acciones del dashboard.
+- `app/templates/layout.html`: link global `ATS` y version dinamica.
+- `app/templates/dashboard.html`, `app/templates/ats/`, `app/templates/cover_letters/`, `app/templates/applications/`: copy y navegacion.
+- `app/static/css/app.css`: ajuste menor de soporte.
+- `VERSION`, `.env.example`, `docker-compose.yml`, `app/main.py`: version `0.8.0`.
+
+Resultado: la navegacion superior ahora expone `ATS`, el dashboard refleja el MVP local y la version visible se alinea con la configuracion real.
+
+---
+
+Accion:
+Actualizar documentacion operativa del MVP.
+
+Motivo:
+Dejar comandos de uso, persistencia, exports, backup/restore y checklist manual coherentes con el baseline final.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `README.md`
+- `docs/development/MVP_VALIDATION.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/VERSIONING.md`
+- `docs/development/BRANCH_STRATEGY.md`
+- `docs/development/CV_BUILDER_CORE.md`
+- `docs/development/COVER_LETTERS.md`
+- `docs/development/APPLICATION_TRACKER.md`
+- `docs/development/ATS_BASIC_CHECK.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+
+Resultado: documentacion alineada a `0.8.0`, con checklist manual del MVP y operacion local documentada.
+
+---
+
+Accion:
+Agregar smoke test de la nueva vista ATS index.
+
+Motivo:
+No dejar la nueva ruta de navegacion sin cobertura basica.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `tests/test_ats_routes.py`: nuevo test de `GET /ats/` y ajuste de copy esperado en la vista de analisis.
+
+Resultado: cobertura minima de la entrada global a ATS agregada.
+
+---
+
+Accion:
+Validar sintaxis, build, tests y flujo manual completo del MVP.
+
+Motivo:
+Confirmar que el cierre del MVP funciona localmente con Docker Compose sin introducir cambios fuera de alcance.
+
+Comandos:
+- `python -m compileall app tests`
+- `git diff --check`
+- `docker compose build`
+- `docker compose up -d`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose logs app --tail 80`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing`
+- `Invoke-WebRequest -Uri http://localhost:8000/ats/ -UseBasicParsing`
+- POST por HTTP para crear `cv_id=41` y `cv_id=42`
+- GET/POST por HTTP sobre `/cvs/41` y `/cvs/41/edit`
+- Descargas HTTP de TEX/PDF/JSON para `cv_id=41`
+- `curl.exe -F "json_file=@data/validation/mvp-cv-41.json;type=application/json" http://localhost:8000/cvs/import/json`
+- POST por HTTP para crear `cover_letter_id=8`
+- GET/POST por HTTP sobre `/cover-letters/8` y `/cover-letters/8/edit`
+- Descargas HTTP de TEX/PDF para `cover_letter_id=8`
+- POST por HTTP para crear `application_id=6`
+- GET/POST por HTTP sobre `/applications/6` y `/applications/6/edit`
+- GET por HTTP sobre `/ats/cvs/41` y `/ats/cvs/42`
+- `docker compose exec app python -c "... Path('/data/exports').glob(...)"` para verificar artefactos
+- `docker compose exec app python -c "... pdftotext ..."` para validar lectura basica de PDFs
+
+Resultado:
+- `pytest`: `35 passed in 0.76s`.
+- Dashboard y `/ats/` responden `200`.
+- `cv_id=41` creado, editado y exportado en TEX/PDF/JSON.
+- Import JSON creo `cv_id=43`.
+- `cover_letter_id=8` creada, editada y exportada en TEX/PDF.
+- `application_id=6` creada, editada y asociada a `cv_id=41` y `cover_letter_id=8`.
+- ATS completo (`cv_id=41`) responde `Bueno`.
+- ATS incompleto (`cv_id=42`) responde `Insuficiente`.
+- `/data/exports` contiene archivos persistidos de CV y carta del flujo de validacion.

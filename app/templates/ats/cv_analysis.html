@@ -5,11 +5,12 @@
 {% block content %}
 <section class="page-header">
   <div>
-    <p class="eyebrow">ATS Basic Check</p>
+    <p class="eyebrow">Analisis ATS</p>
     <h1>{{ cv.title }}</h1>
     <p class="hero-copy">Chequeo basico sin IA sobre contenido, contacto, secciones clave y longitud aproximada.</p>
   </div>
   <div class="action-row">
+    <a class="button" href="{{ url_for('ats_index') }}">Listado ATS</a>
     <a class="button" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Volver al CV</a>
     <a class="button primary" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar CV</a>
   </div>

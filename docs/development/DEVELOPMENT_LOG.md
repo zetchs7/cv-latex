@@ -486,6 +486,51 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
   - Actualizar PR #2 con el commit del fix.
   - Esperar nueva revision manual antes de merge.
 
+## Etapa 7 - Pulido final del MVP
+
+- Fecha: 2026-06-04
+- Rama: `feature/mvp-final-polish`
+- Objetivo: cerrar el MVP local con una pasada de consistencia visual, navegacion clara, documentacion operativa y validacion funcional completa.
+- Modulos afectados: `dashboard`, `ats`, `cvs`, `cover_letters`, `applications`, `docs`, `docker`, `tests`.
+- Resumen de cambios:
+  - Se agrego una entrada dedicada `ATS` en la navegacion superior y una vista `GET /ats/` para seleccionar CVs a analizar.
+  - Se ajustaron textos visibles del dashboard, ATS, Cartas y Postulaciones para mantener naming consistente.
+  - La version visible del layout ahora usa `request.app.version` para evitar drift con `APP_VERSION`.
+  - Se actualizo la version del proyecto a `0.8.0`.
+  - Se actualizo `README.md` con arranque, detencion, rebuild, tests, persistencia, exports y backup/restore basicos.
+  - Se creo `docs/development/MVP_VALIDATION.md` como checklist manual del MVP.
+  - Se alinearon `MODULE_INDEX.md`, `VERSIONING.md`, `BRANCH_STRATEGY.md` y docs de modulos al baseline del MVP.
+- Archivos principales:
+  - `app/routes/ats.py`
+  - `app/routes/dashboard.py`
+  - `app/templates/layout.html`
+  - `app/templates/dashboard.html`
+  - `app/templates/ats/index.html`
+  - `app/templates/ats/cv_analysis.html`
+  - `README.md`
+  - `docs/development/MVP_VALIDATION.md`
+  - `docs/development/MODULE_INDEX.md`
+  - `tests/test_ats_routes.py`
+- Validaciones ejecutadas:
+  - `python -m compileall app tests`
+  - `docker compose build`
+  - `docker compose up -d`
+  - `docker compose ps`
+  - `docker compose exec app python -m pytest`
+  - Requests HTTP a dashboard, `/ats/`, `/cvs/`, `/cover-letters/` y `/applications/`
+  - Creacion, edicion y detalle de CV de prueba
+  - Exportacion TEX/PDF/JSON de CV e importacion JSON
+  - Creacion, edicion, detalle y exportacion TEX/PDF de carta
+  - Creacion, edicion, detalle y asociaciones de postulacion
+  - Analisis ATS sobre CV completo e incompleto
+  - Verificacion de `/data/exports` y extraccion PDF con `pdftotext`
+  - `git diff --check`
+- Resultado: MVP local validado con Docker Compose, `pytest` en verde y flujos principales accesibles desde dashboard y header.
+- Pendientes:
+  - Crear PR hacia `development`.
+  - Pedir `@codex review` manual.
+  - Esperar validacion explicita antes de merge.
+
 ## Etapa 5 - Application Tracker
 
 - Fecha: 2026-06-04

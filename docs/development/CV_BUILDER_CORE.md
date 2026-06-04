@@ -2,7 +2,7 @@
 
 ## Version
 
-`0.5.0`
+`0.8.0`
 
 ## Objetivo
 
@@ -124,5 +124,5 @@ Flujo manual:
 
 - No implementa cartas de presentacion.
 - No implementa tracker de postulaciones.
-- No implementa ATS.
+- El analisis ATS se consume desde el flujo del CV, pero no cambia la persistencia propia del modulo.
 - No implementa IA.

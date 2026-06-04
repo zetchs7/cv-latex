@@ -1,5 +1,29 @@
 # Changelog General
 
+## 0.8.0 - 2026-06-04
+
+### Agregado
+
+- Ruta `GET /ats/` para acceder al analizador ATS desde navegacion global.
+- Checklist manual del MVP en `docs/development/MVP_VALIDATION.md`.
+- Secciones de backup y restore basicos en `README.md`.
+
+### Cambiado
+
+- Dashboard y header alineados al cierre del MVP local.
+- Textos visibles de CVs, Cartas, Postulaciones y ATS ajustados para mayor consistencia.
+- Version visible de la app ahora se toma desde `request.app.version` para evitar drift entre layout y configuracion.
+- `README.md`, `MODULE_INDEX.md`, `VERSIONING.md` y `BRANCH_STRATEGY.md` actualizados al baseline final del MVP.
+- Version del proyecto actualizada a `0.8.0`.
+
+### No incluido en esta version
+
+- Dark mode.
+- IA.
+- Login.
+- Integraciones externas.
+- Nuevos modulos grandes.
+
 ## 0.7.0 - 2026-06-04
 
 ### Agregado
