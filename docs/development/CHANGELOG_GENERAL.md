@@ -16,6 +16,7 @@
 - Dashboard y README actualizados a Etapa 6.
 - Module index y logs de desarrollo alineados con el nuevo modulo.
 - `requirements.txt` incorpora `httpx` para habilitar tests de rutas con `TestClient`.
+- El ATS Basic Check ahora impide estado `Bueno` cuando falta una seccion critica y fuerza `Insuficiente` si faltan experiencia y educacion juntas.
 - Version del proyecto actualizada a `0.7.0`.
 
 ### No incluido en esta version

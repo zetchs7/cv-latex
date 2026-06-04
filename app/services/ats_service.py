@@ -6,6 +6,16 @@ from app.models import CV
 MIN_RECOMMENDED_CV_LENGTH = 280
 MAX_RECOMMENDED_CV_LENGTH = 4500
 MAX_ATS_SCORE = 100
+MAX_SCORE_WITH_CRITICAL_MISSING_SECTION = 84
+MAX_SCORE_WITHOUT_EXPERIENCE_AND_EDUCATION = 59
+CRITICAL_SECTION_KEYS = (
+    "email",
+    "phone",
+    "professional_summary",
+    "experience_summary",
+    "education_summary",
+    "skills",
+)
 
 
 @dataclass(frozen=True)
@@ -42,6 +52,10 @@ def analyze_cv_ats(cv: CV) -> AtsAnalysisResult:
     total_characters = _estimate_cv_length(cv)
     has_experience = bool(normalized_sections["experience_summary"])
     has_education = bool(normalized_sections["education_summary"])
+    critical_missing_sections = [
+        section_key for section_key in CRITICAL_SECTION_KEYS if not normalized_sections[section_key]
+    ]
+    missing_experience_and_education = not has_experience and not has_education
     length_is_recommended = MIN_RECOMMENDED_CV_LENGTH <= total_characters <= MAX_RECOMMENDED_CV_LENGTH
 
     checklist = [
@@ -106,13 +120,14 @@ def analyze_cv_ats(cv: CV) -> AtsAnalysisResult:
     warnings = _build_warnings(empty_sections, total_characters)
     passed_checks = sum(1 for item in checklist if item.passed)
     score = int(round((passed_checks / len(checklist)) * MAX_ATS_SCORE))
+    score = _cap_score(score, critical_missing_sections, missing_experience_and_education)
 
     return AtsAnalysisResult(
         cv_id=cv.id,
         cv_title=cv.title,
         score=score,
         max_score=MAX_ATS_SCORE,
-        status=_build_status(score),
+        status=_build_status(score, critical_missing_sections, missing_experience_and_education),
         total_characters=total_characters,
         checklist=checklist,
         empty_sections=empty_sections,
@@ -121,12 +136,32 @@ def analyze_cv_ats(cv: CV) -> AtsAnalysisResult:
     )
 
 
-def _build_status(score: int) -> str:
+def _build_status(
+    score: int,
+    critical_missing_sections: list[str],
+    missing_experience_and_education: bool,
+) -> str:
+    if missing_experience_and_education:
+        return "Insuficiente"
+    if critical_missing_sections:
+        return "Mejorable" if score >= 60 else "Insuficiente"
     if score >= 85:
         return "Bueno"
     if score >= 60:
         return "Mejorable"
     return "Insuficiente"
+
+
+def _cap_score(
+    score: int,
+    critical_missing_sections: list[str],
+    missing_experience_and_education: bool,
+) -> int:
+    if missing_experience_and_education:
+        return min(score, MAX_SCORE_WITHOUT_EXPERIENCE_AND_EDUCATION)
+    if critical_missing_sections:
+        return min(score, MAX_SCORE_WITH_CRITICAL_MISSING_SECTION)
+    return score
 
 
 def _build_length_detail(total_characters: int, length_is_recommended: bool) -> str:

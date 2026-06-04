@@ -80,6 +80,32 @@ class AtsServiceTest(unittest.TestCase):
     def test_penalizes_missing_experience_and_education_strongly(self):
         cv = CV(
             id=4,
+            title="CV Largo Sin Core",
+            full_name="Persona Sin Core",
+            email="persona@example.com",
+            phone="+54 11 4444 4444",
+            professional_summary="Perfil backend amplio con foco en APIs, calidad, producto, mantenimiento y colaboracion tecnica sostenida.",
+            experience_summary="",
+            education_summary="",
+            skills="Python, FastAPI, SQL, Docker, Testing, Observabilidad",
+            created_at="2026-06-04 00:00:00",
+            updated_at="2026-06-04 00:00:00",
+            deleted_at=None,
+        )
+
+        result = analyze_cv_ats(cv)
+
+        self.assertEqual(result.status, "Insuficiente")
+        self.assertLess(result.score, 60)
+        self.assertLessEqual(result.score, 59)
+        self.assertLess(result.score, 60)
+        self.assertIn("Experiencia", result.empty_sections)
+        self.assertIn("Educacion", result.empty_sections)
+        self.assertTrue(any("Cargar experiencia, educacion o ambas" in item for item in result.recommendations))
+
+    def test_keeps_existing_incomplete_cv_as_insufficient(self):
+        cv = CV(
+            id=5,
             title="CV Incompleto",
             full_name="Persona Incompleta",
             email="",

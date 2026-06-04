@@ -41,6 +41,12 @@ Agregar un chequeo ATS basico, sin IA ni servicios externos, para analizar CVs y
 - Recomendaciones basicas.
 - Advertencias por secciones vacias o longitud extrema.
 
+## Regla de consistencia
+
+- Un CV completo puede llegar a `100/100` y estado `Bueno`.
+- Si falta cualquier seccion critica, el estado maximo permitido es `Mejorable`.
+- Si faltan experiencia y educacion al mismo tiempo, el resultado queda capado a `Insuficiente`.
+
 ## Como probar
 
 1. Levantar la app con `docker compose up -d`.
@@ -56,4 +62,4 @@ Agregar un chequeo ATS basico, sin IA ni servicios externos, para analizar CVs y
 - No parsea PDFs externos.
 - No replica scoring real de ATS comerciales.
 - No hace matching contra job descriptions.
-- El score es orientativo y deliberadamente simple, pero ahora penaliza por separado la falta de experiencia y la falta de educacion.
+- El score es orientativo y deliberadamente simple, pero penaliza por separado la falta de experiencia y la falta de educacion, y evita clasificar como `Bueno` a CVs con secciones criticas faltantes.

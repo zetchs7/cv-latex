@@ -2598,3 +2598,24 @@ Resultado:
 - Suite `pytest` en Docker: `31 passed`.
 - CV completo validado con link visible `Analizar ATS`, score visible, checklist y recomendaciones presentes.
 - CV incompleto validado con estado `Insuficiente`, advertencias de email, telefono, resumen y skills, mas recomendaciones de completitud.
+
+---
+
+Accion:
+Corregir la clasificacion ATS cuando faltan secciones core.
+
+Motivo:
+Evitar que un CV con experiencia o educacion faltante quede en estado `Bueno` por tener score alto derivado del resto de checks.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/services/ats_service.py`
+- `tests/test_ats_service.py`
+- `docs/development/ATS_BASIC_CHECK.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+
+Resultado:
+- Se agrego cap de score para secciones criticas faltantes.
+- Ningun CV con secciones core faltantes puede quedar en `Bueno`.
+- Si faltan experiencia y educacion juntas, el estado queda forzado a `Insuficiente`.

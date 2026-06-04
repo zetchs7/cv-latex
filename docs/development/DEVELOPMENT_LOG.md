@@ -407,6 +407,19 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
   - Preparar push de la rama feature y PR hacia `development`.
   - Pedir `@codex review` manual despues del PR.
 
+## Fix ATS - Critical Sections Status Cap
+
+- Fecha: 2026-06-04
+- Rama: `feature/ats-basic-check`
+- Objetivo: impedir que CVs con secciones core faltantes queden clasificados como `Bueno`.
+- Modulos afectados: `ats_service`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se agrego deteccion de `critical_missing_sections`.
+  - El score queda capado a `84` si falta una seccion critica.
+  - Si faltan experiencia y educacion juntas, el score queda capado a `59` y el estado pasa a `Insuficiente`.
+  - Se ampliaron los tests para cubrir CV completo, CV con experiencia sin educacion, CV con educacion sin experiencia, CV largo sin ambas y CV incompleto.
+- Resultado: el status ATS ahora es consistente con recomendaciones y advertencias.
+
 ## Etapa 6 - ATS Basic Check
 
 - Fecha: 2026-06-04
