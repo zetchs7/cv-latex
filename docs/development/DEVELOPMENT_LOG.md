@@ -406,3 +406,32 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
   - Esperar validacion explicita del usuario antes de cualquier merge.
   - Preparar push de la rama feature y PR hacia `development`.
   - Pedir `@codex review` manual despues del PR.
+
+## Fix P1 - Cap cover-letter export filenames
+
+- Fecha: 2026-06-04
+- Rama: `feature/cover-letters`
+- Objetivo: corregir el hallazgo P1 de Code Review que permitia generar filenames demasiado largos en exportaciones TEX/PDF de cartas.
+- Modulos afectados: `export_service`, `latex_service`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se agrego un helper comun para construir filenames sanitizados y capped.
+  - Se acoto a `180` caracteres el filename final de exportaciones de cartas.
+  - Se aplico el mismo criterio al `.tex` generado de cover letters.
+  - Se mantuvo unicidad mediante `id` y timestamp en exportaciones persistidas.
+  - Se agregaron tests para `company` y `position` de `160` caracteres.
+- Validaciones ejecutadas:
+  - `python -m compileall app tests`
+  - `docker compose build`
+  - `docker compose up -d`
+  - `docker compose ps`
+  - `docker compose exec app python -m pytest`
+  - Creacion de carta con `company` y `position` al maximo permitido
+  - Export TEX por HTTP
+  - Export PDF por HTTP
+  - Verificacion de artefactos persistidos en `/data/exports`
+  - Validacion basica con `pdftotext`
+  - `git diff --check`
+- Resultado: fix aplicado. TEX y PDF de cartas con nombres extremos exportan correctamente sin `OSError` y los filenames finales quedan en `180` caracteres.
+- Pendientes:
+  - Actualizar PR #2 con el commit del fix.
+  - Esperar nueva revision manual antes de merge.

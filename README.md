@@ -264,7 +264,7 @@ Formatos soportados:
   - TEX
   - PDF
 
-La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titulo. No acepta rutas de salida desde inputs del usuario, los nombres de archivo exportados se sanitizan y el upload JSON se lee en chunks con limite maximo de `512 KB`.
+La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titulo. No acepta rutas de salida desde inputs del usuario, los nombres de archivo exportados se sanitizan y se acotan a un maximo seguro de `180` caracteres, y el upload JSON se lee en chunks con limite maximo de `512 KB`.
 
 Si el archivo supera el limite, la UI muestra un error claro sin cargar el archivo completo en memoria. Si la compilacion PDF falla, la UI devuelve un mensaje resumido y el detalle tecnico queda para logs y troubleshooting.
 

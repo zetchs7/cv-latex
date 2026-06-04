@@ -75,6 +75,7 @@ Las validaciones viven en `app/validations/cover_letter_validations.py`.
 - TEX: usa la plantilla `classic_letter` y guarda el archivo en `/data/exports`.
 - PDF: reutiliza `pdflatex` dentro del contenedor y guarda el resultado final en `/data/exports`.
 - Sanitizacion: todos los campos pasan por `app/validations/latex_sanitizer.py` antes de renderizar.
+- Filenames: el nombre final se sanitiza, conserva legibilidad y queda acotado a `180` caracteres para evitar errores del filesystem con `company` y `position` largos.
 
 ## Persistencia
 

@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from pathlib import Path
-import re
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from app.models import CV, CoverLetter
+from app.services.file_naming import SAFE_EXPORT_FILENAME_MAX_LENGTH, build_capped_filename, sanitize_filename_component
 from app.validations.latex_sanitizer import sanitize_latex_text, split_sanitized_items
 
 
@@ -175,18 +175,24 @@ def _build_section(title: str, body: str) -> dict[str, object] | None:
 
 
 def _build_filename(cv: CV, template_key: str) -> str:
-    safe_name = re.sub(r"[^a-zA-Z0-9]+", "-", cv.title.strip()).strip("-").lower()
-    if not safe_name:
-        safe_name = f"cv-{cv.id}"
-
-    return f"{safe_name}-{template_key}.tex"
+    return build_capped_filename(
+        leading_parts=[],
+        variable_part=cv.title,
+        trailing_parts=[sanitize_filename_component(template_key)],
+        extension=".tex",
+        default_stem=f"cv-{cv.id}-{template_key}",
+        max_length=SAFE_EXPORT_FILENAME_MAX_LENGTH,
+    )
 
 
 def _build_cover_letter_filename(cover_letter: CoverLetter, template_key: str) -> str:
-    parts = [cover_letter.company.strip(), cover_letter.position.strip()]
-    joined = "-".join(part for part in parts if part)
-    safe_name = re.sub(r"[^a-zA-Z0-9]+", "-", joined).strip("-").lower()
-    if not safe_name:
-        safe_name = f"cover-letter-{cover_letter.id}"
-
-    return f"{safe_name}-{template_key}.tex"
+    title_parts = [cover_letter.company.strip(), cover_letter.position.strip()]
+    title_value = " ".join(part for part in title_parts if part).strip()
+    return build_capped_filename(
+        leading_parts=["cover-letter", str(cover_letter.id)],
+        variable_part=title_value,
+        trailing_parts=[sanitize_filename_component(template_key)],
+        extension=".tex",
+        default_stem=f"cover-letter-{cover_letter.id}-{template_key}",
+        max_length=SAFE_EXPORT_FILENAME_MAX_LENGTH,
+    )

@@ -107,12 +107,36 @@ class LatexServiceTest(unittest.TestCase):
 
         generated_document = generate_cover_letter_tex_document(cover_letter, "classic_letter")
 
-        self.assertEqual(generated_document.filename, "acme-corp-backend-engineer-classic_letter.tex")
+        self.assertEqual(generated_document.filename, "cover-letter-21-acme-corp-backend-engineer-classic_letter.tex")
         self.assertIn("ACME Corp", generated_document.content)
         self.assertIn("Backend Engineer", generated_document.content)
         self.assertIn(r"Python y FastAPI.", generated_document.content)
         self.assertIn(r"\usepackage{lmodern}", generated_document.content)
         self.assertNotIn("[[", generated_document.content)
+
+    def test_caps_cover_letter_generated_filename_with_long_company_and_position(self):
+        cover_letter = CoverLetter(
+            id=31,
+            company="A" * 160,
+            position="B" * 160,
+            contact="Hiring Team",
+            greeting="Estimado equipo,",
+            introduction="Presento mi candidatura para el puesto.",
+            body="Tengo experiencia con Python y FastAPI.",
+            closing="Quedo a disposicion para conversar.",
+            signature="Juan Perez",
+            associated_cv_id=7,
+            associated_cv_title="CV Backend",
+            created_at="2026-06-04 00:00:00",
+            updated_at="2026-06-04 00:00:00",
+            deleted_at=None,
+        )
+
+        generated_document = generate_cover_letter_tex_document(cover_letter, "classic_letter")
+
+        self.assertLessEqual(len(generated_document.filename), 180)
+        self.assertTrue(generated_document.filename.startswith("cover-letter-31-"))
+        self.assertTrue(generated_document.filename.endswith(".tex"))
 
 
 if __name__ == "__main__":

@@ -2316,3 +2316,100 @@ Resultado:
   - `/data/exports/cover-letter-1-empresa-azul-sa-senior-backend-engineer-classic_letter-20260604123535270431.tex`
   - `/data/exports/cover-letter-1-empresa-azul-sa-senior-backend-engineer-classic_letter-20260604123535274462.pdf`
 - `pdftotext` encontro correctamente `Perfil tecnico`, `Empresa Azul SA` y `Senior Backend Engineer`.
+
+---
+
+## 2026-06-04 - Fix P1 cover-letter export filenames
+
+Accion:
+Revisar el problema reportado por Codex Review sobre filenames demasiado largos en cartas.
+
+Motivo:
+Inputs validos de `company` y `position` de hasta `160` caracteres podian producir `OSError: [Errno 36] File name too long` en TEX/PDF.
+
+Comandos:
+- `git status --short --branch`
+- `Get-Content app/services/export_service.py`
+- `Get-Content app/services/latex_service.py`
+- `Get-Content tests/test_export_service.py`
+- `Get-Content tests/test_latex_service.py`
+- `Get-Content tests/test_pdf_service.py`
+
+Resultado: se confirmo que el naming de cover letters no tenia cap en `export_service` ni en el `.tex` generado por `latex_service`.
+
+---
+
+Accion:
+Implementar helper comun para filenames capped.
+
+Motivo:
+Aplicar un criterio consistente y reutilizable entre TEX generado y exportaciones persistidas.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/services/file_naming.py`: nuevo helper comun.
+- `app/services/export_service.py`: filenames capped para exportaciones.
+- `app/services/latex_service.py`: filename capped para `.tex` generado.
+- `tests/`: nuevos casos de borde para nombres largos.
+
+Resultado: filenames de cartas quedan capped a `180` caracteres, con `id` y timestamp para unicidad.
+
+---
+
+Accion:
+Validar sintaxis local.
+
+Motivo:
+Detectar errores de import o sintaxis antes de reconstruir Docker.
+
+Comandos:
+- `python -m compileall app tests`
+- `python -m pytest tests/test_export_service.py tests/test_latex_service.py tests/test_pdf_service.py`
+
+Resultado:
+- `compileall` OK.
+- `pytest` local no disponible en Windows: `No module named pytest`.
+
+---
+
+Accion:
+Reconstruir y levantar la app con el fix.
+
+Motivo:
+Ejecutar validaciones reales del P1 dentro del contenedor.
+
+Comandos:
+- `docker compose build`
+- `docker compose up -d`
+- `docker compose ps`
+- `docker compose exec app python -m pytest`
+
+Resultado:
+- Primer `pytest` detecto una expectativa vieja de test sobre el nombre de `.tex` generado.
+- Se ajusto el test y se reconstruyo la imagen.
+- Validacion final: `24 passed in 0.22s`.
+
+---
+
+Accion:
+Probar exportaciones reales con `company` y `position` al maximo permitido.
+
+Motivo:
+Confirmar que el fix cubre el caso reportado y evita `OSError` en rutas reales.
+
+Comandos:
+- `Invoke-WebRequest -Uri http://localhost:8000/cover-letters/ -Method Post -Body @{ company = 'A' * 160; position = 'B' * 160; ... }`
+- `Invoke-WebRequest -Uri http://localhost:8000/cover-letters/2/export/tex -UseBasicParsing -OutFile data\\cover-letter-long.tex`
+- `Invoke-WebRequest -Uri http://localhost:8000/cover-letters/2/export/pdf -UseBasicParsing -OutFile data\\cover-letter-long.pdf`
+- `docker compose exec app python -c "from pathlib import Path; files=sorted(Path('/data/exports').glob('cover-letter-2-*')); [print(f'{len(p.name)} {p.name}') for p in files]"`
+- `docker compose exec app python -c "from pathlib import Path; import subprocess; pdf=sorted(Path('/data/exports').glob('cover-letter-2-*.pdf'))[-1]; ..."`
+- `git diff --check`
+
+Resultado:
+- Se creo `cover_letter_id=2`.
+- Export TEX OK.
+- Export PDF OK.
+- Archivos persistidos con longitud `180`.
+- `pdftotext` encontro el contenido esperado.
+- `git diff --check` sin errores; solo advertencias CRLF normales en Windows.

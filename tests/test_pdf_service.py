@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from app.models import CV, CoverLetter
 from app.services.pdf_service import PdfCompilationError, generate_cover_letter_pdf_export, generate_cv_pdf_export
+from app.services.file_naming import SAFE_EXPORT_FILENAME_MAX_LENGTH
 
 
 class PdfServiceTest(unittest.TestCase):
@@ -56,6 +57,18 @@ class PdfServiceTest(unittest.TestCase):
                 self.assertTrue(result.exported_pdf.filename.startswith("cover-letter-"))
                 self.assertTrue(result.exported_tex.path.exists())
 
+    def test_generates_cover_letter_pdf_export_with_long_company_and_position(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                with patch("app.services.pdf_service.subprocess.run", side_effect=_successful_pdflatex):
+                    result = generate_cover_letter_pdf_export(_build_long_cover_letter(), "classic_letter")
+
+                self.assertTrue(result.exported_pdf.path.exists())
+                self.assertTrue(result.exported_tex.path.exists())
+                self.assertLessEqual(len(result.exported_pdf.filename), SAFE_EXPORT_FILENAME_MAX_LENGTH)
+                self.assertLessEqual(len(result.exported_tex.filename), SAFE_EXPORT_FILENAME_MAX_LENGTH)
+                self.assertTrue(result.exported_pdf.filename.startswith("cover-letter-32-"))
+
 
 def _successful_pdflatex(command, cwd, **kwargs):
     tex_filename = command[-1]
@@ -92,6 +105,25 @@ def _build_cover_letter() -> CoverLetter:
         id=22,
         company="ACME Corp",
         position="Backend Engineer",
+        contact="Hiring Team",
+        greeting="Estimado equipo,",
+        introduction="Presento mi candidatura.",
+        body="Experiencia con Python y FastAPI.",
+        closing="Saludos cordiales.",
+        signature="Juan Perez",
+        associated_cv_id=None,
+        associated_cv_title=None,
+        created_at="2026-06-04 00:00:00",
+        updated_at="2026-06-04 00:00:00",
+        deleted_at=None,
+    )
+
+
+def _build_long_cover_letter() -> CoverLetter:
+    return CoverLetter(
+        id=32,
+        company="A" * 160,
+        position="B" * 160,
         contact="Hiring Team",
         greeting="Estimado equipo,",
         introduction="Presento mi candidatura.",

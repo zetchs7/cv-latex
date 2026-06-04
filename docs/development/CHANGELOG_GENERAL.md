@@ -1,5 +1,20 @@
 # Changelog General
 
+## 0.5.1 - 2026-06-04
+
+### Cambiado
+
+- Los filenames de exportacion de cover letters ahora se acotan a `180` caracteres.
+- El `.tex` generado para cartas tambien usa naming capped para evitar `OSError: [Errno 36] File name too long`.
+- Se agrego cobertura de tests para `company` y `position` de 160 caracteres en TEX y PDF.
+
+### No incluido en esta version
+
+- Etapa 5.
+- Tracker de postulaciones.
+- ATS Basic Check.
+- IA.
+
 # 0.5.0 - 2026-06-04
 
 ### Agregado

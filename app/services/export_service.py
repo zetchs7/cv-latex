@@ -8,6 +8,7 @@ import re
 from app.database import get_data_dir
 from app.models import CV, CoverLetter
 from app.schemas import CVFormData
+from app.services.file_naming import SAFE_EXPORT_FILENAME_MAX_LENGTH, build_capped_filename, sanitize_filename_component
 from app.services.latex_service import GeneratedLatexDocument, generate_cv_tex_document
 from app.validations.cv_validations import build_cv_form_data, validate_cv_form
 
@@ -186,7 +187,7 @@ def sanitize_filename(filename: str) -> str:
     stem = Path(name).stem
     suffix = Path(name).suffix.lower()
 
-    safe_stem = re.sub(r"[^a-zA-Z0-9._-]+", "-", stem).strip(".-_").lower()
+    safe_stem = sanitize_filename_component(stem)
     safe_suffix = re.sub(r"[^a-z0-9.]+", "", suffix)
 
     if not safe_stem:
@@ -206,10 +207,16 @@ def _build_entity_export_filename(
     *,
     entity_prefix: str,
 ) -> str:
-    title = sanitize_filename(f"{title_value}.json").removesuffix(".json")
-    safe_variant = re.sub(r"[^a-zA-Z0-9_-]+", "-", variant).strip("-").lower()
+    safe_variant = sanitize_filename_component(variant)
     timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S%f")
-    return f"{entity_prefix}-{entity_id}-{title}-{safe_variant}-{timestamp}.{extension}"
+    return build_capped_filename(
+        leading_parts=[entity_prefix, str(entity_id)],
+        variable_part=title_value,
+        trailing_parts=[safe_variant, timestamp],
+        extension=f".{extension}",
+        default_stem=f"{entity_prefix}-{entity_id}-{safe_variant}-{timestamp}",
+        max_length=SAFE_EXPORT_FILENAME_MAX_LENGTH,
+    )
 
 
 def _extract_cv_payload(payload: object) -> dict[str, object]:
