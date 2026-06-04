@@ -169,3 +169,41 @@ No se implemento LaTeX, generacion PDF, export TEX, export JSON, cartas de prese
 ### Limites de alcance confirmados Etapa 2
 
 No se implemento compilacion PDF final, descarga PDF, export TEX, export JSON, import JSON, cartas de presentacion, tracker de postulaciones, ATS ni IA.
+
+## Correccion de validacion Etapa 2 - pytest en contenedor
+
+- Fecha: 2026-06-03
+- Rama: `feature/fix-pytest-validation`
+- Objetivo: corregir la validacion pendiente de Etapa 2 agregando `pytest` a la imagen Docker para ejecutar tests dentro del contenedor.
+- Modulos afectados: `docker`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se agrego `pytest` a `requirements.txt`.
+  - Se ajusto `Dockerfile` para copiar `tests/` dentro de la imagen.
+  - Se reconstruyo la imagen del servicio `app`.
+  - Se ejecuto `python -m pytest` dentro del contenedor.
+  - Se actualizo la documentacion operativa con el flujo y el resultado.
+- Archivos principales:
+  - `Dockerfile`
+  - `requirements.txt`
+  - `docs/development/COMMAND_LOG.md`
+  - `docs/development/DEVELOPMENT_LOG.md`
+  - `docs/development/CHANGELOG_GENERAL.md`
+- Validaciones ejecutadas:
+  - `git status --short --branch`
+  - `git branch --all`
+  - `git fetch origin`
+  - `git switch development`
+  - `git merge --ff-only main`
+  - `git switch -c feature/fix-pytest-validation`
+  - `docker compose build`
+  - `docker compose up -d`
+  - `docker compose exec app python -m pytest`
+- Resultado: validacion corregida. El contenedor ahora incluye `pytest` y la suite corre dentro de Docker.
+- Pendientes:
+  - No hacer merge automatico.
+  - Esperar validacion explicita del usuario antes de cualquier paso posterior.
+
+### Observaciones de la correccion
+
+- El primer intento con `docker compose exec app python -m pytest` dejo `pytest` disponible pero fallo con `collected 0 items` porque la imagen solo copiaba `app/` y no `tests/`.
+- La correccion minima fue sumar `pytest` a `requirements.txt` y copiar `tests/` en `Dockerfile`. Con eso la validacion en contenedor paso con `6 passed`.

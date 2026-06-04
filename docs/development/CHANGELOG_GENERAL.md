@@ -23,6 +23,8 @@
 
 - Version del proyecto actualizada a `0.3.0`.
 - Detalle de CV actualizado con accion `Ver TEX`.
+- Dependencias del contenedor actualizadas para incluir `pytest` y permitir la validacion con `python -m pytest` dentro de Docker.
+- Imagen Docker actualizada para copiar `tests/` y ejecutar la suite dentro del contenedor.
 
 ### No incluido en esta version
 

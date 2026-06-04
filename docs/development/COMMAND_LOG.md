@@ -1471,3 +1471,123 @@ Argumentos:
 - Consulta CVs activos con datos basicos.
 
 Resultado: CV activo `SysAdmin Linux` de `Franco Pablo Damian`; se conservo porque no corresponde a datos de prueba de Etapa 2.
+
+---
+
+Accion:
+Agregar `pytest` a dependencias del contenedor.
+
+Motivo:
+Corregir la validacion pendiente de Etapa 2 para ejecutar tests dentro de Docker.
+
+Comando: edicion manual de `requirements.txt`
+
+Argumentos:
+- `pytest==8.3.4`: dependencia de test para `python -m pytest`.
+
+Resultado: dependencia agregada.
+
+---
+
+Accion:
+Reconstruir imagen Docker con la nueva dependencia.
+
+Motivo:
+Instalar `pytest` dentro del contenedor `app`.
+
+Comando: `docker compose build`
+
+Argumentos:
+- Servicio `app`: rebuild completo desde `Dockerfile`.
+
+Resultado: build exitoso; `pytest` quedo instalado en la imagen, pero la suite aun no estaba disponible dentro del contenedor.
+
+---
+
+Accion:
+Levantar o refrescar el servicio `app`.
+
+Motivo:
+Ejecutar la nueva imagen antes de correr tests.
+
+Comando: `docker compose up -d`
+
+Argumentos:
+- `-d`: arranque en segundo plano.
+
+Resultado: contenedor `cv_latex_app` recreado e iniciado correctamente con la imagen reconstruida.
+
+---
+
+Accion:
+Ejecutar suite de tests dentro del contenedor.
+
+Motivo:
+Confirmar que la validacion pendiente de Etapa 2 queda resuelta.
+
+Comando: `docker compose exec app python -m pytest`
+
+Argumentos:
+- `python -m pytest`: usa la dependencia instalada en la imagen.
+
+Resultado: primer intento con `pytest` instalado pero `collected 0 items`, porque la imagen no contenia `tests/`.
+
+---
+
+Accion:
+Actualizar imagen Docker para incluir la carpeta `tests/`.
+
+Motivo:
+Permitir que `pytest` descubra y ejecute los casos dentro del contenedor.
+
+Comando: edicion manual de `Dockerfile`
+
+Argumentos:
+- `COPY tests ./tests`: copia la suite al filesystem de la imagen.
+
+Resultado: Dockerfile ajustado.
+
+---
+
+Accion:
+Reconstruir imagen Docker luego del ajuste en `Dockerfile`.
+
+Motivo:
+Aplicar la inclusion de `tests/` en la imagen final.
+
+Comando: `docker compose build`
+
+Argumentos:
+- Servicio `app`: rebuild sobre la imagen previa con `pytest` ya instalado.
+
+Resultado: build exitoso; la imagen `cv-latex-app:latest` quedo actualizada.
+
+---
+
+Accion:
+Recrear el contenedor con la nueva imagen.
+
+Motivo:
+Ejecutar la suite sobre el contenedor corregido.
+
+Comando: `docker compose up -d`
+
+Argumentos:
+- `Recreate`: reemplazo del contenedor `cv_latex_app`.
+
+Resultado: contenedor recreado e iniciado correctamente.
+
+---
+
+Accion:
+Reejecutar suite de tests dentro del contenedor corregido.
+
+Motivo:
+Confirmar que la validacion pendiente de Etapa 2 queda resuelta.
+
+Comando: `docker compose exec app python -m pytest`
+
+Argumentos:
+- `python -m pytest`: ejecucion de la suite incluida en la imagen.
+
+Resultado: `6 passed in 0.07s`.
