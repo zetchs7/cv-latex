@@ -63,6 +63,30 @@ class LatexServiceTest(unittest.TestCase):
                 self.assertIn(r"\documentclass", generated_document.content)
                 self.assertIn("Juan Perez", generated_document.content)
 
+    def test_templates_include_pdf_text_extraction_mapping(self):
+        cv = CV(
+            id=12,
+            title="CV ATS",
+            full_name="Ana Alvarez",
+            email="ana@example.com",
+            phone="",
+            professional_summary="Perfil tecnico con analisis y educacion.",
+            experience_summary="",
+            education_summary="",
+            skills="Comunicacion",
+            created_at="2026-06-03 00:00:00",
+            updated_at="2026-06-03 00:00:00",
+            deleted_at=None,
+        )
+
+        for template_key in ["classic", "modern", "compact", "tech"]:
+            with self.subTest(template_key=template_key):
+                generated_document = generate_cv_tex_document(cv, template_key)
+                self.assertIn(r"\input{glyphtounicode}", generated_document.content)
+                self.assertIn(r"\pdfgentounicode=1", generated_document.content)
+                self.assertIn(r"\usepackage{cmap}", generated_document.content)
+                self.assertIn(r"\usepackage{lmodern}", generated_document.content)
+
 
 if __name__ == "__main__":
     unittest.main()

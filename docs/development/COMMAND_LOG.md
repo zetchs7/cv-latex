@@ -1838,3 +1838,193 @@ Argumentos:
 - Listado de archivos directos en `/data/exports`.
 
 Resultado: existen JSON, TEX y PDF exportados para CV id `6`; ejemplo final `cv-6-etapa-3-export-test-tech-20260604005656577451.pdf` con `29620` bytes.
+
+---
+
+Accion:
+Crear rama de mini-etapa 3.1 desde `development`.
+
+Motivo:
+Corregir mapeo de texto PDF sin trabajar directo sobre `main` ni `development`.
+
+Comando: `git switch -c feature/pdf-ats-text-extraction`
+
+Argumentos:
+- Rama base: `development` sincronizada con `origin/development`.
+
+Resultado: rama `feature/pdf-ats-text-extraction` creada.
+
+---
+
+Accion:
+Actualizar preambulos LaTeX para extraccion de texto.
+
+Motivo:
+Mejorar copy/paste, extraccion con herramientas PDF y compatibilidad futura con ATS.
+
+Comando: edicion manual de `classic.tex`, `modern.tex`, `compact.tex` y `tech.tex`
+
+Argumentos:
+- `\input{glyphtounicode}`
+- `\pdfgentounicode=1`
+- `\usepackage{cmap}`
+- `\usepackage{lmodern}`
+
+Resultado: las cuatro plantillas quedaron con mapeo Unicode y fuente Latin Modern.
+
+---
+
+Accion:
+Agregar herramientas de validacion PDF al contenedor.
+
+Motivo:
+Compilar con `lmodern` y validar extraccion con `pdftotext`.
+
+Comando: edicion manual de `Dockerfile`
+
+Argumentos:
+- `lmodern`: provee `lmodern.sty`.
+- `poppler-utils`: provee `pdftotext`.
+
+Resultado: Dockerfile actualizado.
+
+---
+
+Accion:
+Validar sintaxis y diff.
+
+Motivo:
+Detectar errores antes de reconstruir Docker.
+
+Comandos:
+- `python -m compileall app tests`
+- `git diff --check`
+
+Argumentos:
+- `app tests`: modulos y suite.
+
+Resultado: ambas validaciones OK.
+
+---
+
+Accion:
+Reconstruir imagen Docker para Etapa 3.1.
+
+Motivo:
+Instalar `poppler-utils` y luego `lmodern`.
+
+Comando: `docker compose build`
+
+Argumentos:
+- Servicio `app`.
+
+Resultado: primer build OK con `poppler-utils`, pero la primera compilacion PDF fallo por falta de `lmodern.sty`. Se agrego `lmodern` y el build final fue exitoso.
+
+---
+
+Accion:
+Levantar servicio final de Etapa 3.1.
+
+Motivo:
+Ejecutar tests y validaciones PDF reales.
+
+Comando: `docker compose up -d`
+
+Argumentos:
+- `-d`: arranque en segundo plano.
+
+Resultado: contenedor recreado e iniciado.
+
+---
+
+Accion:
+Verificar estado Docker.
+
+Motivo:
+Confirmar que el contenedor esta operativo.
+
+Comando: `docker compose ps`
+
+Argumentos:
+- Servicio `app`.
+
+Resultado: `cv_latex_app` quedo `Up` y `healthy`.
+
+---
+
+Accion:
+Ejecutar suite en contenedor.
+
+Motivo:
+Validar que el cambio de plantillas no rompe servicios existentes.
+
+Comando: `docker compose exec app python -m pytest`
+
+Argumentos:
+- Suite completa.
+
+Resultado: `14 passed in 0.12s`.
+
+---
+
+Accion:
+Confirmar herramienta de extraccion.
+
+Motivo:
+Validar que el contenedor permite probar texto extraido de PDF.
+
+Comando: `docker compose exec app which pdftotext`
+
+Argumentos:
+- Binario `pdftotext`.
+
+Resultado: `/usr/bin/pdftotext`.
+
+---
+
+Accion:
+Crear CV de prueba con texto ATS.
+
+Motivo:
+Validar acentos y glifos comunes de espanol.
+
+Comando: `docker compose exec app python -c "... cv_repository.create_cv(...); print(cv_id)"`
+
+Argumentos:
+- Texto: `Perfil tecnico con gestion de informacion, analisis, educacion, comunicacion, ñandu, accion, configuracion.` con acentos en el dato real.
+
+Resultado: CV de prueba creado con id `11`.
+
+---
+
+Accion:
+Generar PDF con las cuatro plantillas.
+
+Motivo:
+Confirmar que `classic`, `modern`, `compact` y `tech` compilan con el nuevo preambulo.
+
+Comando: `docker compose exec app python -c "... generate_cv_pdf_export(...)"`.
+
+Argumentos:
+- Plantillas: `classic`, `modern`, `compact`, `tech`.
+
+Resultado:
+- `classic`: `/data/exports/cv-11-etapa-3.1-ats-text-extraction-classic-20260604030609609031.pdf`
+- `modern`: `/data/exports/cv-11-etapa-3.1-ats-text-extraction-modern-20260604030609957022.pdf`
+- `compact`: `/data/exports/cv-11-etapa-3.1-ats-text-extraction-compact-20260604030610282686.pdf`
+- `tech`: `/data/exports/cv-11-etapa-3.1-ats-text-extraction-tech-20260604030610552827.pdf`
+
+---
+
+Accion:
+Extraer texto de PDFs generados.
+
+Motivo:
+Validar que `Perfil` y texto con caracteres espanoles no se rompen.
+
+Comando: `docker compose exec app python -c "... subprocess.run(['pdftotext', str(path), '-'], ...)"`.
+
+Argumentos:
+- Palabras esperadas: `Perfil`, texto acentuado, `ñandu`, `accion` y `configuracion` con caracteres reales en el PDF.
+
+Resultado: `missing=none` para `classic`, `modern`, `compact` y `tech`.

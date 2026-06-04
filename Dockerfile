@@ -5,7 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     APP_ENV=local \
     APP_DATA_DIR=/data \
     APP_DB_FILENAME=app.db \
-    APP_VERSION=0.4.0
+    APP_VERSION=0.4.1
 
 WORKDIR /app
 
@@ -16,6 +16,8 @@ RUN apt-get update \
         texlive-latex-extra \
         texlive-fonts-recommended \
         texlive-lang-spanish \
+        lmodern \
+        poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --create-home --shell /usr/sbin/nologin appuser

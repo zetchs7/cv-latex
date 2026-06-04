@@ -2,7 +2,7 @@
 
 ## Version
 
-`0.4.0`
+`0.4.1`
 
 ## Objetivo
 
@@ -37,7 +37,7 @@ Parametro opcional:
 - `available_cv_templates()`: lista las plantillas disponibles.
 - `generate_cv_tex_document(cv, template_key)`: genera un objeto con nombre de archivo, plantilla usada y contenido `.tex`.
 
-La etapa genera contenido `.tex` para previsualizacion. No escribe exports, no descarga archivos y no compila PDF.
+El servicio genera contenido `.tex` para previsualizacion, exportacion TEX y compilacion PDF mediante `pdf_service.py`.
 
 ## Sanitizacion
 
@@ -55,6 +55,19 @@ La etapa genera contenido `.tex` para previsualizacion. No escribe exports, no d
 - `^`
 
 Tambien preserva caracteres comunes en espanol como `á`, `é`, `í`, `ó`, `ú`, `ñ`, `ü`, `¿` y `¡`, apoyandose en plantillas con UTF-8.
+
+## Extraccion de texto PDF
+
+Desde Etapa 3.1 las cuatro plantillas incluyen:
+
+- `\input{glyphtounicode}`
+- `\pdfgentounicode=1`
+- `\usepackage{cmap}`
+- `\usepackage[utf8]{inputenc}`
+- `\usepackage[T1]{fontenc}`
+- `\usepackage{lmodern}`
+
+Este bloque mejora el mapeo Unicode de los glifos generados por `pdflatex`, lo que ayuda a copy/paste, `pdftotext` y parsers tipo ATS.
 
 ## Secciones vacias
 
@@ -77,11 +90,7 @@ Flujo manual:
 
 ## Limitaciones
 
-- No compila PDF.
-- La descarga PDF se implementa desde Etapa 3 mediante `pdf_service.py`.
-- No exporta TEX.
-- No exporta JSON.
-- No importa JSON.
+- La compatibilidad con parsers ATS reales debe validarse en una etapa futura con herramientas concretas.
 - No implementa cartas de presentacion.
 - No implementa tracker de postulaciones.
 - No implementa ATS.

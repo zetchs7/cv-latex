@@ -267,3 +267,52 @@ No se implemento compilacion PDF final, descarga PDF, export TEX, export JSON, i
 ### Limites de alcance confirmados Etapa 3
 
 No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, login, PostgreSQL ni deploy cloud.
+
+## Etapa 3.1 - PDF ATS Text Extraction / Encoding Fix
+
+- Fecha: 2026-06-03
+- Rama: `feature/pdf-ats-text-extraction`
+- Objetivo: mejorar el mapeo de texto en PDFs generados para copy/paste, extraccion con herramientas PDF y compatibilidad futura con parsers ATS.
+- Modulos afectados: `latex_templates`, `docker`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se agrego `\\input{glyphtounicode}` y `\\pdfgentounicode=1` a `classic`, `modern`, `compact` y `tech`.
+  - Se agrego `\\usepackage{cmap}` a las cuatro plantillas.
+  - Se agrego `\\usepackage{lmodern}` para usar fuentes Latin Modern con encoding T1.
+  - Se agrego `lmodern` al Dockerfile porque `lmodern.sty` no venia incluido solo con `fonts-lmodern`.
+  - Se agrego `poppler-utils` al Dockerfile para validar extraccion real con `pdftotext`.
+  - Se actualizo la version a `0.4.1`.
+- Archivos principales:
+  - `app/latex_templates/cv/classic.tex`
+  - `app/latex_templates/cv/modern.tex`
+  - `app/latex_templates/cv/compact.tex`
+  - `app/latex_templates/cv/tech.tex`
+  - `Dockerfile`
+  - `tests/test_latex_service.py`
+  - `README.md`
+  - `docs/adr/ADR-0004-latex-rendering.md`
+- Validaciones ejecutadas:
+  - `git status --short --branch`
+  - `git fetch origin`
+  - `git switch development`
+  - `git rev-list --left-right --count development...origin/development`
+  - `git switch -c feature/pdf-ats-text-extraction`
+  - `python -m compileall app tests`
+  - `git diff --check`
+  - `docker compose build`
+  - `docker compose up -d`
+  - `docker compose ps`
+  - `docker compose exec app python -m pytest`
+  - `docker compose exec app which pdftotext`
+  - Creacion de CV de prueba con texto acentuado y caracteres espanoles.
+  - Generacion de PDF con `classic`, `modern`, `compact` y `tech`.
+  - Extraccion de texto con `pdftotext` para cada PDF.
+- Resultado: validacion completada. Los cuatro PDFs compilan y `pdftotext` preserva `Perfil`, `tecnico` acentuado, `gestion`, `informacion`, `analisis`, `educacion`, `comunicacion`, `ñandu`, `accion` y `configuracion` con acentos en el texto extraido.
+- Pendientes:
+  - No avanzar a Etapa 4 sin validacion explicita.
+  - Mantener pruebas con parsers ATS reales para una etapa futura.
+
+### Observaciones de validacion Etapa 3.1
+
+- La primera compilacion fallo por falta de `lmodern.sty`; se corrigio agregando el paquete Debian `lmodern`.
+- `pdftotext` quedo disponible por `poppler-utils`, agregado solo para validacion tecnica de extraccion.
+- El build final reporto aproximadamente 587 MB adicionales por dependencias LaTeX/PDF.

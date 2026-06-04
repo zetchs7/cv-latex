@@ -1,11 +1,11 @@
 # CV LaTeX Builder
 
-Aplicacion web local, pequena y portable para construir curriculums vitae profesionales con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 3.
+Aplicacion web local, pequena y portable para construir curriculums vitae profesionales con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 3.1.
 
 ## Estado actual
 
-- Version: `0.4.0`
-- Etapa: `3 - Export Engine PDF/TEX/JSON`
+- Version: `0.4.1`
+- Etapa: `3.1 - PDF ATS Text Extraction / Encoding Fix`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 - Exportaciones: `/data/exports` dentro del contenedor, visible en `./data/exports` en el host
@@ -18,6 +18,7 @@ Aplicacion web local, pequena y portable para construir curriculums vitae profes
 - Persistencia: SQLite en `/data/app.db`
 - Contenedores: Docker Compose
 - PDF: TeX Live con `pdflatex` dentro del contenedor
+- Extraccion de texto PDF: `pdftotext` disponible en el contenedor para validacion tecnica
 
 HTMX queda previsto para interacciones progresivas en etapas posteriores. Las funcionalidades actuales se mantienen server-side con HTML simple.
 
@@ -140,6 +141,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 1: CV Builder Core. Completada.
 - Etapa 2: Plantillas LaTeX propias y sanitizacion. Completada.
 - Etapa 3: Export Engine PDF/TEX/JSON. Completada.
+- Etapa 3.1: PDF ATS Text Extraction / Encoding Fix. Completada.
 - Etapa 4: Cartas de presentacion.
 - Etapa 5: Tracker de postulaciones.
 - Etapa 6: ATS Basic Check.
@@ -179,6 +181,8 @@ La ruta `/cvs/{cv_id}/tex` genera una previsualizacion del contenido `.tex` desd
 
 La sanitizacion esta en `app/validations/latex_sanitizer.py` y escapa caracteres especiales de LaTeX como `%`, `&`, `$`, `_`, `#`, `{`, `}`, `~`, `^` y `\`, preservando caracteres comunes en espanol mediante UTF-8.
 
+Las plantillas usan `inputenc` UTF-8, `fontenc` T1, `lmodern`, `cmap`, `glyphtounicode` y `pdfgentounicode=1` para mejorar copy/paste, extraccion de texto y compatibilidad con parsers tipo ATS.
+
 ## Export Engine
 
 Los artefactos generados se guardan en:
@@ -201,7 +205,7 @@ Formatos soportados:
 
 La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titulo. No acepta rutas de salida desde inputs del usuario y los nombres de archivo exportados se sanitizan.
 
-Advertencia operativa: el Dockerfile instala TeX Live para compilar PDF de forma reproducible dentro del contenedor. Esto aumenta el tamano de la imagen de manera relevante.
+Advertencia operativa: el Dockerfile instala TeX Live, `lmodern`, `poppler-utils` y dependencias PDF para compilar y validar PDFs de forma reproducible dentro del contenedor. Esto aumenta el tamano de la imagen de manera relevante.
 
 ## Prueba manual rapida
 

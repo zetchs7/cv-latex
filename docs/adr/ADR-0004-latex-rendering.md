@@ -20,6 +20,8 @@ En Etapa 3 se agrega compilacion PDF con `pdflatex` dentro del contenedor Docker
 
 Los PDF se compilan en un directorio temporal controlado bajo `/data/exports/_tmp` y el archivo final se copia a `/data/exports`. Los nombres de archivo se sanitizan y no se aceptan rutas de salida enviadas por el usuario.
 
+En Etapa 3.1 se refuerza la extraccion de texto para PDF agregando `cmap`, Latin Modern (`lmodern`), `glyphtounicode` y `pdfgentounicode=1` a las plantillas. Tambien se agrega `poppler-utils` al contenedor para validar con `pdftotext` que palabras con acentos, `ñ`, `ü` y signos comunes en espanol se extraigan correctamente.
+
 ## Consecuencias
 
 - La logica LaTeX queda separada de rutas y templates HTML.
@@ -28,3 +30,5 @@ Los PDF se compilan en un directorio temporal controlado bajo `/data/exports/_tm
 - La compilacion PDF depende de TeX Live instalado en la imagen.
 - `/data/exports` concentra los artefactos persistidos TEX, JSON y PDF.
 - La imagen Docker crece de forma relevante por las dependencias LaTeX.
+- La imagen incluye `poppler-utils` para validacion tecnica de extraccion de texto PDF.
+- La compatibilidad ATS mejora a nivel de texto extraible, pero parsers ATS reales pueden tener comportamientos propios y deberan validarse en una etapa futura.

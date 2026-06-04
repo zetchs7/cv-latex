@@ -1,5 +1,26 @@
 # Changelog General
 
+## 0.4.1 - 2026-06-03
+
+### Cambiado
+
+- Plantillas LaTeX actualizadas con `cmap`, `lmodern`, `glyphtounicode` y `pdfgentounicode=1`.
+- Dockerfile actualizado con `lmodern` y `poppler-utils`.
+- Tests de LaTeX actualizados para verificar el bloque de mapeo Unicode en todas las plantillas.
+- Documentacion actualizada con la validacion de extraccion de texto PDF.
+
+### Validado
+
+- PDFs generados correctamente con `classic`, `modern`, `compact` y `tech`.
+- Extraccion con `pdftotext` preservando `Perfil`, acentos, `ñ`, `ü` y signos comunes en espanol.
+
+### No incluido en esta version
+
+- Cartas de presentacion.
+- Tracker de postulaciones.
+- ATS Basic Check funcional.
+- IA.
+
 ## 0.4.0 - 2026-06-03
 
 ### Agregado
