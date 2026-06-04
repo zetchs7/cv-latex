@@ -16,9 +16,15 @@ Crear plantillas LaTeX propias en `app/latex_templates/cv/` y renderizarlas con 
 
 Centralizar sanitizacion en `app/validations/latex_sanitizer.py` y generacion en `app/services/latex_service.py`.
 
+En Etapa 3 se agrega compilacion PDF con `pdflatex` dentro del contenedor Docker. Se eligio TeX Live sobre Tectonic porque evita descarga dinamica de bundles en runtime y permite validaciones reproducibles sin depender de red durante la generacion. El costo aceptado es una imagen Docker mas pesada.
+
+Los PDF se compilan en un directorio temporal controlado bajo `/data/exports/_tmp` y el archivo final se copia a `/data/exports`. Los nombres de archivo se sanitizan y no se aceptan rutas de salida enviadas por el usuario.
+
 ## Consecuencias
 
 - La logica LaTeX queda separada de rutas y templates HTML.
 - Los datos del CV se sanitizan antes de entrar a las plantillas.
 - Las plantillas pueden manejar secciones vacias sin romper.
-- La etapa no introduce compilacion PDF ni descargas, evitando adelantar Etapa 3.
+- La compilacion PDF depende de TeX Live instalado en la imagen.
+- `/data/exports` concentra los artefactos persistidos TEX, JSON y PDF.
+- La imagen Docker crece de forma relevante por las dependencias LaTeX.

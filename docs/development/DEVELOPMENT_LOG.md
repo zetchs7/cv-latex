@@ -207,3 +207,63 @@ No se implemento compilacion PDF final, descarga PDF, export TEX, export JSON, i
 
 - El primer intento con `docker compose exec app python -m pytest` dejo `pytest` disponible pero fallo con `collected 0 items` porque la imagen solo copiaba `app/` y no `tests/`.
 - La correccion minima fue sumar `pytest` a `requirements.txt` y copiar `tests/` en `Dockerfile`. Con eso la validacion en contenedor paso con `6 passed`.
+
+## Etapa 3 - Export Engine PDF/TEX/JSON
+
+- Fecha: 2026-06-03
+- Rama: `feature/export-engine`
+- Objetivo: implementar exportacion TEX/PDF/JSON e importacion JSON desde CVs guardados, con rutas seguras y persistencia en `/data/exports`.
+- Modulos afectados: `cvs`, `export_service`, `pdf_service`, `latex_service`, `docker`, `docs`, `tests`.
+- Resumen de cambios:
+  - Se agrego `app/services/export_service.py` para exportar TEX/JSON, sanitizar nombres y crear directorios en `/data/exports`.
+  - Se agrego `app/services/pdf_service.py` para compilar con `pdflatex` dentro de un temporal controlado y guardar PDF final.
+  - Se agregaron rutas de descarga TEX, descarga JSON, generacion PDF e importacion JSON.
+  - Se agrego importacion JSON desde formulario multipart creando siempre un nuevo CV.
+  - Se agregaron tests unitarios para exportaciones, importacion y compilacion PDF mockeada.
+  - Se actualizo Dockerfile con TeX Live para compilar las plantillas actuales.
+  - Se actualizo la version a `0.4.0`.
+- Archivos principales:
+  - `app/services/export_service.py`
+  - `app/services/pdf_service.py`
+  - `app/routes/cvs.py`
+  - `app/templates/cvs/detail.html`
+  - `app/templates/cvs/index.html`
+  - `app/templates/cvs/tex_preview.html`
+  - `Dockerfile`
+  - `tests/test_export_service.py`
+  - `tests/test_pdf_service.py`
+- Validaciones ejecutadas:
+  - `git status --short --branch`
+  - `git fetch origin`
+  - `git rev-list --left-right --count development...origin/development`
+  - `git switch -c feature/export-engine`
+  - `python -m compileall app tests`
+  - `docker compose build`
+  - `docker compose up -d`
+  - `docker compose ps`
+  - `docker compose logs app`
+  - `docker compose exec app python -m pytest`
+  - Creacion de CV de prueba desde el contenedor
+  - `GET /cvs/6/export/tex?template_key=tech`
+  - `GET /cvs/6/export/json`
+  - `POST /cvs/import/json`
+  - `GET /cvs/6/export/pdf?template_key=tech`
+  - Verificacion de archivos persistidos en `/data/exports`
+  - `GET /cvs/6/tex?template_key=modern`
+  - `GET /cvs/8`
+- Resultado: completado localmente. El contenedor queda `healthy`, `/health` devuelve `version: 0.4.0`, `pytest` pasa con 13 tests y las exportaciones TEX/JSON/PDF funcionan por HTTP.
+- Pendientes:
+  - Esperar validacion explicita del usuario antes de Etapa 4.
+  - No hacer merge automatico.
+  - Mantener ramas feature existentes hasta que el usuario indique limpieza.
+
+### Observaciones de validacion Etapa 3
+
+- `python -m pytest` local en Windows no se pudo ejecutar porque ese Python local no tiene `pytest`; la validacion obligatoria se ejecuto dentro del contenedor y paso con `13 passed`.
+- La primera prueba funcional detecto colision de nombres cuando TEX y PDF se generaban en paralelo para el mismo CV/plantilla en el mismo segundo. Se corrigio usando timestamp con microsegundos.
+- La primera vista TEX posterior al cambio fallo por usar query params dentro de `url_for`; se corrigio construyendo el query string fuera de `url_for`.
+- Dockerfile instala TeX Live en lugar de Tectonic. Motivo: Tectonic puede requerir descarga de bundles en runtime; TeX Live deja la imagen mas pesada pero reproducible. Impacto observado durante build: aproximadamente 509 MB adicionales.
+
+### Limites de alcance confirmados Etapa 3
+
+No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, login, PostgreSQL ni deploy cloud.

@@ -1591,3 +1591,250 @@ Argumentos:
 - `python -m pytest`: ejecucion de la suite incluida en la imagen.
 
 Resultado: `6 passed in 0.07s`.
+
+---
+
+Accion:
+Crear rama de Etapa 3 desde `development`.
+
+Motivo:
+Respetar Git Flow y no trabajar directo sobre `main` ni `development`.
+
+Comando: `git switch -c feature/export-engine`
+
+Argumentos:
+- Rama base: `development` sincronizada con `origin/development`.
+
+Resultado: rama `feature/export-engine` creada.
+
+---
+
+Accion:
+Agregar servicios de exportacion e importacion.
+
+Motivo:
+Implementar descarga TEX, export JSON, import JSON y base segura para PDF.
+
+Comando: edicion manual de `app/services/export_service.py`, `app/services/pdf_service.py` y rutas CV.
+
+Argumentos:
+- `/data/exports`: directorio persistente de artefactos.
+- `sanitize_filename`: evita rutas arbitrarias y extensiones no permitidas.
+- Directorio temporal PDF bajo `/data/exports/_tmp`.
+
+Resultado: servicios y rutas implementados.
+
+---
+
+Accion:
+Agregar TeX Live al contenedor.
+
+Motivo:
+Compilar plantillas LaTeX actuales con `pdflatex` dentro de Docker.
+
+Comando: edicion manual de `Dockerfile`
+
+Argumentos:
+- `texlive-latex-base`
+- `texlive-latex-recommended`
+- `texlive-latex-extra`
+- `texlive-fonts-recommended`
+- `texlive-lang-spanish`
+
+Resultado: Dockerfile actualizado. Impacto observado durante build: aproximadamente 509 MB adicionales.
+
+---
+
+Accion:
+Validar sintaxis Python.
+
+Motivo:
+Detectar errores basicos antes de reconstruir Docker.
+
+Comando: `python -m compileall app tests`
+
+Argumentos:
+- `app tests`: modulos de aplicacion y suite.
+
+Resultado: compilacion OK.
+
+---
+
+Accion:
+Intentar tests locales.
+
+Motivo:
+Validacion rapida previa a Docker.
+
+Comando: `python -m pytest`
+
+Argumentos:
+- Suite completa.
+
+Resultado: no ejecutado localmente porque el Python de Windows no tiene `pytest`.
+
+---
+
+Accion:
+Reconstruir imagen Docker para Etapa 3.
+
+Motivo:
+Instalar TeX Live y copiar codigo/tests actualizados.
+
+Comando: `docker compose build`
+
+Argumentos:
+- Servicio `app`.
+
+Resultado: build exitoso.
+
+---
+
+Accion:
+Levantar servicio de Etapa 3.
+
+Motivo:
+Ejecutar validaciones HTTP y tests en contenedor.
+
+Comando: `docker compose up -d`
+
+Argumentos:
+- `-d`: arranque en segundo plano.
+
+Resultado: contenedor `cv_latex_app` iniciado.
+
+---
+
+Accion:
+Verificar estado Docker.
+
+Motivo:
+Confirmar contenedor disponible y healthcheck.
+
+Comando: `docker compose ps`
+
+Argumentos:
+- Servicio `app`.
+
+Resultado: `cv_latex_app` quedo `Up` y `healthy`.
+
+---
+
+Accion:
+Revisar logs de app.
+
+Motivo:
+Confirmar arranque sin errores.
+
+Comando: `docker compose logs app`
+
+Argumentos:
+- Servicio `app`.
+
+Resultado: Uvicorn inicio correctamente y `/health` respondio 200.
+
+---
+
+Accion:
+Ejecutar tests dentro del contenedor.
+
+Motivo:
+Validar servicios de exportacion, sanitizacion, LaTeX y PDF.
+
+Comando: `docker compose exec app python -m pytest`
+
+Argumentos:
+- Suite completa dentro de la imagen.
+
+Resultado: `13 passed in 0.11s`.
+
+---
+
+Accion:
+Crear CV de prueba de Etapa 3.
+
+Motivo:
+Disponer de un CV guardado para validar exportaciones reales.
+
+Comando: `docker compose exec app python -c "... cv_repository.create_cv(...); print(cv_id)"`
+
+Argumentos:
+- Titulo: `Etapa 3 Export Test`.
+- Plantillas validadas: `modern` y `tech`.
+
+Resultado: CV de prueba creado con id `6`.
+
+---
+
+Accion:
+Descargar TEX por HTTP.
+
+Motivo:
+Confirmar que la descarga TEX funciona y no queda vacia.
+
+Comando: `Invoke-WebRequest -Uri 'http://localhost:8000/cvs/6/export/tex?template_key=tech' -UseBasicParsing -OutFile data\\final-download-cv6.tex`
+
+Argumentos:
+- `template_key=tech`.
+
+Resultado: descarga OK; archivo local de verificacion con `1360` bytes.
+
+---
+
+Accion:
+Exportar JSON por HTTP.
+
+Motivo:
+Confirmar descarga JSON de CV.
+
+Comando: `Invoke-WebRequest -Uri 'http://localhost:8000/cvs/6/export/json' -UseBasicParsing -OutFile data\\final-export-cv6.json`
+
+Argumentos:
+- CV id `6`.
+
+Resultado: descarga OK; archivo local de verificacion con `491` bytes.
+
+---
+
+Accion:
+Importar JSON por HTTP.
+
+Motivo:
+Confirmar que la importacion crea un CV nuevo.
+
+Comando: `curl.exe -s -D data\\final-import-response-cv6-headers.txt -o data\\final-import-response-cv6-body.txt -F "json_file=@data/final-export-cv6.json;type=application/json" http://localhost:8000/cvs/import/json`
+
+Argumentos:
+- Multipart field: `json_file`.
+
+Resultado: `303 See Other` hacia `/cvs/8?message=CV+importado+desde+JSON+correctamente.`
+
+---
+
+Accion:
+Generar y descargar PDF por HTTP.
+
+Motivo:
+Confirmar compilacion LaTeX y descarga PDF.
+
+Comando: `Invoke-WebRequest -Uri 'http://localhost:8000/cvs/6/export/pdf?template_key=tech' -UseBasicParsing -OutFile data\\final-download-cv6.pdf`
+
+Argumentos:
+- `template_key=tech`.
+
+Resultado: descarga OK; PDF local de verificacion con `29620` bytes.
+
+---
+
+Accion:
+Verificar archivos persistidos en `/data/exports`.
+
+Motivo:
+Confirmar persistencia de artefactos finales.
+
+Comando: `docker compose exec app python -c "from pathlib import Path; p=Path('/data/exports'); print(...)"`.
+
+Argumentos:
+- Listado de archivos directos en `/data/exports`.
+
+Resultado: existen JSON, TEX y PDF exportados para CV id `6`; ejemplo final `cv-6-etapa-3-export-test-tech-20260604005656577451.pdf` con `29620` bytes.

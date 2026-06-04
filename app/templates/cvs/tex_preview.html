@@ -11,6 +11,8 @@
   </div>
   <div class="action-row">
     <a class="button" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Volver al CV</a>
+    <a class="button" href="{{ url_for('cvs_export_tex', cv_id=cv.id) }}?template_key={{ selected_template }}">Descargar TEX</a>
+    <a class="button primary" href="{{ url_for('cvs_export_pdf', cv_id=cv.id) }}?template_key={{ selected_template }}">Generar PDF</a>
   </div>
 </section>
 
@@ -31,16 +33,16 @@
 <section class="tex-preview-panel">
   <div class="module-card-header">
     <h2>Contenido TEX</h2>
-    <span>Sin descarga</span>
+    <span>Descarga disponible</span>
   </div>
   <pre class="tex-preview"><code>{{ generated_document.content }}</code></pre>
 </section>
 
 <section class="notice">
-  <h2>Alcance de Etapa 2</h2>
+  <h2>Export Engine</h2>
   <p>
-    Esta vista genera contenido .tex desde un CV existente y una plantilla propia.
-    La compilacion PDF, descarga PDF, export TEX y export JSON se mantienen fuera de alcance.
+    Esta vista permite descargar el .tex y generar PDF desde una plantilla propia.
+    Los archivos exportados se guardan en /data/exports.
   </p>
 </section>
 {% endblock %}

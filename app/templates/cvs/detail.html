@@ -12,6 +12,7 @@
   <div class="action-row">
     <a class="button" href="{{ url_for('cvs_list') }}">Listado</a>
     <a class="button" href="{{ url_for('cvs_tex_preview', cv_id=cv.id) }}">Ver TEX</a>
+    <a class="button" href="{{ url_for('cvs_export_json', cv_id=cv.id) }}">Descargar JSON</a>
     <a class="button primary" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar</a>
   </div>
 </section>
@@ -44,6 +45,39 @@
       <a class="button danger" href="{{ url_for('cvs_confirm_delete', cv_id=cv.id) }}">Eliminar CV</a>
     </div>
   </article>
+</section>
+
+<section class="export-panel">
+  <div>
+    <h2>Exportaciones</h2>
+    <p>Genera archivos desde los datos guardados. Los resultados se conservan en <code>/data/exports</code>.</p>
+  </div>
+  <div class="export-actions">
+    <form method="get" action="{{ url_for('cvs_export_tex', cv_id=cv.id) }}">
+      <label>
+        <span>Plantilla TEX</span>
+        <select name="template_key">
+          <option value="classic">Classic</option>
+          <option value="modern">Modern</option>
+          <option value="compact">Compact</option>
+          <option value="tech">Tech</option>
+        </select>
+      </label>
+      <button class="button" type="submit">Descargar TEX</button>
+    </form>
+    <form method="get" action="{{ url_for('cvs_export_pdf', cv_id=cv.id) }}">
+      <label>
+        <span>Plantilla PDF</span>
+        <select name="template_key">
+          <option value="classic">Classic</option>
+          <option value="modern">Modern</option>
+          <option value="compact">Compact</option>
+          <option value="tech">Tech</option>
+        </select>
+      </label>
+      <button class="button primary" type="submit">Generar PDF</button>
+    </form>
+  </div>
 </section>
 
 <section class="content-sections">

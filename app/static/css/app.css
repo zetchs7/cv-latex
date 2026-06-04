@@ -254,6 +254,8 @@ h1 {
 .table-wrap,
 .form-panel,
 .detail-panel,
+.export-panel,
+.import-panel,
 .content-sections article,
 .empty-state,
 .confirm-panel {
@@ -355,6 +357,40 @@ textarea {
   padding: 20px;
 }
 
+.export-panel,
+.import-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 560px);
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 16px;
+  padding: 20px;
+}
+
+.export-panel h2,
+.import-panel h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.export-panel p,
+.import-panel p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.export-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.export-actions form,
+.import-panel form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
 .detail-panel h2,
 .content-sections h2,
 .empty-state h2 {
@@ -433,7 +469,9 @@ dd {
   .dashboard-hero,
   .module-grid,
   .form-grid,
-  .detail-grid {
+  .detail-grid,
+  .export-panel,
+  .import-panel {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -450,13 +488,17 @@ dd {
   .dashboard-hero,
   .module-grid,
   .form-grid,
-  .detail-grid {
+  .detail-grid,
+  .export-panel,
+  .import-panel {
     grid-template-columns: 1fr;
   }
 
   .header-content,
   .page-header,
-  .template-selector {
+  .template-selector,
+  .export-actions form,
+  .import-panel form {
     flex-direction: column;
     align-items: flex-start;
   }

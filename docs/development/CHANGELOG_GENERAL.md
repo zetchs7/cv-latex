@@ -1,5 +1,37 @@
 # Changelog General
 
+## 0.4.0 - 2026-06-03
+
+### Agregado
+
+- Export Engine para CVs.
+- Descarga de TEX generado desde CV guardado.
+- Generacion y descarga de PDF desde TEX.
+- Exportacion de CV a JSON.
+- Importacion de CV desde JSON creando un nuevo registro seguro.
+- Persistencia de artefactos en `/data/exports`.
+- Directorios de exportacion creados automaticamente.
+- Compilacion PDF en directorio temporal controlado bajo `/data/exports/_tmp`.
+- Tests basicos para `export_service` y `pdf_service`.
+- Controles HTML simples para exportar e importar desde el modulo CVs.
+
+### Cambiado
+
+- Version del proyecto actualizada a `0.4.0`.
+- Dockerfile actualizado con TeX Live para compilar las plantillas actuales con `pdflatex`.
+- Vista TEX actualizada con acciones de descarga TEX y generacion PDF.
+- Nombres de archivo exportados reforzados con sanitizacion y timestamp con microsegundos para evitar colisiones.
+
+### No incluido en esta version
+
+- Cartas de presentacion.
+- Tracker de postulaciones.
+- ATS Basic Check.
+- IA.
+- Login.
+- PostgreSQL.
+- Deploy cloud.
+
 ## 0.3.0 - 2026-06-02
 
 ### Agregado

@@ -1,13 +1,14 @@
 # CV LaTeX Builder
 
-Aplicacion web local, pequena y portable para construir curriculums vitae profesionales con formularios web y plantillas LaTeX propias. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 2 y genera contenido `.tex` sin compilar PDF.
+Aplicacion web local, pequena y portable para construir curriculums vitae profesionales con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 3.
 
 ## Estado actual
 
-- Version: `0.3.0`
-- Etapa: `2 - Plantillas LaTeX y sanitizacion`
+- Version: `0.4.0`
+- Etapa: `3 - Export Engine PDF/TEX/JSON`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
+- Exportaciones: `/data/exports` dentro del contenedor, visible en `./data/exports` en el host
 
 ## Stack
 
@@ -16,6 +17,7 @@ Aplicacion web local, pequena y portable para construir curriculums vitae profes
 - Frontend: HTML, CSS simple, JavaScript minimo
 - Persistencia: SQLite en `/data/app.db`
 - Contenedores: Docker Compose
+- PDF: TeX Live con `pdflatex` dentro del contenedor
 
 HTMX queda previsto para interacciones progresivas en etapas posteriores. Las funcionalidades actuales se mantienen server-side con HTML simple.
 
@@ -88,7 +90,9 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |   |-- cvs.py
 |   |   `-- dashboard.py
 |   |-- services/
-|   |   `-- latex_service.py
+|   |   |-- export_service.py
+|   |   |-- latex_service.py
+|   |   `-- pdf_service.py
 |   |-- latex_templates/
 |   |   `-- cv/
 |   |       |-- classic.tex
@@ -118,8 +122,10 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |-- development/
 |   `-- adr/
 |-- tests/
+|   |-- test_export_service.py
 |   |-- test_latex_sanitizer.py
-|   `-- test_latex_service.py
+|   |-- test_latex_service.py
+|   `-- test_pdf_service.py
 |-- docker-compose.yml
 |-- Dockerfile
 |-- requirements.txt
@@ -133,7 +139,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 0: Base tecnica, Docker, SQLite preparado y documentacion inicial. Completada.
 - Etapa 1: CV Builder Core. Completada.
 - Etapa 2: Plantillas LaTeX propias y sanitizacion. Completada.
-- Etapa 3: Export Engine PDF/TEX/JSON.
+- Etapa 3: Export Engine PDF/TEX/JSON. Completada.
 - Etapa 4: Cartas de presentacion.
 - Etapa 5: Tracker de postulaciones.
 - Etapa 6: ATS Basic Check.
@@ -153,6 +159,10 @@ Rutas disponibles:
 - `GET /cvs/{cv_id}/delete`: confirmacion de eliminacion.
 - `POST /cvs/{cv_id}/delete`: eliminacion logica.
 - `GET /cvs/{cv_id}/tex?template_key=classic`: previsualizar contenido `.tex`.
+- `GET /cvs/{cv_id}/export/tex?template_key=classic`: descargar archivo `.tex`.
+- `GET /cvs/{cv_id}/export/pdf?template_key=classic`: generar y descargar PDF.
+- `GET /cvs/{cv_id}/export/json`: exportar CV a JSON.
+- `POST /cvs/import/json`: importar CV desde JSON y crear un nuevo registro.
 
 La eliminacion no borra fisicamente el registro; marca `deleted_at` en SQLite.
 
@@ -165,9 +175,33 @@ Plantillas propias disponibles:
 - `compact`
 - `tech`
 
-La ruta `/cvs/{cv_id}/tex` genera una previsualizacion del contenido `.tex` desde un CV guardado. Esta etapa no implementa descarga, exportacion ni compilacion PDF.
+La ruta `/cvs/{cv_id}/tex` genera una previsualizacion del contenido `.tex` desde un CV guardado. Desde esa vista se puede descargar TEX o generar PDF con la plantilla seleccionada.
 
 La sanitizacion esta en `app/validations/latex_sanitizer.py` y escapa caracteres especiales de LaTeX como `%`, `&`, `$`, `_`, `#`, `{`, `}`, `~`, `^` y `\`, preservando caracteres comunes en espanol mediante UTF-8.
+
+## Export Engine
+
+Los artefactos generados se guardan en:
+
+```text
+/data/exports
+```
+
+En Docker Compose ese directorio queda persistido en:
+
+```text
+./data/exports
+```
+
+Formatos soportados:
+
+- TEX: se genera desde el CV guardado y la plantilla seleccionada.
+- PDF: se compila con `pdflatex` en un temporal controlado bajo `/data/exports/_tmp` y el PDF final se copia a `/data/exports`.
+- JSON: contiene los campos editables del CV y metadatos de exportacion.
+
+La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titulo. No acepta rutas de salida desde inputs del usuario y los nombres de archivo exportados se sanitizan.
+
+Advertencia operativa: el Dockerfile instala TeX Live para compilar PDF de forma reproducible dentro del contenedor. Esto aumenta el tamano de la imagen de manera relevante.
 
 ## Prueba manual rapida
 
@@ -179,7 +213,11 @@ La sanitizacion esta en `app/validations/latex_sanitizer.py` y escapa caracteres
 6. Eliminarlo desde la pantalla de confirmacion.
 7. Abrir `Ver TEX` desde el detalle de un CV.
 8. Cambiar entre plantillas.
-9. Confirmar que no aparece en el listado activo si se elimina.
+9. Descargar TEX.
+10. Descargar JSON.
+11. Importar el JSON desde el listado.
+12. Generar y descargar PDF.
+13. Confirmar que los archivos quedan en `./data/exports`.
 
 ## Troubleshooting basico
 
@@ -190,6 +228,6 @@ La sanitizacion esta en `app/validations/latex_sanitizer.py` y escapa caracteres
 
 ## Alcance de esta version
 
-Incluye dashboard, CV Builder Core, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion.
+Incluye dashboard, CV Builder Core, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion.
 
-No incluye compilacion PDF, descarga PDF, export TEX, export JSON, import JSON, cartas, postulaciones, ATS ni IA.
+No incluye cartas, postulaciones, ATS, IA, login, PostgreSQL ni deploy cloud.

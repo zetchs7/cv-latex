@@ -2,7 +2,7 @@
 
 ## Version
 
-`0.3.0`
+`0.4.0`
 
 ## Objetivo
 
@@ -78,7 +78,7 @@ Flujo manual:
 ## Limitaciones
 
 - No compila PDF.
-- No descarga PDF.
+- La descarga PDF se implementa desde Etapa 3 mediante `pdf_service.py`.
 - No exporta TEX.
 - No exporta JSON.
 - No importa JSON.

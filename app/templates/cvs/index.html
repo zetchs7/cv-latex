@@ -7,7 +7,7 @@
   <div>
     <p class="eyebrow">CV Builder Core</p>
     <h1>CVs</h1>
-    <p class="hero-copy">Crea, edita, duplica y elimina logicamente curriculums guardados en SQLite.</p>
+    <p class="hero-copy">Crea, edita, importa y exporta curriculums guardados en SQLite.</p>
   </div>
   <a class="button primary" href="{{ url_for('cvs_new') }}">Crear CV</a>
 </section>
@@ -15,6 +15,20 @@
 {% if message %}
 <div class="flash-message" role="status">{{ message }}</div>
 {% endif %}
+
+<section class="import-panel">
+  <div>
+    <h2>Importar JSON</h2>
+    <p>El archivo debe venir de una exportacion del modulo CVs. Siempre crea un CV nuevo.</p>
+  </div>
+  <form method="post" action="{{ url_for('cvs_import_json') }}" enctype="multipart/form-data">
+    <label>
+      <span>Archivo JSON</span>
+      <input type="file" name="json_file" accept="application/json,.json" required>
+    </label>
+    <button class="button" type="submit">Importar</button>
+  </form>
+</section>
 
 {% if cvs %}
 <section class="table-wrap" aria-label="Listado de CVs">
@@ -38,6 +52,7 @@
         <td>
           <div class="action-row">
             <a class="button small" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar</a>
+            <a class="button small" href="{{ url_for('cvs_export_json', cv_id=cv.id) }}">JSON</a>
             <form method="post" action="{{ url_for('cvs_duplicate', cv_id=cv.id) }}">
               <button class="button small" type="submit">Duplicar</button>
             </form>

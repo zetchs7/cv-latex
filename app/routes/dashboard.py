@@ -14,8 +14,8 @@ def dashboard(request: Request) -> HTMLResponse:
     modules = [
         {
             "name": "CVs",
-            "status": "Activo - Etapa 1",
-            "description": "Creacion, edicion, duplicado y listado de curriculums.",
+            "status": "Activo - Etapa 3",
+            "description": "Creacion, edicion, importacion JSON y exportacion TEX/PDF/JSON.",
             "url_name": "cvs_list",
             "is_active": True,
         },
@@ -47,7 +47,7 @@ def dashboard(request: Request) -> HTMLResponse:
         {
             "request": request,
             "app_name": "CV LaTeX Builder",
-            "app_status": "MVP base funcionando",
+            "app_status": "Export Engine activo",
             "database_status": get_database_status(),
             "modules": modules,
         },

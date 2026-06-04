@@ -1,15 +1,23 @@
-from fastapi import APIRouter, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.repositories import cv_repository
+from app.models import CV
 from app.schemas import CVFormData
+from app.services.export_service import (
+    ExportServiceError,
+    build_cv_form_data_from_json,
+    export_cv_json,
+    export_cv_tex,
+)
 from app.services.latex_service import (
     DEFAULT_TEMPLATE_KEY,
     LatexTemplateError,
     available_cv_templates,
     generate_cv_tex_document,
 )
+from app.services.pdf_service import PdfCompilationError, generate_cv_pdf_export
 from app.validations.cv_validations import build_cv_form_data, validate_cv_form
 
 
@@ -25,6 +33,8 @@ def list_cvs(request: Request, message: str | None = None) -> HTMLResponse:
             "request": request,
             "cvs": cv_repository.list_cvs(),
             "message": message,
+            "templates": available_cv_templates(),
+            "default_template": DEFAULT_TEMPLATE_KEY,
         },
     )
 
@@ -80,6 +90,19 @@ def create_cv(
     return _redirect_to_detail(request, cv_id, "CV creado correctamente.")
 
 
+@router.post("/import/json", response_class=HTMLResponse, name="cvs_import_json")
+def import_cv_json(request: Request, json_file: UploadFile = File(...)) -> RedirectResponse:
+    raw_content = json_file.file.read()
+
+    try:
+        form_data = build_cv_form_data_from_json(raw_content)
+    except ExportServiceError as error:
+        return _redirect_to_list(request, f"No se pudo importar el JSON: {error}")
+
+    cv_id = cv_repository.create_cv(form_data)
+    return _redirect_to_detail(request, cv_id, "CV importado desde JSON correctamente.")
+
+
 @router.get("/{cv_id}", response_class=HTMLResponse, name="cvs_detail")
 def cv_detail(request: Request, cv_id: int, message: str | None = None) -> HTMLResponse:
     cv = cv_repository.get_cv(cv_id)
@@ -121,6 +144,48 @@ def cv_tex_preview(
             "selected_template": template_key,
         },
     )
+
+
+@router.get("/{cv_id}/export/tex", name="cvs_export_tex")
+def export_tex(cv_id: int, template_key: str = DEFAULT_TEMPLATE_KEY) -> FileResponse:
+    cv = _get_existing_cv(cv_id)
+
+    try:
+        exported_file = export_cv_tex(cv, template_key)
+    except LatexTemplateError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ExportServiceError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    return _download_file(exported_file.path, exported_file.filename, exported_file.media_type)
+
+
+@router.get("/{cv_id}/export/json", name="cvs_export_json")
+def export_json(cv_id: int) -> FileResponse:
+    cv = _get_existing_cv(cv_id)
+
+    try:
+        exported_file = export_cv_json(cv)
+    except ExportServiceError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    return _download_file(exported_file.path, exported_file.filename, exported_file.media_type)
+
+
+@router.get("/{cv_id}/export/pdf", name="cvs_export_pdf")
+def export_pdf(cv_id: int, template_key: str = DEFAULT_TEMPLATE_KEY) -> FileResponse:
+    cv = _get_existing_cv(cv_id)
+
+    try:
+        result = generate_cv_pdf_export(cv, template_key)
+    except LatexTemplateError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except PdfCompilationError as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+    except ExportServiceError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    return _download_file(result.exported_pdf.path, result.exported_pdf.filename, result.exported_pdf.media_type)
 
 
 @router.get("/{cv_id}/edit", response_class=HTMLResponse, name="cvs_edit")
@@ -261,6 +326,21 @@ def _empty_form_data() -> CVFormData:
         experience_summary="",
         education_summary="",
         skills="",
+    )
+
+
+def _get_existing_cv(cv_id: int) -> CV:
+    cv = cv_repository.get_cv(cv_id)
+    if cv is None:
+        raise HTTPException(status_code=404, detail="CV no encontrado.")
+    return cv
+
+
+def _download_file(path, filename: str, media_type: str) -> FileResponse:
+    return FileResponse(
+        path=path,
+        filename=filename,
+        media_type=media_type,
     )
 
 
