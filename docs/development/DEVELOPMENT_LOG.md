@@ -354,3 +354,55 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
 - Pendientes:
   - Mantener este baseline como piso minimo antes de sumar modulos nuevos.
   - Validar parsers ATS reales en una etapa futura.
+
+## Etapa 4 - Cover Letters
+
+- Fecha: 2026-06-04
+- Rama: `feature/cover-letters`
+- Objetivo: implementar el modulo de cartas de presentacion con CRUD basico, asociacion opcional a CV y exportacion TEX/PDF.
+- Modulos afectados: `cover_letters`, `database`, `latex_service`, `export_service`, `pdf_service`, `dashboard`, `docs`, `tests`.
+- Resumen de cambios:
+  - Se agrego el modelo `CoverLetter` y el schema `CoverLetterFormData`.
+  - Se creo la tabla SQLite `cover_letters` con eliminacion logica y referencia opcional a CV.
+  - Se implemento el repositorio `cover_letter_repository.py`.
+  - Se agregaron rutas FastAPI para listar, crear, ver detalle, editar, confirmar eliminacion, eliminar, exportar TEX y generar PDF.
+  - Se agregaron templates HTML bajo `app/templates/cover_letters/`.
+  - Se agrego navegacion a `Cartas` desde dashboard y header.
+  - Se creo la plantilla LaTeX `app/latex_templates/cover_letter/classic_letter.tex`.
+  - Se extendieron `latex_service`, `export_service` y `pdf_service` para soportar cartas reutilizando el pipeline existente.
+  - Se agrego documentacion especifica del modulo y se actualizo la version a `0.5.0`.
+- Archivos principales:
+  - `app/models.py`
+  - `app/schemas.py`
+  - `app/database.py`
+  - `app/repositories/cover_letter_repository.py`
+  - `app/routes/cover_letters.py`
+  - `app/templates/cover_letters/index.html`
+  - `app/templates/cover_letters/form.html`
+  - `app/templates/cover_letters/detail.html`
+  - `app/templates/cover_letters/confirm_delete.html`
+  - `app/latex_templates/cover_letter/classic_letter.tex`
+  - `app/validations/cover_letter_validations.py`
+  - `docs/development/COVER_LETTERS.md`
+- Validaciones ejecutadas:
+  - `python -m compileall app tests`
+  - `git diff --check`
+  - `docker compose build`
+  - `docker compose up -d`
+  - `docker compose ps`
+  - `docker compose logs app`
+  - `docker compose exec app python -m pytest`
+  - `Invoke-WebRequest` a `http://localhost:8000`
+  - POST de creacion de CV base para asociacion
+  - POST de creacion de carta asociada
+  - GET de listado y detalle de carta
+  - POST de edicion de carta
+  - GET de confirmacion y POST de eliminacion de carta
+  - Descarga TEX y generacion PDF por HTTP
+  - Verificacion de artefactos persistidos en `/data/exports`
+  - Extraccion basica de texto PDF con `pdftotext`
+- Resultado: etapa implementada y validada localmente. El modulo de cartas queda operativo, asociado al dashboard y reutiliza correctamente sanitizacion, exportacion TEX y compilacion PDF.
+- Pendientes:
+  - Esperar validacion explicita del usuario antes de cualquier merge.
+  - Preparar push de la rama feature y PR hacia `development`.
+  - Pedir `@codex review` manual despues del PR.

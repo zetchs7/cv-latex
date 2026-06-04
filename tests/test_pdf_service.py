@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from app.models import CV
-from app.services.pdf_service import PdfCompilationError, generate_cv_pdf_export
+from app.models import CV, CoverLetter
+from app.services.pdf_service import PdfCompilationError, generate_cover_letter_pdf_export, generate_cv_pdf_export
 
 
 class PdfServiceTest(unittest.TestCase):
@@ -45,6 +45,17 @@ class PdfServiceTest(unittest.TestCase):
         )
         self.assertIn("Undefined control sequence", context.exception.technical_detail)
 
+    def test_generates_cover_letter_pdf_export(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                with patch("app.services.pdf_service.subprocess.run", side_effect=_successful_pdflatex):
+                    result = generate_cover_letter_pdf_export(_build_cover_letter(), "classic_letter")
+
+                self.assertTrue(result.exported_pdf.path.exists())
+                self.assertEqual(result.exported_pdf.path.parent, Path(data_directory) / "exports")
+                self.assertTrue(result.exported_pdf.filename.startswith("cover-letter-"))
+                self.assertTrue(result.exported_tex.path.exists())
+
 
 def _successful_pdflatex(command, cwd, **kwargs):
     tex_filename = command[-1]
@@ -72,6 +83,25 @@ def _build_cv() -> CV:
         skills="Python",
         created_at="2026-06-03 00:00:00",
         updated_at="2026-06-03 00:00:00",
+        deleted_at=None,
+    )
+
+
+def _build_cover_letter() -> CoverLetter:
+    return CoverLetter(
+        id=22,
+        company="ACME Corp",
+        position="Backend Engineer",
+        contact="Hiring Team",
+        greeting="Estimado equipo,",
+        introduction="Presento mi candidatura.",
+        body="Experiencia con Python y FastAPI.",
+        closing="Saludos cordiales.",
+        signature="Juan Perez",
+        associated_cv_id=None,
+        associated_cv_title=None,
+        created_at="2026-06-04 00:00:00",
+        updated_at="2026-06-04 00:00:00",
         deleted_at=None,
     )
 

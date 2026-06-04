@@ -1,11 +1,11 @@
 # CV LaTeX Builder
 
-Aplicacion web local, pequena y portable para construir curriculums vitae profesionales con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 3.2.
+Aplicacion web local, pequena y portable para construir CVs y cartas de presentacion profesionales con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 4.
 
 ## Estado actual
 
-- Version: `0.4.2`
-- Etapa: `3.2 - Baseline Hardening & Consistency`
+- Version: `0.5.0`
+- Etapa: `4 - Cover Letters`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 - Exportaciones: `/data/exports` dentro del contenedor, visible en `./data/exports` en el host
@@ -77,6 +77,12 @@ La carpeta local `./data` se monta como `/data` dentro del contenedor. La base S
 /data/app.db
 ```
 
+Las exportaciones persistidas se guardan en:
+
+```text
+/data/exports
+```
+
 El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reales ni datos personales.
 
 ## Estructura actual
@@ -89,8 +95,10 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |-- models.py
 |   |-- schemas.py
 |   |-- repositories/
-|   |   `-- cv_repository.py
+|   |   |-- cv_repository.py
+|   |   `-- cover_letter_repository.py
 |   |-- routes/
+|   |   |-- cover_letters.py
 |   |   |-- cvs.py
 |   |   `-- dashboard.py
 |   |-- services/
@@ -98,21 +106,29 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |   |-- latex_service.py
 |   |   `-- pdf_service.py
 |   |-- latex_templates/
+|   |   |-- cover_letter/
+|   |   |   `-- classic_letter.tex
 |   |   `-- cv/
 |   |       |-- classic.tex
 |   |       |-- modern.tex
 |   |       |-- compact.tex
 |   |       `-- tech.tex
 |   |-- templates/
-|   |   |-- layout.html
+|   |   |-- cover_letters/
+|   |   |   |-- confirm_delete.html
+|   |   |   |-- detail.html
+|   |   |   |-- form.html
+|   |   |   `-- index.html
+|   |   |-- cvs/
+|   |   |   |-- confirm_delete.html
+|   |   |   |-- detail.html
+|   |   |   |-- form.html
+|   |   |   |-- index.html
+|   |   |   `-- tex_preview.html
 |   |   |-- dashboard.html
-|   |   `-- cvs/
-|   |       |-- index.html
-|   |       |-- form.html
-|   |       |-- detail.html
-|   |       |-- tex_preview.html
-|   |       `-- confirm_delete.html
+|   |   `-- layout.html
 |   |-- validations/
+|   |   |-- cover_letter_validations.py
 |   |   |-- cv_validations.py
 |   |   `-- latex_sanitizer.py
 |   `-- static/
@@ -126,6 +142,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |-- development/
 |   `-- adr/
 |-- tests/
+|   |-- test_cover_letter_repository.py
 |   |-- test_export_service.py
 |   |-- test_latex_sanitizer.py
 |   |-- test_latex_service.py
@@ -146,12 +163,14 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 3: Export Engine PDF/TEX/JSON. Completada.
 - Etapa 3.1: PDF ATS Text Extraction / Encoding Fix. Completada.
 - Etapa 3.2: Baseline Hardening & Consistency. Completada.
-- Etapa 4: Cartas de presentacion.
+- Etapa 4: Cartas de presentacion. Completada.
 - Etapa 5: Tracker de postulaciones.
 - Etapa 6: ATS Basic Check.
 - Etapa 7: Pulido final del MVP.
 
-## CV Builder Core
+## Modulos disponibles
+
+### CV Builder Core
 
 Rutas disponibles:
 
@@ -172,16 +191,50 @@ Rutas disponibles:
 
 La eliminacion no borra fisicamente el registro; marca `deleted_at` en SQLite.
 
+### Cover Letters
+
+Rutas disponibles:
+
+- `GET /cover-letters/`: listar cartas activas.
+- `GET /cover-letters/new`: formulario de creacion.
+- `POST /cover-letters/`: crear carta.
+- `GET /cover-letters/{cover_letter_id}`: detalle.
+- `GET /cover-letters/{cover_letter_id}/edit`: formulario de edicion.
+- `POST /cover-letters/{cover_letter_id}/edit`: actualizar carta.
+- `GET /cover-letters/{cover_letter_id}/delete`: confirmacion de eliminacion.
+- `POST /cover-letters/{cover_letter_id}/delete`: eliminacion logica.
+- `GET /cover-letters/{cover_letter_id}/export/tex`: descargar TEX.
+- `GET /cover-letters/{cover_letter_id}/export/pdf`: generar y descargar PDF.
+
+Campos del modulo:
+
+- `company`
+- `position`
+- `contact`
+- `greeting`
+- `introduction`
+- `body`
+- `closing`
+- `signature`
+- `associated_cv_id` opcional
+
+Las cartas se guardan en SQLite, pueden referenciar un CV activo y reutilizan el pipeline actual de sanitizacion LaTeX y compilacion PDF.
+
 ## Plantillas LaTeX
 
 Plantillas propias disponibles:
 
-- `classic`
-- `modern`
-- `compact`
-- `tech`
+- CVs:
+  - `classic`
+  - `modern`
+  - `compact`
+  - `tech`
+- Cartas:
+  - `classic_letter`
 
 La ruta `/cvs/{cv_id}/tex` genera una previsualizacion del contenido `.tex` desde un CV guardado. Desde esa vista se puede descargar TEX o generar PDF con la plantilla seleccionada.
+
+Las cartas exportan TEX y PDF directamente desde su detalle usando `classic_letter`.
 
 La sanitizacion esta en `app/validations/latex_sanitizer.py` y escapa caracteres especiales de LaTeX como `%`, `&`, `$`, `_`, `#`, `{`, `}`, `~`, `^` y `\`, preservando caracteres comunes en espanol mediante UTF-8.
 
@@ -203,9 +256,13 @@ En Docker Compose ese directorio queda persistido en:
 
 Formatos soportados:
 
-- TEX: se genera desde el CV guardado y la plantilla seleccionada.
-- PDF: se compila con `pdflatex` en un temporal controlado bajo `/data/exports/_tmp` y el PDF final se copia a `/data/exports`.
-- JSON: contiene los campos editables del CV y metadatos de exportacion.
+- CVs:
+  - TEX
+  - PDF
+  - JSON
+- Cartas:
+  - TEX
+  - PDF
 
 La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titulo. No acepta rutas de salida desde inputs del usuario, los nombres de archivo exportados se sanitizan y el upload JSON se lee en chunks con limite maximo de `512 KB`.
 
@@ -217,28 +274,27 @@ Advertencia operativa: el Dockerfile instala TeX Live, `lmodern`, `poppler-utils
 
 1. Abrir `http://localhost:8000`.
 2. Entrar a `CVs`.
-3. Crear un CV.
-4. Editarlo.
-5. Duplicarlo.
-6. Eliminarlo desde la pantalla de confirmacion.
-7. Abrir `Ver TEX` desde el detalle de un CV.
-8. Cambiar entre plantillas.
-9. Descargar TEX.
-10. Descargar JSON.
-11. Importar el JSON desde el listado.
-12. Generar y descargar PDF.
-13. Confirmar que los archivos quedan en `./data/exports`.
-14. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
+3. Crear o reutilizar un CV.
+4. Entrar a `Cartas`.
+5. Crear una carta y asociarla opcionalmente a un CV.
+6. Editar la carta.
+7. Abrir el detalle.
+8. Descargar TEX.
+9. Generar y descargar PDF.
+10. Confirmar que los archivos quedan en `./data/exports`.
+11. Exportar un CV a JSON e importarlo de nuevo.
+12. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
 
 ## Troubleshooting basico
 
-- Si el puerto `8000` esta ocupado, detener el proceso que lo usa o ajustar el puerto publicado en `docker-compose.yml`.
+- Si el puerto `8000` esta ocupado, detener el proceso que lo usa o ajustar el host bind/puerto publicado en `docker-compose.yml`.
 - Si la app no inicia, revisar `docker compose logs app`.
 - Si SQLite no se crea, verificar que exista `./data` y que Docker pueda montar esa carpeta.
 - Si Docker no responde, verificar que Docker Desktop o el daemon de Docker esten activos.
+- Si un PDF falla al compilar, revisar `docker compose logs app` para el detalle tecnico del error LaTeX.
 
 ## Alcance de esta version
 
-Incluye dashboard, CV Builder Core, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion.
+Incluye dashboard, CV Builder Core, cover letters, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion.
 
-No incluye cartas, postulaciones, ATS, IA, login, PostgreSQL ni deploy cloud.
+No incluye tracker de postulaciones, ATS, IA, login, PostgreSQL ni deploy cloud.

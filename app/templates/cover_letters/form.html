@@ -1,0 +1,87 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ page_title }} - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Cover Letters</p>
+    <h1>{{ page_title }}</h1>
+  </div>
+  <a class="button" href="{{ url_for('cover_letters_list') }}">Volver al listado</a>
+</section>
+
+<form class="form-panel" method="post" action="{{ action_url }}" novalidate>
+  <div class="form-grid">
+    <label>
+      <span>Empresa *</span>
+      <input name="company" value="{{ form_data.company }}" maxlength="160" required>
+      {% if errors.company %}<small class="field-error">{{ errors.company }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>Puesto *</span>
+      <input name="position" value="{{ form_data.position }}" maxlength="160" required>
+      {% if errors.position %}<small class="field-error">{{ errors.position }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>Contacto</span>
+      <input name="contact" value="{{ form_data.contact }}" maxlength="160">
+      {% if errors.contact %}<small class="field-error">{{ errors.contact }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>CV asociado opcional</span>
+      <select name="associated_cv_id">
+        <option value="">Sin asociar</option>
+        {% for cv in available_cvs %}
+        <option value="{{ cv.id }}" {% if form_data.associated_cv_id == cv.id %}selected{% endif %}>
+          {{ cv.title }}
+        </option>
+        {% endfor %}
+      </select>
+      {% if errors.associated_cv_id %}<small class="field-error">{{ errors.associated_cv_id }}</small>{% endif %}
+    </label>
+  </div>
+
+  <label>
+    <span>Saludo *</span>
+    <textarea name="greeting" rows="3" maxlength="200" required>{{ form_data.greeting }}</textarea>
+    {% if errors.greeting %}<small class="field-error">{{ errors.greeting }}</small>{% endif %}
+  </label>
+
+  <label>
+    <span>Introduccion</span>
+    <textarea name="introduction" rows="5" maxlength="1200">{{ form_data.introduction }}</textarea>
+    {% if errors.introduction %}<small class="field-error">{{ errors.introduction }}</small>{% endif %}
+  </label>
+
+  <label>
+    <span>Cuerpo *</span>
+    <textarea name="body" rows="8" maxlength="3000" required>{{ form_data.body }}</textarea>
+    {% if errors.body %}<small class="field-error">{{ errors.body }}</small>{% endif %}
+  </label>
+
+  <label>
+    <span>Cierre</span>
+    <textarea name="closing" rows="4" maxlength="800">{{ form_data.closing }}</textarea>
+    {% if errors.closing %}<small class="field-error">{{ errors.closing }}</small>{% endif %}
+  </label>
+
+  <label>
+    <span>Firma *</span>
+    <input name="signature" value="{{ form_data.signature }}" maxlength="160" required>
+    {% if errors.signature %}<small class="field-error">{{ errors.signature }}</small>{% endif %}
+  </label>
+
+  <div class="form-actions">
+    <button class="button primary" type="submit">{{ submit_label }}</button>
+    {% if cover_letter_id %}
+    <a class="button" href="{{ url_for('cover_letters_detail', cover_letter_id=cover_letter_id) }}">Cancelar</a>
+    {% else %}
+    <a class="button" href="{{ url_for('cover_letters_list') }}">Cancelar</a>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}

@@ -5,11 +5,11 @@
 
 ## Contexto
 
-El MVP necesita generar CVs en LaTeX con plantillas propias. La compilacion final a PDF corresponde a una etapa posterior, por lo que en esta etapa se requiere producir contenido `.tex` seguro desde datos guardados en SQLite.
+El MVP necesita generar CVs y cartas de presentacion en LaTeX con plantillas propias. La compilacion final a PDF comenzo en Etapa 3, por lo que el sistema requiere producir contenido `.tex` seguro desde datos guardados en SQLite y luego compilarlo dentro del contenedor.
 
 ## Decision
 
-Crear plantillas LaTeX propias en `app/latex_templates/cv/` y renderizarlas con Jinja2 usando delimitadores personalizados:
+Crear plantillas LaTeX propias en `app/latex_templates/cv/` y `app/latex_templates/cover_letter/` y renderizarlas con Jinja2 usando delimitadores personalizados:
 
 - Bloques: `[% ... %]`
 - Variables: `[[ ... ]]`
@@ -24,10 +24,12 @@ En Etapa 3.1 se refuerza la extraccion de texto para PDF agregando `cmap`, Latin
 
 En Etapa 3.2 los fallos de compilacion PDF dejan de exponerse completos al usuario final. La UI recibe un mensaje resumido y el detalle tecnico queda separado para logs y troubleshooting.
 
+En Etapa 4 se reutiliza el mismo pipeline de LaTeX/PDF para cartas de presentacion. Las cartas tienen su propia plantilla `classic_letter`, conservan sanitizacion, nombres de archivo seguros y persistencia final en `/data/exports`.
+
 ## Consecuencias
 
 - La logica LaTeX queda separada de rutas y templates HTML.
-- Los datos del CV se sanitizan antes de entrar a las plantillas.
+- Los datos de CVs y cartas se sanitizan antes de entrar a las plantillas.
 - Las plantillas pueden manejar secciones vacias sin romper.
 - La compilacion PDF depende de TeX Live instalado en la imagen.
 - `/data/exports` concentra los artefactos persistidos TEX, JSON y PDF.

@@ -1,5 +1,33 @@
 # Changelog General
 
+# 0.5.0 - 2026-06-04
+
+### Agregado
+
+- Modulo Cover Letters con CRUD basico.
+- Asociacion opcional de carta a CV existente.
+- Plantilla LaTeX `classic_letter`.
+- Exportacion TEX para cartas.
+- Generacion PDF para cartas reutilizando el pipeline actual.
+- Persistencia SQLite de cartas en la tabla `cover_letters`.
+- Navegacion desde dashboard y header al nuevo modulo.
+- Tests basicos de repositorio, LaTeX y PDF para cartas.
+- Documentacion especifica del modulo.
+
+### Cambiado
+
+- `latex_service`, `export_service` y `pdf_service` ahora soportan CVs y cartas.
+- `database.py` inicializa la tabla `cover_letters` e indices asociados.
+- README, module index y ADR LaTeX actualizados al baseline con cartas.
+- Version del proyecto actualizada a `0.5.0`.
+
+### No incluido en esta version
+
+- Tracker de postulaciones.
+- ATS Basic Check.
+- IA.
+- Login.
+
 ## 0.4.2 - 2026-06-04
 
 ### Cambiado

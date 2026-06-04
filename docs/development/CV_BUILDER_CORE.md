@@ -2,11 +2,11 @@
 
 ## Version
 
-`0.4.2`
+`0.5.0`
 
 ## Objetivo
 
-Implementar y mantener el modulo base de CVs para crear, listar, ver detalle, editar, duplicar, eliminar logicamente, importar JSON y disparar exportaciones desde datos guardados en SQLite.
+Implementar y mantener el modulo base de CVs para crear, listar, ver detalle, editar, duplicar, eliminar logicamente, importar JSON y disparar exportaciones desde datos guardados en SQLite, conviviendo con el modulo de cartas de presentacion.
 
 ## Archivos principales
 

@@ -1,0 +1,35 @@
+\documentclass[11pt,a4paper]{article}
+\input{glyphtounicode}
+\pdfgentounicode=1
+\usepackage{cmap}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{xcolor}
+\geometry{margin=2.4cm}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+{\LARGE \textbf{[[ position ]]}}\\[0.2em]
+{\large [[ company ]]}\\[0.6em]
+[% if contact %]
+Atencion: [[ contact ]]\\[0.6em]
+[% endif %]
+[% if associated_cv_title %]
+CV de referencia: [[ associated_cv_title ]]\\[0.8em]
+[% endif %]
+
+[[ greeting ]]\\[1em]
+[% if introduction %]
+[[ introduction ]]\\[1em]
+[% endif %]
+[[ body ]]\\[1em]
+[% if closing %]
+[[ closing ]]\\[1.4em]
+[% endif %]
+[[ signature ]]
+
+\end{document}

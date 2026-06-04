@@ -4,14 +4,16 @@ import shutil
 import subprocess
 import tempfile
 
-from app.models import CV
+from app.models import CV, CoverLetter
 from app.services.export_service import (
     ExportedFile,
+    build_cover_letter_pdf_export_path,
     build_pdf_export_path,
     ensure_pdf_temp_root,
+    export_cover_letter_generated_tex_document,
     export_generated_tex_document,
 )
-from app.services.latex_service import generate_cv_tex_document
+from app.services.latex_service import GeneratedLatexDocument, generate_cover_letter_tex_document, generate_cv_tex_document
 
 
 PDFLATEX_COMMAND = "pdflatex"
@@ -35,6 +37,24 @@ def generate_cv_pdf_export(cv: CV, template_key: str) -> PdfCompilationResult:
     generated_document = generate_cv_tex_document(cv, template_key)
     exported_tex = export_generated_tex_document(cv, generated_document)
     export_path, filename = build_pdf_export_path(cv, generated_document.template.key)
+
+    return _compile_generated_pdf_export(generated_document, exported_tex, export_path, filename)
+
+
+def generate_cover_letter_pdf_export(cover_letter: CoverLetter, template_key: str) -> PdfCompilationResult:
+    generated_document = generate_cover_letter_tex_document(cover_letter, template_key)
+    exported_tex = export_cover_letter_generated_tex_document(cover_letter, generated_document)
+    export_path, filename = build_cover_letter_pdf_export_path(cover_letter, generated_document.template.key)
+
+    return _compile_generated_pdf_export(generated_document, exported_tex, export_path, filename)
+
+
+def _compile_generated_pdf_export(
+    generated_document: GeneratedLatexDocument,
+    exported_tex: ExportedFile,
+    export_path: Path,
+    filename: str,
+) -> PdfCompilationResult:
 
     with tempfile.TemporaryDirectory(prefix="cv-pdf-", dir=ensure_pdf_temp_root()) as temp_directory_name:
         temp_directory = Path(temp_directory_name)

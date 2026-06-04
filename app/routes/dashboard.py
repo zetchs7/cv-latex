@@ -14,17 +14,17 @@ def dashboard(request: Request) -> HTMLResponse:
     modules = [
         {
             "name": "CVs",
-            "status": "Activo - Etapa 3",
+            "status": "Activo - Etapa 4",
             "description": "Creacion, edicion, importacion JSON y exportacion TEX/PDF/JSON.",
             "url_name": "cvs_list",
             "is_active": True,
         },
         {
             "name": "Cartas de presentacion",
-            "status": "Pendiente - Etapa 4",
-            "description": "Cartas asociables a CVs y exportables en etapas futuras.",
-            "url_name": None,
-            "is_active": False,
+            "status": "Activo - Etapa 4",
+            "description": "CRUD basico de cartas con asociacion opcional a CV y exportacion TEX/PDF.",
+            "url_name": "cover_letters_list",
+            "is_active": True,
         },
         {
             "name": "Postulaciones",
@@ -47,7 +47,7 @@ def dashboard(request: Request) -> HTMLResponse:
         {
             "request": request,
             "app_name": "CV LaTeX Builder",
-            "app_status": "Export Engine activo",
+            "app_status": "CVs y cartas activos",
             "database_status": get_database_status(),
             "modules": modules,
         },

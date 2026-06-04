@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+
+{% block title %}Eliminar carta - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="confirm-panel">
+  <p class="eyebrow">Confirmacion requerida</p>
+  <h1>Eliminar carta</h1>
+  <p>
+    Vas a eliminar logicamente la carta para <strong>{{ cover_letter.company }}</strong> - <strong>{{ cover_letter.position }}</strong>.
+    El registro se oculta del listado, pero no se borra fisicamente de SQLite.
+  </p>
+
+  <form class="form-actions" method="post" action="{{ url_for('cover_letters_delete', cover_letter_id=cover_letter.id) }}">
+    <input type="hidden" name="confirm_delete" value="yes">
+    <button class="button danger" type="submit">Confirmar eliminacion</button>
+    <a class="button" href="{{ url_for('cover_letters_detail', cover_letter_id=cover_letter.id) }}">Cancelar</a>
+  </form>
+</section>
+{% endblock %}

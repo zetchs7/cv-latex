@@ -1,0 +1,94 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ cover_letter.company }} - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Cover Letters</p>
+    <h1>{{ cover_letter.company }}</h1>
+    <p class="hero-copy">{{ cover_letter.position }}</p>
+  </div>
+  <div class="action-row">
+    <a class="button" href="{{ url_for('cover_letters_list') }}">Listado</a>
+    <a class="button" href="{{ url_for('cover_letters_export_tex', cover_letter_id=cover_letter.id) }}">Descargar TEX</a>
+    <a class="button primary" href="{{ url_for('cover_letters_edit', cover_letter_id=cover_letter.id) }}">Editar</a>
+  </div>
+</section>
+
+{% if message %}
+<div class="flash-message" role="status">{{ message }}</div>
+{% endif %}
+
+<section class="detail-grid">
+  <article class="detail-panel">
+    <h2>Contexto</h2>
+    <dl>
+      <dt>Empresa</dt>
+      <dd>{{ cover_letter.company }}</dd>
+      <dt>Puesto</dt>
+      <dd>{{ cover_letter.position }}</dd>
+      <dt>Contacto</dt>
+      <dd>{{ cover_letter.contact or "Sin contacto" }}</dd>
+      <dt>CV asociado</dt>
+      <dd>
+        {% if cover_letter.associated_cv_id and cover_letter.associated_cv_title %}
+        <a class="text-link" href="{{ url_for('cvs_detail', cv_id=cover_letter.associated_cv_id) }}">{{ cover_letter.associated_cv_title }}</a>
+        {% else %}
+        Sin asociar
+        {% endif %}
+      </dd>
+      <dt>Creada</dt>
+      <dd>{{ cover_letter.created_at }}</dd>
+      <dt>Actualizada</dt>
+      <dd>{{ cover_letter.updated_at }}</dd>
+    </dl>
+  </article>
+
+  <article class="detail-panel">
+    <h2>Acciones</h2>
+    <div class="stack-actions">
+      <a class="button" href="{{ url_for('cover_letters_export_pdf', cover_letter_id=cover_letter.id) }}">Generar PDF</a>
+      <a class="button danger" href="{{ url_for('cover_letters_confirm_delete', cover_letter_id=cover_letter.id) }}">Eliminar carta</a>
+    </div>
+  </article>
+</section>
+
+<section class="export-panel">
+  <div>
+    <h2>Exportaciones</h2>
+    <p>La carta usa la plantilla <code>{{ default_template }}</code> y los archivos resultantes se guardan en <code>/data/exports</code>.</p>
+  </div>
+  <div class="export-actions">
+    <form method="get" action="{{ url_for('cover_letters_export_tex', cover_letter_id=cover_letter.id) }}">
+      <button class="button" type="submit">Descargar TEX</button>
+    </form>
+    <form method="get" action="{{ url_for('cover_letters_export_pdf', cover_letter_id=cover_letter.id) }}">
+      <button class="button primary" type="submit">Generar PDF</button>
+    </form>
+  </div>
+</section>
+
+<section class="content-sections">
+  <article>
+    <h2>Saludo</h2>
+    <p>{{ cover_letter.greeting }}</p>
+  </article>
+  <article>
+    <h2>Introduccion</h2>
+    <p>{{ cover_letter.introduction or "Sin introduccion cargada." }}</p>
+  </article>
+  <article>
+    <h2>Cuerpo</h2>
+    <p>{{ cover_letter.body }}</p>
+  </article>
+  <article>
+    <h2>Cierre</h2>
+    <p>{{ cover_letter.closing or "Sin cierre cargado." }}</p>
+  </article>
+  <article>
+    <h2>Firma</h2>
+    <p>{{ cover_letter.signature }}</p>
+  </article>
+</section>
+{% endblock %}

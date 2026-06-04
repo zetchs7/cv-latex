@@ -78,6 +78,37 @@ def initialize_database() -> DatabaseStatus:
             ON cvs (deleted_at, updated_at)
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS cover_letters (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company TEXT NOT NULL DEFAULT '',
+                position TEXT NOT NULL DEFAULT '',
+                contact TEXT NOT NULL DEFAULT '',
+                greeting TEXT NOT NULL DEFAULT '',
+                introduction TEXT NOT NULL DEFAULT '',
+                body TEXT NOT NULL DEFAULT '',
+                closing TEXT NOT NULL DEFAULT '',
+                signature TEXT NOT NULL DEFAULT '',
+                associated_cv_id INTEGER,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                deleted_at TEXT
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_cover_letters_deleted_at_updated_at
+            ON cover_letters (deleted_at, updated_at)
+            """
+        )
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_cover_letters_associated_cv_id
+            ON cover_letters (associated_cv_id)
+            """
+        )
         connection.commit()
 
     return get_database_status()

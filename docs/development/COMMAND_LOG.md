@@ -2142,3 +2142,177 @@ Resultado:
 - Import excedido redirige a `/cvs/?message=No+se+pudo+importar+el+JSON%3A+El+archivo+JSON+supera+el+maximo+permitido.`.
 - El duplicado del titulo largo crea `cv_id=15` con longitud final `120` y sufijo `(copia)`.
 - La generacion PDF sigue funcionando; ejemplo persistido: `/data/exports/cv-12-hardening-import-source-classic-20260604044658516376.pdf`.
+
+---
+
+## 2026-06-04 - Etapa 4 Cover Letters
+
+Accion:
+Crear rama de Etapa 4 desde `development`.
+
+Motivo:
+Respetar Git Flow y no trabajar directo sobre `main` ni `development`.
+
+Comandos:
+- `git status --short --branch`
+- `git fetch origin`
+- `git switch development`
+- `git rev-list --left-right --count development...origin/development`
+- `git switch -c feature/cover-letters`
+
+Resultado: rama `feature/cover-letters` creada desde `development` sincronizada.
+
+---
+
+Accion:
+Agregar modelo, tabla SQLite, repositorio, validaciones, rutas y templates de Cover Letters.
+
+Motivo:
+Implementar CRUD basico de cartas con asociacion opcional a CV y navegacion desde la app.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/models.py`: nuevo modelo `CoverLetter`.
+- `app/schemas.py`: nuevo schema `CoverLetterFormData`.
+- `app/database.py`: nueva tabla `cover_letters` e indices.
+- `app/repositories/cover_letter_repository.py`: acceso a datos SQLite.
+- `app/validations/cover_letter_validations.py`: reglas del formulario.
+- `app/routes/cover_letters.py`: CRUD y exportaciones.
+- `app/templates/cover_letters/`: listado, formulario, detalle y confirmacion.
+- `app/routes/dashboard.py`, `app/templates/dashboard.html`, `app/templates/layout.html`: navegacion y estado de modulo.
+
+Resultado: modulo web de cartas integrado al dashboard y al header.
+
+---
+
+Accion:
+Extender pipeline LaTeX/PDF/exports para cartas.
+
+Motivo:
+Reutilizar la infraestructura actual para exportar TEX y generar PDF de cartas sin duplicar logica.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/latex_templates/cover_letter/classic_letter.tex`: plantilla propia.
+- `app/services/latex_service.py`: generacion TEX para cover letters.
+- `app/services/export_service.py`: escritura segura de TEX/PDF para cartas.
+- `app/services/pdf_service.py`: compilacion PDF para cartas usando el mismo flujo controlado.
+- `tests/test_latex_service.py`, `tests/test_pdf_service.py`, `tests/test_cover_letter_repository.py`: cobertura basica del nuevo soporte.
+
+Resultado: las cartas pueden exportarse a TEX y PDF con nombres de archivo seguros y persistencia en `/data/exports`.
+
+---
+
+Accion:
+Actualizar version y documentacion de la etapa.
+
+Motivo:
+Dejar trazabilidad de la nueva capacidad y evitar docs desfasadas respecto del baseline real.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `VERSION`, `.env.example`, `docker-compose.yml`, `Dockerfile`, `README.md`
+- `docs/development/COVER_LETTERS.md`
+- `docs/development/CV_BUILDER_CORE.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/adr/ADR-0004-latex-rendering.md`
+
+Resultado: version `0.5.0` documentada y modulo de cartas cubierto en README y docs de desarrollo.
+
+---
+
+Accion:
+Validar sintaxis local y whitespace.
+
+Motivo:
+Detectar errores tempranos antes de reconstruir Docker.
+
+Comandos:
+- `python -m compileall app tests`
+- `git diff --check`
+
+Resultado: compilacion Python correcta y `git diff --check` sin errores; solo advertencias CRLF normales en Windows.
+
+---
+
+Accion:
+Reconstruir y levantar la app con Cover Letters.
+
+Motivo:
+Validar el modulo dentro del contenedor real antes de probar flujos HTTP.
+
+Comandos:
+- `docker compose build`
+- `docker compose up -d`
+- `docker compose ps`
+- `docker compose logs app`
+
+Resultado: contenedor `cv_latex_app` iniciado y `healthy`; `docker compose ps` confirma `127.0.0.1:8000->8000/tcp`.
+
+---
+
+Accion:
+Ejecutar tests dentro del contenedor.
+
+Motivo:
+Confirmar que el nuevo modulo no rompe la base actual y que los tests minimos del modulo pasan.
+
+Comando: `docker compose exec app python -m pytest`
+
+Argumentos:
+- Suite completa dentro de la imagen actualizada.
+
+Resultado: `21 passed in 0.20s`.
+
+---
+
+Accion:
+Validar flujos HTTP reales del modulo Cover Letters.
+
+Motivo:
+Comprobar creacion, edicion, listado, detalle, asociacion a CV, exportacion TEX/PDF y eliminacion con confirmacion.
+
+Comandos:
+- `Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing`
+- `Invoke-WebRequest -Uri http://localhost:8000/cvs/ -Method Post -Body @{ ... }`
+- `Invoke-WebRequest -Uri http://localhost:8000/cover-letters/ -Method Post -Body @{ ... associated_cv_id = '16' }`
+- `Invoke-WebRequest -Uri http://localhost:8000/cover-letters/ -UseBasicParsing`
+- `Invoke-WebRequest -Uri http://localhost:8000/cover-letters/1 -UseBasicParsing`
+- `Invoke-WebRequest -Uri http://localhost:8000/cover-letters/1/edit -Method Post -Body @{ ... }`
+- `Invoke-WebRequest -Uri http://localhost:8000/cover-letters/1/export/tex -UseBasicParsing -OutFile data\\cover-letter-stage4.tex`
+- `Invoke-WebRequest -Uri http://localhost:8000/cover-letters/1/export/pdf -UseBasicParsing -OutFile data\\cover-letter-stage4.pdf`
+- `Invoke-WebRequest -Uri http://localhost:8000/cover-letters/1/delete -UseBasicParsing`
+- `Invoke-WebRequest -Uri http://localhost:8000/cover-letters/1/delete -Method Post -Body @{ confirm_delete = 'yes' }`
+
+Resultado:
+- `http://localhost:8000` responde `200`.
+- Se creo `cv_id=16` para asociacion de carta.
+- Se creo `cover_letter_id=1` y redirigio a `/cover-letters/1?message=Carta+creada+correctamente.`.
+- El listado mostro `Empresa Azul` y `Backend Engineer`.
+- El detalle mostro `CV Etapa 4 Base`, `Descargar TEX` y `Generar PDF`.
+- La edicion redirigio a `/cover-letters/1?message=Carta+actualizada+correctamente.`.
+- La confirmacion de eliminacion respondio `200`.
+- La eliminacion logica redirigio a `/cover-letters/?message=Carta+eliminada+correctamente.` y la carta dejo de aparecer en el listado.
+
+---
+
+Accion:
+Verificar persistencia de artefactos y extraccion de texto PDF.
+
+Motivo:
+Confirmar que TEX/PDF quedan en `/data/exports` y que el PDF generado mantiene texto extraible basico.
+
+Comandos:
+- `docker compose exec app python -c "from pathlib import Path; paths=sorted(Path('/data/exports').glob('cover-letter-1-*')); [print(p) for p in paths]"`
+- `docker compose exec app python -c "from pathlib import Path; import subprocess; pdf=sorted(Path('/data/exports').glob('cover-letter-1-*.pdf'))[-1]; result=subprocess.run(['pdftotext', str(pdf), '-'], capture_output=True, text=True, check=True); ..."`
+
+Resultado:
+- Archivos persistidos:
+  - `/data/exports/cover-letter-1-empresa-azul-sa-senior-backend-engineer-classic_letter-20260604123535254711.tex`
+  - `/data/exports/cover-letter-1-empresa-azul-sa-senior-backend-engineer-classic_letter-20260604123535270431.tex`
+  - `/data/exports/cover-letter-1-empresa-azul-sa-senior-backend-engineer-classic_letter-20260604123535274462.pdf`
+- `pdftotext` encontro correctamente `Perfil tecnico`, `Empresa Azul SA` y `Senior Backend Engineer`.

@@ -1,10 +1,10 @@
 import unittest
 
-from app.models import CV
+from app.models import CV, CoverLetter
 
 
 try:
-    from app.services.latex_service import generate_cv_tex_document
+    from app.services.latex_service import generate_cover_letter_tex_document, generate_cv_tex_document
 
     JINJA2_AVAILABLE = True
 except ModuleNotFoundError as error:
@@ -86,6 +86,33 @@ class LatexServiceTest(unittest.TestCase):
                 self.assertIn(r"\pdfgentounicode=1", generated_document.content)
                 self.assertIn(r"\usepackage{cmap}", generated_document.content)
                 self.assertIn(r"\usepackage{lmodern}", generated_document.content)
+
+    def test_generates_cover_letter_tex_document(self):
+        cover_letter = CoverLetter(
+            id=21,
+            company="ACME Corp",
+            position="Backend Engineer",
+            contact="Hiring Team",
+            greeting="Estimado equipo,",
+            introduction="Presento mi candidatura para el puesto.",
+            body="Tengo experiencia con Python y FastAPI.",
+            closing="Quedo a disposicion para conversar.",
+            signature="Juan Perez",
+            associated_cv_id=7,
+            associated_cv_title="CV Backend",
+            created_at="2026-06-04 00:00:00",
+            updated_at="2026-06-04 00:00:00",
+            deleted_at=None,
+        )
+
+        generated_document = generate_cover_letter_tex_document(cover_letter, "classic_letter")
+
+        self.assertEqual(generated_document.filename, "acme-corp-backend-engineer-classic_letter.tex")
+        self.assertIn("ACME Corp", generated_document.content)
+        self.assertIn("Backend Engineer", generated_document.content)
+        self.assertIn(r"Python y FastAPI.", generated_document.content)
+        self.assertIn(r"\usepackage{lmodern}", generated_document.content)
+        self.assertNotIn("[[", generated_document.content)
 
 
 if __name__ == "__main__":

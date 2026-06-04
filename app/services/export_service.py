@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 
 from app.database import get_data_dir
-from app.models import CV
+from app.models import CV, CoverLetter
 from app.schemas import CVFormData
 from app.services.latex_service import GeneratedLatexDocument, generate_cv_tex_document
 from app.validations.cv_validations import build_cv_form_data, validate_cv_form
@@ -66,18 +66,32 @@ def ensure_pdf_temp_root() -> Path:
 
 def export_cv_tex(cv: CV, template_key: str) -> ExportedFile:
     generated_document = generate_cv_tex_document(cv, template_key)
-    filename = _build_export_filename(cv, generated_document.template.key, "tex")
+    filename = _build_entity_export_filename(cv.id, cv.title, generated_document.template.key, "tex", entity_prefix="cv")
     return _write_export_file(filename, generated_document.content.encode("utf-8"), "application/x-tex")
 
 
 def export_generated_tex_document(cv: CV, generated_document: GeneratedLatexDocument) -> ExportedFile:
-    filename = _build_export_filename(cv, generated_document.template.key, "tex")
+    filename = _build_entity_export_filename(cv.id, cv.title, generated_document.template.key, "tex", entity_prefix="cv")
+    return _write_export_file(filename, generated_document.content.encode("utf-8"), "application/x-tex")
+
+
+def export_cover_letter_generated_tex_document(
+    cover_letter: CoverLetter,
+    generated_document: GeneratedLatexDocument,
+) -> ExportedFile:
+    filename = _build_entity_export_filename(
+        cover_letter.id,
+        _build_cover_letter_export_title(cover_letter),
+        generated_document.template.key,
+        "tex",
+        entity_prefix="cover-letter",
+    )
     return _write_export_file(filename, generated_document.content.encode("utf-8"), "application/x-tex")
 
 
 def export_cv_json(cv: CV) -> ExportedFile:
     payload = build_cv_json_payload(cv)
-    filename = _build_export_filename(cv, "cv", "json")
+    filename = _build_entity_export_filename(cv.id, cv.title, "cv", "json", entity_prefix="cv")
     content = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
     return _write_export_file(filename, content, "application/json")
 
@@ -133,7 +147,19 @@ def build_cv_form_data_from_json(raw_content: bytes) -> CVFormData:
 
 
 def build_pdf_export_path(cv: CV, template_key: str) -> tuple[Path, str]:
-    filename = _build_export_filename(cv, template_key, "pdf")
+    filename = _build_entity_export_filename(cv.id, cv.title, template_key, "pdf", entity_prefix="cv")
+    export_path = _safe_export_path(filename)
+    return export_path, filename
+
+
+def build_cover_letter_pdf_export_path(cover_letter: CoverLetter, template_key: str) -> tuple[Path, str]:
+    filename = _build_entity_export_filename(
+        cover_letter.id,
+        _build_cover_letter_export_title(cover_letter),
+        template_key,
+        "pdf",
+        entity_prefix="cover-letter",
+    )
     export_path = _safe_export_path(filename)
     return export_path, filename
 
@@ -172,11 +198,18 @@ def sanitize_filename(filename: str) -> str:
     return f"{safe_stem}{safe_suffix}"
 
 
-def _build_export_filename(cv: CV, variant: str, extension: str) -> str:
-    title = sanitize_filename(f"{cv.title}.json").removesuffix(".json")
+def _build_entity_export_filename(
+    entity_id: int,
+    title_value: str,
+    variant: str,
+    extension: str,
+    *,
+    entity_prefix: str,
+) -> str:
+    title = sanitize_filename(f"{title_value}.json").removesuffix(".json")
     safe_variant = re.sub(r"[^a-zA-Z0-9_-]+", "-", variant).strip("-").lower()
     timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S%f")
-    return f"cv-{cv.id}-{title}-{safe_variant}-{timestamp}.{extension}"
+    return f"{entity_prefix}-{entity_id}-{title}-{safe_variant}-{timestamp}.{extension}"
 
 
 def _extract_cv_payload(payload: object) -> dict[str, object]:
@@ -219,3 +252,9 @@ def _build_imported_title(title: str) -> str:
     if not title:
         return "CV importado"
     return f"{title} (importado)"
+
+
+def _build_cover_letter_export_title(cover_letter: CoverLetter) -> str:
+    title_parts = [cover_letter.company, cover_letter.position]
+    title = " ".join(part for part in title_parts if part).strip()
+    return title or f"cover-letter-{cover_letter.id}"

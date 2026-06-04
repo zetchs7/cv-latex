@@ -4,12 +4,14 @@ import re
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-from app.models import CV
+from app.models import CV, CoverLetter
 from app.validations.latex_sanitizer import sanitize_latex_text, split_sanitized_items
 
 
 DEFAULT_TEMPLATE_KEY = "classic"
-TEMPLATE_DIRECTORY = Path(__file__).resolve().parents[1] / "latex_templates" / "cv"
+DEFAULT_COVER_LETTER_TEMPLATE_KEY = "classic_letter"
+CV_TEMPLATE_DIRECTORY = Path(__file__).resolve().parents[1] / "latex_templates" / "cv"
+COVER_LETTER_TEMPLATE_DIRECTORY = Path(__file__).resolve().parents[1] / "latex_templates" / "cover_letter"
 
 
 @dataclass(frozen=True)
@@ -37,9 +39,17 @@ CV_TEMPLATES = {
     "tech": LatexTemplate("tech", "Tech", "tech.tex"),
 }
 
+COVER_LETTER_TEMPLATES = {
+    "classic_letter": LatexTemplate("classic_letter", "Classic Letter", "classic_letter.tex"),
+}
+
 
 def available_cv_templates() -> list[LatexTemplate]:
     return list(CV_TEMPLATES.values())
+
+
+def available_cover_letter_templates() -> list[LatexTemplate]:
+    return list(COVER_LETTER_TEMPLATES.values())
 
 
 def generate_cv_tex_document(
@@ -47,7 +57,7 @@ def generate_cv_tex_document(
     template_key: str = DEFAULT_TEMPLATE_KEY,
 ) -> GeneratedLatexDocument:
     template = _get_template(template_key)
-    environment = _build_environment()
+    environment = _build_environment(CV_TEMPLATE_DIRECTORY)
     renderer = environment.get_template(template.filename)
     context = _build_cv_context(cv)
 
@@ -55,6 +65,24 @@ def generate_cv_tex_document(
 
     return GeneratedLatexDocument(
         filename=_build_filename(cv, template.key),
+        template=template,
+        content=content,
+    )
+
+
+def generate_cover_letter_tex_document(
+    cover_letter: CoverLetter,
+    template_key: str = DEFAULT_COVER_LETTER_TEMPLATE_KEY,
+) -> GeneratedLatexDocument:
+    template = _get_cover_letter_template(template_key)
+    environment = _build_environment(COVER_LETTER_TEMPLATE_DIRECTORY)
+    renderer = environment.get_template(template.filename)
+    context = _build_cover_letter_context(cover_letter)
+
+    content = renderer.render(**context).strip() + "\n"
+
+    return GeneratedLatexDocument(
+        filename=_build_cover_letter_filename(cover_letter, template.key),
         template=template,
         content=content,
     )
@@ -68,9 +96,17 @@ def _get_template(template_key: str) -> LatexTemplate:
     return template
 
 
-def _build_environment() -> Environment:
+def _get_cover_letter_template(template_key: str) -> LatexTemplate:
+    template = COVER_LETTER_TEMPLATES.get(template_key)
+    if template is None:
+        raise LatexTemplateError(f"Plantilla LaTeX no disponible: {template_key}")
+
+    return template
+
+
+def _build_environment(template_directory: Path) -> Environment:
     return Environment(
-        loader=FileSystemLoader(TEMPLATE_DIRECTORY),
+        loader=FileSystemLoader(template_directory),
         autoescape=False,
         undefined=StrictUndefined,
         block_start_string="[%",
@@ -112,6 +148,20 @@ def _build_cv_context(cv: CV) -> dict[str, object]:
     }
 
 
+def _build_cover_letter_context(cover_letter: CoverLetter) -> dict[str, object]:
+    return {
+        "company": sanitize_latex_text(cover_letter.company),
+        "position": sanitize_latex_text(cover_letter.position),
+        "contact": sanitize_latex_text(cover_letter.contact),
+        "greeting": sanitize_latex_text(cover_letter.greeting),
+        "introduction": sanitize_latex_text(cover_letter.introduction),
+        "body": sanitize_latex_text(cover_letter.body),
+        "closing": sanitize_latex_text(cover_letter.closing),
+        "signature": sanitize_latex_text(cover_letter.signature),
+        "associated_cv_title": sanitize_latex_text(cover_letter.associated_cv_title),
+    }
+
+
 def _build_section(title: str, body: str) -> dict[str, object] | None:
     sanitized_body = sanitize_latex_text(body)
     if not sanitized_body:
@@ -128,5 +178,15 @@ def _build_filename(cv: CV, template_key: str) -> str:
     safe_name = re.sub(r"[^a-zA-Z0-9]+", "-", cv.title.strip()).strip("-").lower()
     if not safe_name:
         safe_name = f"cv-{cv.id}"
+
+    return f"{safe_name}-{template_key}.tex"
+
+
+def _build_cover_letter_filename(cover_letter: CoverLetter, template_key: str) -> str:
+    parts = [cover_letter.company.strip(), cover_letter.position.strip()]
+    joined = "-".join(part for part in parts if part)
+    safe_name = re.sub(r"[^a-zA-Z0-9]+", "-", joined).strip("-").lower()
+    if not safe_name:
+        safe_name = f"cover-letter-{cover_letter.id}"
 
     return f"{safe_name}-{template_key}.tex"
