@@ -40,9 +40,8 @@ def analyze_cv_ats(cv: CV) -> AtsAnalysisResult:
         "skills": _normalize_text(cv.skills),
     }
     total_characters = _estimate_cv_length(cv)
-    has_experience_or_education = bool(
-        normalized_sections["experience_summary"] or normalized_sections["education_summary"]
-    )
+    has_experience = bool(normalized_sections["experience_summary"])
+    has_education = bool(normalized_sections["education_summary"])
     length_is_recommended = MIN_RECOMMENDED_CV_LENGTH <= total_characters <= MAX_RECOMMENDED_CV_LENGTH
 
     checklist = [
@@ -65,10 +64,16 @@ def analyze_cv_ats(cv: CV) -> AtsAnalysisResult:
             detail="El CV incluye un resumen profesional." if normalized_sections["professional_summary"] else "Falta el resumen profesional.",
         ),
         AtsChecklistItem(
-            key="experience_or_education",
-            label="Experiencia o educacion presentes",
-            passed=has_experience_or_education,
-            detail="Hay experiencia, educacion o ambas secciones cargadas." if has_experience_or_education else "Falta experiencia y tambien falta educacion.",
+            key="experience_summary",
+            label="Experiencia presente",
+            passed=has_experience,
+            detail="La experiencia laboral o de proyectos esta cargada." if has_experience else "Falta la seccion de experiencia.",
+        ),
+        AtsChecklistItem(
+            key="education_summary",
+            label="Educacion presente",
+            passed=has_education,
+            detail="La educacion o certificaciones estan cargadas." if has_education else "Falta la seccion de educacion.",
         ),
         AtsChecklistItem(
             key="skills",
@@ -134,6 +139,8 @@ def _build_length_detail(total_characters: int, length_is_recommended: bool) -> 
 
 def _build_recommendations(normalized_sections: dict[str, str], total_characters: int) -> list[str]:
     recommendations: list[str] = []
+    has_experience = bool(normalized_sections["experience_summary"])
+    has_education = bool(normalized_sections["education_summary"])
 
     if not normalized_sections["email"]:
         recommendations.append("Agregar un email de contacto claro y profesional.")
@@ -141,11 +148,11 @@ def _build_recommendations(normalized_sections: dict[str, str], total_characters
         recommendations.append("Agregar un telefono de contacto visible.")
     if not normalized_sections["professional_summary"]:
         recommendations.append("Completar el resumen profesional con un perfil breve y orientado al puesto.")
-    if not normalized_sections["experience_summary"] and not normalized_sections["education_summary"]:
+    if not has_experience and not has_education:
         recommendations.append("Cargar experiencia, educacion o ambas para dar contexto al perfil.")
-    elif not normalized_sections["experience_summary"]:
+    elif not has_experience:
         recommendations.append("Agregar experiencia laboral o proyectos relevantes.")
-    elif not normalized_sections["education_summary"]:
+    elif not has_education:
         recommendations.append("Agregar educacion o certificaciones para reforzar el perfil.")
     if not normalized_sections["skills"]:
         recommendations.append("Listar skills concretas, tecnologias y herramientas.")

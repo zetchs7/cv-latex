@@ -27,7 +27,8 @@ Agregar un chequeo ATS basico, sin IA ni servicios externos, para analizar CVs y
 - Email presente.
 - Telefono presente.
 - Resumen profesional presente.
-- Experiencia o educacion presentes.
+- Experiencia presente.
+- Educacion presente.
 - Skills cargadas.
 - Longitud aproximada del CV dentro de un rango simple.
 - Deteccion de secciones importantes vacias.
@@ -55,4 +56,4 @@ Agregar un chequeo ATS basico, sin IA ni servicios externos, para analizar CVs y
 - No parsea PDFs externos.
 - No replica scoring real de ATS comerciales.
 - No hace matching contra job descriptions.
-- El score es orientativo y deliberadamente simple.
+- El score es orientativo y deliberadamente simple, pero ahora penaliza por separado la falta de experiencia y la falta de educacion.
