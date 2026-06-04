@@ -1,0 +1,85 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ application.company }} - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Applications</p>
+    <h1>{{ application.company }}</h1>
+    <p class="hero-copy">{{ application.position }}</p>
+  </div>
+  <div class="action-row">
+    <a class="button" href="{{ url_for('applications_list') }}">Listado</a>
+    <a class="button primary" href="{{ url_for('applications_edit', application_id=application.id) }}">Editar</a>
+  </div>
+</section>
+
+{% if message %}
+<div class="flash-message" role="status">{{ message }}</div>
+{% endif %}
+
+<section class="detail-grid">
+  <article class="detail-panel">
+    <h2>Contexto</h2>
+    <dl>
+      <dt>Empresa</dt>
+      <dd>{{ application.company }}</dd>
+      <dt>Puesto</dt>
+      <dd>{{ application.position }}</dd>
+      <dt>Estado</dt>
+      <dd>{{ application.status }}</dd>
+      <dt>Fecha de aplicacion</dt>
+      <dd>{{ application.applied_on }}</dd>
+      <dt>Fuente</dt>
+      <dd>{{ application.source or "Sin fuente" }}</dd>
+      <dt>Link</dt>
+      <dd>
+        {% if application.link %}
+        <a class="text-link" href="{{ application.link }}" target="_blank" rel="noreferrer">Abrir publicacion</a>
+        {% else %}
+        Sin link
+        {% endif %}
+      </dd>
+      <dt>CV asociado</dt>
+      <dd>
+        {% if application.associated_cv_id and application.associated_cv_title %}
+        <a class="text-link" href="{{ url_for('cvs_detail', cv_id=application.associated_cv_id) }}">{{ application.associated_cv_title }}</a>
+        {% else %}
+        Sin asociar
+        {% endif %}
+      </dd>
+      <dt>Carta asociada</dt>
+      <dd>
+        {% if application.associated_cover_letter_id and application.associated_cover_letter_label %}
+        <a class="text-link" href="{{ url_for('cover_letters_detail', cover_letter_id=application.associated_cover_letter_id) }}">{{ application.associated_cover_letter_label }}</a>
+        {% else %}
+        Sin asociar
+        {% endif %}
+      </dd>
+      <dt>Fecha de seguimiento</dt>
+      <dd>{{ application.follow_up_date or "Sin fecha" }}</dd>
+      <dt>Actualizada</dt>
+      <dd>{{ application.updated_at }}</dd>
+    </dl>
+  </article>
+
+  <article class="detail-panel">
+    <h2>Acciones</h2>
+    <div class="stack-actions">
+      <a class="button danger" href="{{ url_for('applications_confirm_delete', application_id=application.id) }}">Eliminar postulacion</a>
+    </div>
+  </article>
+</section>
+
+<section class="content-sections">
+  <article>
+    <h2>Proxima accion</h2>
+    <p>{{ application.next_action or "Sin proxima accion definida." }}</p>
+  </article>
+  <article>
+    <h2>Notas</h2>
+    <p>{{ application.notes or "Sin notas cargadas." }}</p>
+  </article>
+</section>
+{% endblock %}

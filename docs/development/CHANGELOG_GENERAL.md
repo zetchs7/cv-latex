@@ -1,5 +1,33 @@
 # Changelog General
 
+## 0.6.0 - 2026-06-04
+
+### Agregado
+
+- Modulo Application Tracker con CRUD basico.
+- Asociacion opcional de postulacion a CV existente.
+- Asociacion opcional de postulacion a carta existente.
+- Estados permitidos: `pendiente`, `enviado`, `entrevista`, `rechazado`, `oferta`, `pausado`.
+- Tests basicos de repositorio y validaciones del modulo.
+- Documentacion especifica en `docs/development/APPLICATION_TRACKER.md`.
+
+### Cambiado
+
+- `database.py` inicializa la tabla `applications` e indices asociados.
+- Dashboard y header ahora exponen el acceso visual al modulo Postulaciones.
+- README, module index y logs de desarrollo actualizados a Etapa 5.
+- Version del proyecto actualizada a `0.6.0`.
+
+### No incluido en esta version
+
+- ATS Basic Check.
+- IA.
+- Login.
+- Emails.
+- Integracion LinkedIn.
+- Calendario.
+- Automatizaciones.
+
 ## 0.5.1 - 2026-06-04
 
 ### Cambiado

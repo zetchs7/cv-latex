@@ -1,11 +1,11 @@
 # CV LaTeX Builder
 
-Aplicacion web local, pequena y portable para construir CVs y cartas de presentacion profesionales con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 4.
+Aplicacion web local, pequena y portable para construir CVs, cartas de presentacion y seguimiento de postulaciones profesionales con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 5.
 
 ## Estado actual
 
-- Version: `0.5.0`
-- Etapa: `4 - Cover Letters`
+- Version: `0.6.0`
+- Etapa: `5 - Application Tracker`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 - Exportaciones: `/data/exports` dentro del contenedor, visible en `./data/exports` en el host
@@ -48,8 +48,6 @@ docker compose ps
 ```
 
 Abrir:
-
-La publicacion por defecto queda limitada a `127.0.0.1`, por lo que la app responde localmente en:
 
 ```text
 http://localhost:8000
@@ -95,14 +93,17 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |-- models.py
 |   |-- schemas.py
 |   |-- repositories/
+|   |   |-- application_repository.py
 |   |   |-- cv_repository.py
 |   |   `-- cover_letter_repository.py
 |   |-- routes/
+|   |   |-- applications.py
 |   |   |-- cover_letters.py
 |   |   |-- cvs.py
 |   |   `-- dashboard.py
 |   |-- services/
 |   |   |-- export_service.py
+|   |   |-- file_naming.py
 |   |   |-- latex_service.py
 |   |   `-- pdf_service.py
 |   |-- latex_templates/
@@ -114,6 +115,11 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |       |-- compact.tex
 |   |       `-- tech.tex
 |   |-- templates/
+|   |   |-- applications/
+|   |   |   |-- confirm_delete.html
+|   |   |   |-- detail.html
+|   |   |   |-- form.html
+|   |   |   `-- index.html
 |   |   |-- cover_letters/
 |   |   |   |-- confirm_delete.html
 |   |   |   |-- detail.html
@@ -128,6 +134,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |   |-- dashboard.html
 |   |   `-- layout.html
 |   |-- validations/
+|   |   |-- application_validations.py
 |   |   |-- cover_letter_validations.py
 |   |   |-- cv_validations.py
 |   |   `-- latex_sanitizer.py
@@ -142,7 +149,10 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |-- development/
 |   `-- adr/
 |-- tests/
+|   |-- test_application_repository.py
+|   |-- test_application_validations.py
 |   |-- test_cover_letter_repository.py
+|   |-- test_cv_repository.py
 |   |-- test_export_service.py
 |   |-- test_latex_sanitizer.py
 |   |-- test_latex_service.py
@@ -164,7 +174,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 3.1: PDF ATS Text Extraction / Encoding Fix. Completada.
 - Etapa 3.2: Baseline Hardening & Consistency. Completada.
 - Etapa 4: Cartas de presentacion. Completada.
-- Etapa 5: Tracker de postulaciones.
+- Etapa 5: Tracker de postulaciones. Completada.
 - Etapa 6: ATS Basic Check.
 - Etapa 7: Pulido final del MVP.
 
@@ -189,8 +199,6 @@ Rutas disponibles:
 - `GET /cvs/{cv_id}/export/json`: exportar CV a JSON.
 - `POST /cvs/import/json`: importar CV desde JSON y crear un nuevo registro.
 
-La eliminacion no borra fisicamente el registro; marca `deleted_at` en SQLite.
-
 ### Cover Letters
 
 Rutas disponibles:
@@ -206,39 +214,41 @@ Rutas disponibles:
 - `GET /cover-letters/{cover_letter_id}/export/tex`: descargar TEX.
 - `GET /cover-letters/{cover_letter_id}/export/pdf`: generar y descargar PDF.
 
+### Application Tracker
+
+Rutas disponibles:
+
+- `GET /applications/`: listar postulaciones activas.
+- `GET /applications/new`: formulario de creacion.
+- `POST /applications/`: crear postulacion.
+- `GET /applications/{application_id}`: detalle.
+- `GET /applications/{application_id}/edit`: formulario de edicion.
+- `POST /applications/{application_id}/edit`: actualizar postulacion.
+- `GET /applications/{application_id}/delete`: confirmacion de eliminacion.
+- `POST /applications/{application_id}/delete`: eliminacion logica.
+
 Campos del modulo:
 
 - `company`
 - `position`
-- `contact`
-- `greeting`
-- `introduction`
-- `body`
-- `closing`
-- `signature`
+- `link`
+- `source`
+- `applied_on`
+- `status`
 - `associated_cv_id` opcional
+- `associated_cover_letter_id` opcional
+- `notes`
+- `next_action`
+- `follow_up_date`
 
-Las cartas se guardan en SQLite, pueden referenciar un CV activo y reutilizan el pipeline actual de sanitizacion LaTeX y compilacion PDF.
+Estados permitidos:
 
-## Plantillas LaTeX
-
-Plantillas propias disponibles:
-
-- CVs:
-  - `classic`
-  - `modern`
-  - `compact`
-  - `tech`
-- Cartas:
-  - `classic_letter`
-
-La ruta `/cvs/{cv_id}/tex` genera una previsualizacion del contenido `.tex` desde un CV guardado. Desde esa vista se puede descargar TEX o generar PDF con la plantilla seleccionada.
-
-Las cartas exportan TEX y PDF directamente desde su detalle usando `classic_letter`.
-
-La sanitizacion esta en `app/validations/latex_sanitizer.py` y escapa caracteres especiales de LaTeX como `%`, `&`, `$`, `_`, `#`, `{`, `}`, `~`, `^` y `\`, preservando caracteres comunes en espanol mediante UTF-8.
-
-Las plantillas usan `inputenc` UTF-8, `fontenc` T1, `lmodern`, `cmap`, `glyphtounicode` y `pdfgentounicode=1` para mejorar copy/paste, extraccion de texto y compatibilidad con parsers tipo ATS.
+- `pendiente`
+- `enviado`
+- `entrevista`
+- `rechazado`
+- `oferta`
+- `pausado`
 
 ## Export Engine
 
@@ -266,22 +276,18 @@ Formatos soportados:
 
 La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titulo. No acepta rutas de salida desde inputs del usuario, los nombres de archivo exportados se sanitizan y se acotan a un maximo seguro de `180` caracteres, y el upload JSON se lee en chunks con limite maximo de `512 KB`.
 
-Si el archivo supera el limite, la UI muestra un error claro sin cargar el archivo completo en memoria. Si la compilacion PDF falla, la UI devuelve un mensaje resumido y el detalle tecnico queda para logs y troubleshooting.
-
-Advertencia operativa: el Dockerfile instala TeX Live, `lmodern`, `poppler-utils` y dependencias PDF para compilar y validar PDFs de forma reproducible dentro del contenedor. Esto aumenta el tamano de la imagen de manera relevante.
-
 ## Prueba manual rapida
 
 1. Abrir `http://localhost:8000`.
-2. Entrar a `CVs`.
-3. Crear o reutilizar un CV.
-4. Entrar a `Cartas`.
-5. Crear una carta y asociarla opcionalmente a un CV.
-6. Editar la carta.
+2. Entrar a `CVs` y crear o reutilizar un CV.
+3. Entrar a `Cartas` y crear o reutilizar una carta.
+4. Entrar a `Postulaciones`.
+5. Crear una postulacion y asociarla opcionalmente a un CV y a una carta.
+6. Editar la postulacion y cambiar su estado.
 7. Abrir el detalle.
-8. Descargar TEX.
-9. Generar y descargar PDF.
-10. Confirmar que los archivos quedan en `./data/exports`.
+8. Eliminarla desde la pantalla de confirmacion.
+9. Confirmar persistencia en SQLite.
+10. Confirmar que los archivos de export siguen quedando en `./data/exports`.
 11. Exportar un CV a JSON e importarlo de nuevo.
 12. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
 
@@ -295,6 +301,6 @@ Advertencia operativa: el Dockerfile instala TeX Live, `lmodern`, `poppler-utils
 
 ## Alcance de esta version
 
-Incluye dashboard, CV Builder Core, cover letters, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion.
+Incluye dashboard, CV Builder Core, cover letters, application tracker, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion.
 
-No incluye tracker de postulaciones, ATS, IA, login, PostgreSQL ni deploy cloud.
+No incluye ATS, IA, login, PostgreSQL ni deploy cloud.

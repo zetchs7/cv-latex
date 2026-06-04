@@ -1,0 +1,106 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ page_title }} - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Applications</p>
+    <h1>{{ page_title }}</h1>
+  </div>
+  <a class="button" href="{{ url_for('applications_list') }}">Volver al listado</a>
+</section>
+
+<form class="form-panel" method="post" action="{{ action_url }}" novalidate>
+  <div class="form-grid">
+    <label>
+      <span>Empresa *</span>
+      <input name="company" value="{{ form_data.company }}" maxlength="160" required>
+      {% if errors.company %}<small class="field-error">{{ errors.company }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>Puesto *</span>
+      <input name="position" value="{{ form_data.position }}" maxlength="160" required>
+      {% if errors.position %}<small class="field-error">{{ errors.position }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>Link</span>
+      <input name="link" value="{{ form_data.link }}" maxlength="500" placeholder="https://...">
+      {% if errors.link %}<small class="field-error">{{ errors.link }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>Fuente</span>
+      <input name="source" value="{{ form_data.source }}" maxlength="160" placeholder="LinkedIn, referral, web corporativa">
+      {% if errors.source %}<small class="field-error">{{ errors.source }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>Fecha de aplicacion *</span>
+      <input type="date" name="applied_on" value="{{ form_data.applied_on }}" required>
+      {% if errors.applied_on %}<small class="field-error">{{ errors.applied_on }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>Estado *</span>
+      <select name="status" required>
+        {% for application_status in application_statuses %}
+        <option value="{{ application_status }}" {% if form_data.status == application_status %}selected{% endif %}>{{ application_status }}</option>
+        {% endfor %}
+      </select>
+      {% if errors.status %}<small class="field-error">{{ errors.status }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>CV asociado opcional</span>
+      <select name="associated_cv_id">
+        <option value="">Sin asociar</option>
+        {% for cv in available_cvs %}
+        <option value="{{ cv.id }}" {% if form_data.associated_cv_id == cv.id %}selected{% endif %}>{{ cv.title }}</option>
+        {% endfor %}
+      </select>
+      {% if errors.associated_cv_id %}<small class="field-error">{{ errors.associated_cv_id }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>Carta asociada opcional</span>
+      <select name="associated_cover_letter_id">
+        <option value="">Sin asociar</option>
+        {% for cover_letter in available_cover_letters %}
+        <option value="{{ cover_letter.id }}" {% if form_data.associated_cover_letter_id == cover_letter.id %}selected{% endif %}>{{ cover_letter.label }}</option>
+        {% endfor %}
+      </select>
+      {% if errors.associated_cover_letter_id %}<small class="field-error">{{ errors.associated_cover_letter_id }}</small>{% endif %}
+    </label>
+
+    <label>
+      <span>Fecha de seguimiento</span>
+      <input type="date" name="follow_up_date" value="{{ form_data.follow_up_date }}">
+      {% if errors.follow_up_date %}<small class="field-error">{{ errors.follow_up_date }}</small>{% endif %}
+    </label>
+  </div>
+
+  <label>
+    <span>Proxima accion</span>
+    <textarea name="next_action" rows="3" maxlength="800">{{ form_data.next_action }}</textarea>
+    {% if errors.next_action %}<small class="field-error">{{ errors.next_action }}</small>{% endif %}
+  </label>
+
+  <label>
+    <span>Notas</span>
+    <textarea name="notes" rows="8" maxlength="4000">{{ form_data.notes }}</textarea>
+    {% if errors.notes %}<small class="field-error">{{ errors.notes }}</small>{% endif %}
+  </label>
+
+  <div class="form-actions">
+    <button class="button primary" type="submit">{{ submit_label }}</button>
+    {% if application_id %}
+    <a class="button" href="{{ url_for('applications_detail', application_id=application_id) }}">Cancelar</a>
+    {% else %}
+    <a class="button" href="{{ url_for('applications_list') }}">Cancelar</a>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}

@@ -109,6 +109,51 @@ def initialize_database() -> DatabaseStatus:
             ON cover_letters (associated_cv_id)
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS applications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company TEXT NOT NULL DEFAULT '',
+                position TEXT NOT NULL DEFAULT '',
+                link TEXT NOT NULL DEFAULT '',
+                source TEXT NOT NULL DEFAULT '',
+                applied_on TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'pendiente',
+                associated_cv_id INTEGER,
+                associated_cover_letter_id INTEGER,
+                notes TEXT NOT NULL DEFAULT '',
+                next_action TEXT NOT NULL DEFAULT '',
+                follow_up_date TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                deleted_at TEXT
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_applications_deleted_at_updated_at
+            ON applications (deleted_at, updated_at)
+            """
+        )
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_applications_status_applied_on
+            ON applications (status, applied_on)
+            """
+        )
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_applications_associated_cv_id
+            ON applications (associated_cv_id)
+            """
+        )
+        connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_applications_associated_cover_letter_id
+            ON applications (associated_cover_letter_id)
+            """
+        )
         connection.commit()
 
     return get_database_status()

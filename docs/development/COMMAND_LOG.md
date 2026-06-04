@@ -2413,3 +2413,91 @@ Resultado:
 - Archivos persistidos con longitud `180`.
 - `pdftotext` encontro el contenido esperado.
 - `git diff --check` sin errores; solo advertencias CRLF normales en Windows.
+
+---
+
+## 2026-06-04 - Etapa 5 Application Tracker
+
+Accion:
+Crear rama de Etapa 5 desde `development`.
+
+Motivo:
+Respetar Git Flow y no trabajar directo sobre `main` ni `development`.
+
+Comandos:
+- `git status --short --branch`
+- `git fetch origin`
+- `git rev-list --left-right --count development...origin/development`
+- `git switch development`
+- `git switch -c feature/application-tracker`
+
+Resultado: rama `feature/application-tracker` creada desde `development` sincronizada.
+
+---
+
+Accion:
+Agregar modelo, tabla SQLite, repositorio, validaciones, rutas y templates del modulo Postulaciones.
+
+Motivo:
+Implementar CRUD basico de postulaciones con estados y asociaciones opcionales a CV y cover letter.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/models.py`: nuevo modelo `Application`.
+- `app/schemas.py`: nuevo schema `ApplicationFormData`.
+- `app/database.py`: nueva tabla `applications` e indices.
+- `app/repositories/application_repository.py`: acceso a datos SQLite.
+- `app/validations/application_validations.py`: reglas del formulario.
+- `app/routes/applications.py`: CRUD del modulo.
+- `app/templates/applications/`: listado, formulario, detalle y confirmacion.
+- `app/main.py`, `app/routes/dashboard.py`, `app/templates/dashboard.html`, `app/templates/layout.html`: integracion del modulo.
+
+Resultado: modulo web de postulaciones integrado al dashboard y al header.
+
+---
+
+Accion:
+Agregar tests y documentacion de Etapa 5.
+
+Motivo:
+Cubrir persistencia, asociaciones, estados y dejar trazabilidad operativa del modulo.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `tests/test_application_repository.py`
+- `tests/test_application_validations.py`
+- `README.md`
+- `docs/development/APPLICATION_TRACKER.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/COMMAND_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `VERSION`, `.env.example`, `Dockerfile`, `docker-compose.yml`
+
+Resultado: version `0.6.0` documentada y modulo Application Tracker cubierto en docs y tests.
+
+---
+
+Accion:
+Validar el modulo Application Tracker en Docker y por HTTP.
+
+Motivo:
+Confirmar que el CRUD, las asociaciones opcionales, los cambios de estado y la persistencia funcionan sobre la app levantada.
+
+Comandos:
+- `docker compose build`
+- `docker compose up -d`
+- `docker compose ps`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest http://localhost:8000`
+- Requests HTTP `POST` y `GET` a `/cvs/`, `/cover-letters/` y `/applications/`
+- `docker compose exec app python -c "... sqlite3 ..."`
+
+Resultado:
+- Contenedor `cv_latex_app` healthy en `127.0.0.1:8000`.
+- Suite `pytest` en Docker: `28 passed`.
+- Creacion, edicion, detalle, cambio de estado y eliminacion de postulaciones validados por HTTP.
+- Asociaciones a CV y cover letter verificadas.
+- Persistencia comprobada en SQLite, incluyendo `deleted_at` para eliminacion logica.

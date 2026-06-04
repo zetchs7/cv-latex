@@ -49,3 +49,33 @@ class CoverLetterFormData:
             "signature": self.signature,
             "associated_cv_id": self.associated_cv_id,
         }
+
+
+@dataclass(frozen=True)
+class ApplicationFormData:
+    company: str
+    position: str
+    link: str
+    source: str
+    applied_on: str
+    status: str
+    associated_cv_id: int | None
+    associated_cover_letter_id: int | None
+    notes: str
+    next_action: str
+    follow_up_date: str
+
+    def as_database_values(self) -> dict[str, str | int | None]:
+        return {
+            "company": self.company,
+            "position": self.position,
+            "link": self.link,
+            "source": self.source,
+            "applied_on": self.applied_on,
+            "status": self.status,
+            "associated_cv_id": self.associated_cv_id,
+            "associated_cover_letter_id": self.associated_cover_letter_id,
+            "notes": self.notes,
+            "next_action": self.next_action,
+            "follow_up_date": self.follow_up_date,
+        }

@@ -435,3 +435,47 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
 - Pendientes:
   - Actualizar PR #2 con el commit del fix.
   - Esperar nueva revision manual antes de merge.
+
+## Etapa 5 - Application Tracker
+
+- Fecha: 2026-06-04
+- Rama: `feature/application-tracker`
+- Objetivo: implementar el modulo de seguimiento de postulaciones con CRUD basico, estados y asociaciones opcionales a CV y carta.
+- Modulos afectados: `applications`, `database`, `dashboard`, `docs`, `tests`.
+- Resumen de cambios:
+  - Se agrego el modelo `Application` y el schema `ApplicationFormData`.
+  - Se creo la tabla SQLite `applications` con eliminacion logica y asociaciones opcionales a CV y cover letter.
+  - Se implemento el repositorio `application_repository.py`.
+  - Se agregaron rutas FastAPI para listar, crear, ver detalle, editar, confirmar eliminacion y eliminar postulaciones.
+  - Se agregaron templates HTML bajo `app/templates/applications/`.
+  - Se agrego navegacion a `Postulaciones` desde dashboard y header.
+  - Se agregaron estados permitidos y validaciones de fechas, URL y asociaciones.
+  - Se agrego documentacion especifica del modulo y se actualizo la version a `0.6.0`.
+- Archivos principales:
+  - `app/models.py`
+  - `app/schemas.py`
+  - `app/database.py`
+  - `app/repositories/application_repository.py`
+  - `app/routes/applications.py`
+  - `app/templates/applications/index.html`
+  - `app/templates/applications/form.html`
+  - `app/templates/applications/detail.html`
+  - `app/templates/applications/confirm_delete.html`
+  - `app/validations/application_validations.py`
+  - `docs/development/APPLICATION_TRACKER.md`
+- Validaciones ejecutadas:
+  - `python -m compileall app tests`
+  - `git diff --check`
+  - `docker compose build`
+  - `docker compose up -d`
+  - `docker compose ps`
+  - `docker compose exec app python -m pytest`
+  - Requests HTTP a listado, formulario, detalle y borrado
+  - Creacion de CV y carta base para asociaciones
+  - Creacion, edicion y eliminacion de postulacion
+  - Cambio de estado y validacion de persistencia
+- Resultado: etapa implementada y validada localmente. El modulo de postulaciones queda operativo, visible en dashboard y vinculado a CVs y cartas activas.
+- Pendientes:
+  - Esperar validacion explicita del usuario antes de cualquier merge.
+  - Preparar push de la rama feature y PR hacia `development`.
+  - Pedir `@codex review` manual despues del PR.

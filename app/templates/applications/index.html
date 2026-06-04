@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+
+{% block title %}Postulaciones - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Applications</p>
+    <h1>Postulaciones</h1>
+    <p class="hero-copy">Registra oportunidades, cambia estados y vincula cada postulacion con un CV o una carta cuando corresponda.</p>
+  </div>
+  <a class="button primary" href="{{ url_for('applications_new') }}">Crear postulacion</a>
+</section>
+
+{% if message %}
+<div class="flash-message" role="status">{{ message }}</div>
+{% endif %}
+
+{% if applications %}
+<section class="table-wrap" aria-label="Listado de postulaciones">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Empresa</th>
+        <th>Puesto</th>
+        <th>Estado</th>
+        <th>Aplicacion</th>
+        <th>Seguimiento</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for application in applications %}
+      <tr>
+        <td><a class="text-link" href="{{ url_for('applications_detail', application_id=application.id) }}">{{ application.company }}</a></td>
+        <td>{{ application.position }}</td>
+        <td>{{ application.status }}</td>
+        <td>{{ application.applied_on }}</td>
+        <td>{{ application.follow_up_date or "Sin fecha" }}</td>
+        <td>
+          <div class="action-row">
+            <a class="button small" href="{{ url_for('applications_edit', application_id=application.id) }}">Editar</a>
+            <a class="button small danger" href="{{ url_for('applications_confirm_delete', application_id=application.id) }}">Eliminar</a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<section class="empty-state">
+  <h2>No hay postulaciones cargadas</h2>
+  <p>La primera postulacion queda guardada en SQLite y puede asociarse opcionalmente a un CV y a una carta existente.</p>
+  <a class="button primary" href="{{ url_for('applications_new') }}">Crear primera postulacion</a>
+</section>
+{% endif %}
+{% endblock %}

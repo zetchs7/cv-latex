@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+
+{% block title %}Eliminar postulacion - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="confirm-panel">
+  <p class="eyebrow">Confirmacion requerida</p>
+  <h1>Eliminar postulacion</h1>
+  <p>
+    Vas a eliminar logicamente la postulacion para <strong>{{ application.company }}</strong> - <strong>{{ application.position }}</strong>.
+    El registro se oculta del listado, pero no se borra fisicamente de SQLite.
+  </p>
+
+  <form class="form-actions" method="post" action="{{ url_for('applications_delete', application_id=application.id) }}">
+    <input type="hidden" name="confirm_delete" value="yes">
+    <button class="button danger" type="submit">Confirmar eliminacion</button>
+    <a class="button" href="{{ url_for('applications_detail', application_id=application.id) }}">Cancelar</a>
+  </form>
+</section>
+{% endblock %}
