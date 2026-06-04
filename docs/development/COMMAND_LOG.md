@@ -2028,3 +2028,117 @@ Argumentos:
 - Palabras esperadas: `Perfil`, texto acentuado, `ñandu`, `accion` y `configuracion` con caracteres reales en el PDF.
 
 Resultado: `missing=none` para `classic`, `modern`, `compact` y `tech`.
+
+---
+
+## 2026-06-04 - Etapa 3.2 Baseline Hardening & Consistency
+
+Accion:
+Crear rama de hardening desde `development`.
+
+Motivo:
+Corregir hallazgos altos y medios del baseline sin trabajar directo sobre `main` ni `development`.
+
+Comandos:
+- `git status --short --branch`
+- `git fetch origin`
+- `git switch development`
+- `git rev-list --left-right --count development...origin/development`
+- `git switch -c feature/baseline-hardening`
+
+Resultado: rama `feature/baseline-hardening` creada desde `development` sincronizada.
+
+---
+
+Accion:
+Endurecer import JSON, duplicado de CV, errores PDF y bind local de Docker Compose.
+
+Motivo:
+Reducir superficie de exposicion local, evitar lectura completa de uploads excesivos, separar mensaje seguro de detalle tecnico y cerrar el caso de titulos duplicados al limite.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `docker-compose.yml`: bind por defecto `127.0.0.1:8000:8000` mediante `APP_HOST_BIND`.
+- `.env.example`: documentacion de `APP_HOST_BIND`.
+- `app/services/export_service.py`: lectura por chunks con limite temprano de `512 KB`.
+- `app/services/pdf_service.py`: mensaje seguro para UI y detalle tecnico separado.
+- `app/routes/cvs.py`: uso del lector limitado y redirect seguro ante fallo PDF.
+- `app/repositories/cv_repository.py` y `app/validations/cv_validations.py`: duplicado validado y truncado seguro.
+- `tests/`: cobertura minima de import limite, duplicado con titulo largo y error PDF seguro.
+- `README.md` y docs de desarrollo: baseline 3.2 documentado.
+
+Resultado: cambio aplicado sin modificar el alcance funcional fuera de la mini-etapa.
+
+---
+
+Accion:
+Validar sintaxis y diff local.
+
+Motivo:
+Detectar errores tempranos antes de reconstruir Docker.
+
+Comandos:
+- `python -m compileall app tests`
+- `git diff --check`
+
+Resultado: compilacion Python correcta y `git diff --check` sin errores; solo advertencias CRLF normales en Windows.
+
+---
+
+Accion:
+Reconstruir y levantar la app endurecida.
+
+Motivo:
+Validar que el contenedor sigue funcionando y que el puerto publicado queda limitado a localhost.
+
+Comandos:
+- `docker compose build`
+- `docker compose up -d`
+- `docker compose ps`
+- `docker compose logs app`
+
+Resultado: contenedor `cv_latex_app` iniciado y `healthy`; `docker compose ps` confirma `127.0.0.1:8000->8000/tcp`.
+
+---
+
+Accion:
+Ejecutar tests dentro del contenedor.
+
+Motivo:
+Confirmar que el baseline endurecido no rompe la funcionalidad previa y cubre los nuevos casos minimos.
+
+Comando: `docker compose exec app python -m pytest`
+
+Argumentos:
+- Suite completa dentro de la imagen actualizada.
+
+Resultado: `17 passed in 0.15s`.
+
+---
+
+Accion:
+Validar respuesta HTTP local y flujos obligatorios.
+
+Motivo:
+Comprobar import JSON valido/excedido, duplicado con titulo largo y generacion PDF real.
+
+Comandos:
+- `Invoke-WebRequest -Uri http://localhost:8000 -UseBasicParsing`
+- `Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing`
+- `docker compose exec app python -c "... create_cv(...)"` para crear CVs de prueba `12` y `13`
+- `docker compose exec app python -c "... export_cv_json(...)"` para export JSON valido
+- `curl.exe -s -D - -o NUL -F "json_file=@data/exports/<archivo>.json;type=application/json" http://localhost:8000/cvs/import/json`
+- `curl.exe -s -D - -o NUL -F "json_file=@data/oversized-import-hardening.json;type=application/json" http://localhost:8000/cvs/import/json`
+- `curl.exe -s -D - -o NUL -X POST http://localhost:8000/cvs/13/duplicate`
+- `docker compose exec app python -c "... get_cv(15) ..."` para verificar titulo duplicado
+- `Invoke-WebRequest -Uri 'http://localhost:8000/cvs/12/export/pdf?template_key=classic' -UseBasicParsing -OutFile 'data\\hardening-pdf-validation.pdf'`
+- `docker compose exec app python -c "... Path('/data/exports').glob(...)"` para verificar PDF persistido
+
+Resultado:
+- `http://localhost:8000` responde `200`.
+- `/health` devuelve `version: 0.4.2`.
+- Import JSON valido redirige a `/cvs/14?message=CV+importado+desde+JSON+correctamente.`.
+- Import excedido redirige a `/cvs/?message=No+se+pudo+importar+el+JSON%3A+El+archivo+JSON+supera+el+maximo+permitido.`.
+- El duplicado del titulo largo crea `cv_id=15` con longitud final `120` y sufijo `(copia)`.
+- La generacion PDF sigue funcionando; ejemplo persistido: `/data/exports/cv-12-hardening-import-source-classic-20260604044658516376.pdf`.

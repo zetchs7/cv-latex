@@ -25,7 +25,10 @@ class PdfCompilationResult:
 
 
 class PdfCompilationError(RuntimeError):
-    pass
+    def __init__(self, user_message: str, technical_detail: str | None = None):
+        super().__init__(user_message)
+        self.user_message = user_message
+        self.technical_detail = technical_detail
 
 
 def generate_cv_pdf_export(cv: CV, template_key: str) -> PdfCompilationResult:
@@ -71,13 +74,22 @@ def _run_pdflatex(temp_directory: Path, tex_path: Path) -> None:
             check=False,
         )
     except FileNotFoundError as error:
-        raise PdfCompilationError("El motor LaTeX 'pdflatex' no esta instalado en el contenedor.") from error
+        raise PdfCompilationError(
+            "No se pudo generar el PDF porque el motor LaTeX no esta disponible.",
+            "El motor LaTeX 'pdflatex' no esta instalado en el contenedor.",
+        ) from error
     except subprocess.TimeoutExpired as error:
-        raise PdfCompilationError("La compilacion LaTeX excedio el tiempo maximo permitido.") from error
+        raise PdfCompilationError(
+            "La generacion del PDF excedio el tiempo maximo permitido.",
+            "La compilacion LaTeX excedio el tiempo maximo permitido.",
+        ) from error
 
     if result.returncode != 0:
         error_output = _extract_latex_error(result.stdout, result.stderr, temp_directory / f"{tex_path.stem}.log")
-        raise PdfCompilationError(f"Fallo la compilacion LaTeX: {error_output}")
+        raise PdfCompilationError(
+            "No se pudo generar el PDF con la plantilla seleccionada. Revisa el contenido del CV o consulta los logs tecnicos.",
+            error_output,
+        )
 
 
 def _extract_latex_error(stdout: str, stderr: str, log_path: Path) -> str:

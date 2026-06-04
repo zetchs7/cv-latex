@@ -1,5 +1,28 @@
 # Changelog General
 
+## 0.4.2 - 2026-06-04
+
+### Cambiado
+
+- `docker-compose.yml` publica el puerto HTTP sobre `127.0.0.1` por defecto mediante `APP_HOST_BIND`.
+- La importacion JSON ahora se lee por chunks con limite temprano de `512 KB`.
+- El duplicado de CV reutiliza validaciones y recorta el titulo para cerrar con `(copia)` sin exceder el maximo.
+- Los errores de compilacion PDF separan mensaje seguro para UI y detalle tecnico para logs.
+- Se actualizaron README, docs operativas y modulo CV Builder para reflejar el baseline endurecido.
+
+### Validado
+
+- `pytest` cubriendo lectura limitada de import JSON, duplicado con titulo largo y mensaje PDF seguro.
+- Build y arranque Docker manteniendo `/data`, exportaciones y compilacion PDF.
+
+### No incluido en esta version
+
+- Etapa 4.
+- Cartas de presentacion.
+- Tracker de postulaciones.
+- ATS Basic Check funcional.
+- IA.
+
 ## 0.4.1 - 2026-06-03
 
 ### Cambiado

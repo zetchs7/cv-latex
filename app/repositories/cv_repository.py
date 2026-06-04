@@ -1,6 +1,11 @@
 from app.database import get_connection
 from app.models import CV
 from app.schemas import CVFormData
+from app.validations.cv_validations import build_cv_form_data, build_duplicate_title, validate_cv_form
+
+
+class DuplicateCVError(ValueError):
+    pass
 
 
 def list_cvs() -> list[CV]:
@@ -97,16 +102,23 @@ def duplicate_cv(cv_id: int) -> int | None:
     if source_cv is None:
         return None
 
-    duplicate_data = CVFormData(
-        title=f"{source_cv.title} (copia)",
-        full_name=source_cv.full_name,
-        email=source_cv.email,
-        phone=source_cv.phone,
-        professional_summary=source_cv.professional_summary,
-        experience_summary=source_cv.experience_summary,
-        education_summary=source_cv.education_summary,
-        skills=source_cv.skills,
+    duplicate_data = build_cv_form_data(
+        {
+            "title": build_duplicate_title(source_cv.title),
+            "full_name": source_cv.full_name,
+            "email": source_cv.email,
+            "phone": source_cv.phone,
+            "professional_summary": source_cv.professional_summary,
+            "experience_summary": source_cv.experience_summary,
+            "education_summary": source_cv.education_summary,
+            "skills": source_cv.skills,
+        }
     )
+
+    errors = validate_cv_form(duplicate_data)
+    if errors:
+        joined_errors = "; ".join(f"{field}: {message}" for field, message in errors.items())
+        raise DuplicateCVError(f"No se pudo duplicar el CV: {joined_errors}")
 
     return create_cv(duplicate_data)
 

@@ -2,11 +2,11 @@
 
 ## Version
 
-`0.2.0`
+`0.4.2`
 
 ## Objetivo
 
-Implementar el modulo base de CVs para crear, listar, ver detalle, editar, duplicar y eliminar logicamente curriculums guardados en SQLite.
+Implementar y mantener el modulo base de CVs para crear, listar, ver detalle, editar, duplicar, eliminar logicamente, importar JSON y disparar exportaciones desde datos guardados en SQLite.
 
 ## Archivos principales
 
@@ -35,6 +35,10 @@ Implementar el modulo base de CVs para crear, listar, ver detalle, editar, dupli
 | POST | `/cvs/{cv_id}/duplicate` | Duplicar CV. |
 | GET | `/cvs/{cv_id}/delete` | Mostrar confirmacion de eliminacion. |
 | POST | `/cvs/{cv_id}/delete` | Eliminar logicamente CV. |
+| POST | `/cvs/import/json` | Importar un CV desde JSON y crear un registro nuevo. |
+| GET | `/cvs/{cv_id}/export/json` | Descargar JSON del CV. |
+| GET | `/cvs/{cv_id}/export/tex` | Descargar TEX del CV con plantilla. |
+| GET | `/cvs/{cv_id}/export/pdf` | Generar y descargar PDF del CV con plantilla. |
 
 ## Modelo SQLite
 
@@ -62,6 +66,8 @@ Las validaciones viven en `app/validations/cv_validations.py`.
 - `email` debe tener formato valido si se informa.
 - Limites de longitud por campo.
 - Normalizacion basica de espacios.
+- El duplicado reutiliza las validaciones existentes y recorta el titulo para cerrar con el sufijo `(copia)` sin exceder el limite.
+- La importacion JSON se lee por chunks con limite maximo de `512 KB`.
 
 ## Calculos
 
@@ -96,7 +102,9 @@ Flujo manual:
 3. Editar el CV.
 4. Duplicar el CV.
 5. Confirmar eliminacion.
-6. Verificar que el CV eliminado no aparece en el listado.
+6. Exportar JSON, TEX y PDF.
+7. Importar JSON valido desde el listado.
+8. Verificar que el CV eliminado no aparece en el listado.
 
 ## Validaciones tecnicas ejecutadas
 
@@ -108,13 +116,12 @@ Flujo manual:
 - Creacion, edicion, duplicado y eliminacion logica por POST.
 - Validacion negativa de formulario con respuesta 422.
 - Verificacion SQLite de activos e inactivos.
+- Rechazo de import JSON por tamano excedido.
+- Duplicado con titulo al limite sin romper validaciones.
+- Error PDF seguro hacia la UI con detalle tecnico separado.
 
 ## Limitaciones
 
-- No genera LaTeX.
-- No genera PDF.
-- No exporta TEX.
-- No exporta JSON.
 - No implementa cartas de presentacion.
 - No implementa tracker de postulaciones.
 - No implementa ATS.

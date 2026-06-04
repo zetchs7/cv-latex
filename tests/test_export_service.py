@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import tempfile
@@ -7,9 +8,11 @@ from unittest.mock import patch
 from app.models import CV
 from app.services.export_service import (
     ExportServiceError,
+    MAX_JSON_IMPORT_BYTES,
     build_cv_form_data_from_json,
     export_cv_json,
     export_cv_tex,
+    read_limited_upload_bytes,
     sanitize_filename,
 )
 
@@ -55,6 +58,14 @@ class ExportServiceTest(unittest.TestCase):
     def test_rejects_invalid_json_import(self):
         with self.assertRaises(ExportServiceError):
             build_cv_form_data_from_json(b'{"cv": {"title": 10}}')
+
+    def test_rejects_oversized_json_upload_before_loading_everything(self):
+        oversized_stream = io.BytesIO(b"a" * (MAX_JSON_IMPORT_BYTES + 1))
+
+        with self.assertRaises(ExportServiceError) as context:
+            read_limited_upload_bytes(oversized_stream)
+
+        self.assertIn("supera el maximo permitido", str(context.exception))
 
 
 def _build_cv() -> CV:

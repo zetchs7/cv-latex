@@ -9,17 +9,19 @@ La aplicacion debe poder levantarse localmente de forma clara y reproducible. Lo
 
 ## Decision
 
-Usar Docker Compose con un unico servicio llamado `app`, puerto `8000:8000` y bind mount:
+Usar Docker Compose con un unico servicio llamado `app`, bind mount:
 
 ```text
 ./data:/data
 ```
 
 El contenedor ejecuta Uvicorn y la app FastAPI. SQLite se prepara dentro de `/data/app.db`.
+La publicacion del puerto HTTP queda ligada por defecto a `127.0.0.1:8000:8000`, con la interfaz configurable via `APP_HOST_BIND` para escenarios de laboratorio controlado.
 
 ## Consecuencias
 
 - El proyecto puede moverse entre entornos conservando `./data`.
 - La imagen no contiene datos persistentes.
 - La operacion local se reduce a comandos Docker Compose estandar.
+- La exposicion por defecto se limita al host local, reduciendo superficie innecesaria en entornos de desarrollo.
 - Debe evitarse versionar bases SQLite reales o datos personales.

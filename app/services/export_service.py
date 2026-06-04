@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from io import BufferedReader, BytesIO
 import json
 from pathlib import Path
 import re
@@ -13,6 +14,7 @@ from app.validations.cv_validations import build_cv_form_data, validate_cv_form
 
 EXPORTS_DIRECTORY_NAME = "exports"
 MAX_JSON_IMPORT_BYTES = 512 * 1024
+JSON_IMPORT_CHUNK_BYTES = 64 * 1024
 JSON_EXPORT_SCHEMA_VERSION = 1
 
 
@@ -25,6 +27,29 @@ class ExportedFile:
 
 class ExportServiceError(ValueError):
     pass
+
+
+def read_limited_upload_bytes(
+    file_object: BufferedReader | BytesIO,
+    *,
+    max_bytes: int = MAX_JSON_IMPORT_BYTES,
+    chunk_size: int = JSON_IMPORT_CHUNK_BYTES,
+) -> bytes:
+    chunks: list[bytes] = []
+    total_bytes = 0
+
+    while True:
+        chunk = file_object.read(chunk_size)
+        if not chunk:
+            break
+
+        total_bytes += len(chunk)
+        if total_bytes > max_bytes:
+            raise ExportServiceError("El archivo JSON supera el maximo permitido.")
+
+        chunks.append(chunk)
+
+    return b"".join(chunks)
 
 
 def ensure_exports_directory() -> Path:

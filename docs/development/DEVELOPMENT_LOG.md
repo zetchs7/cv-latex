@@ -316,3 +316,41 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
 - La primera compilacion fallo por falta de `lmodern.sty`; se corrigio agregando el paquete Debian `lmodern`.
 - `pdftotext` quedo disponible por `poppler-utils`, agregado solo para validacion tecnica de extraccion.
 - El build final reporto aproximadamente 587 MB adicionales por dependencias LaTeX/PDF.
+
+## Etapa 3.2 - Baseline Hardening & Consistency
+
+- Fecha: 2026-06-04
+- Rama: `feature/baseline-hardening`
+- Objetivo: corregir hallazgos altos y medios del baseline antes de avanzar a nuevas features.
+- Modulos afectados: `docker`, `cvs`, `export_service`, `pdf_service`, `validations`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se limito la publicacion HTTP por defecto a `127.0.0.1` mediante `APP_HOST_BIND`.
+  - Se agrego lectura controlada por chunks para import JSON con limite temprano de `512 KB`.
+  - Se separo el mensaje seguro para UI del detalle tecnico de fallos PDF.
+  - Se reforzo el duplicado de CV para reutilizar validaciones y truncar titulos largos de forma segura.
+  - Se actualizaron tests y documentacion del baseline actual.
+- Archivos principales:
+  - `docker-compose.yml`
+  - `.env.example`
+  - `app/routes/cvs.py`
+  - `app/services/export_service.py`
+  - `app/services/pdf_service.py`
+  - `app/repositories/cv_repository.py`
+  - `app/validations/cv_validations.py`
+  - `tests/test_export_service.py`
+  - `tests/test_pdf_service.py`
+  - `tests/test_cv_repository.py`
+- Validaciones ejecutadas:
+  - `docker compose build`
+  - `docker compose up -d`
+  - `docker compose ps`
+  - `docker compose exec app python -m pytest`
+  - `Invoke-WebRequest` a `http://localhost:8000` y `/health`
+  - Import JSON valido y rechazo de import excedido
+  - Duplicado de CV con titulo al limite
+  - Generacion PDF luego del hardening
+  - `git diff --check`
+- Resultado: baseline endurecido sin avanzar a Etapa 4. La app sigue operativa en localhost, el import corta por tamano, el duplicado respeta limites y el error PDF visible en UI deja de exponer logs completos.
+- Pendientes:
+  - Mantener este baseline como piso minimo antes de sumar modulos nuevos.
+  - Validar parsers ATS reales en una etapa futura.

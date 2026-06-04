@@ -16,6 +16,8 @@ FIELD_LIMITS = {
     "skills": 1200,
 }
 
+DUPLICATE_TITLE_SUFFIX = " (copia)"
+
 
 def build_cv_form_data(raw_values: dict[str, str]) -> CVFormData:
     return CVFormData(
@@ -48,6 +50,24 @@ def validate_cv_form(form_data: CVFormData) -> dict[str, str]:
             errors[field_name] = f"Maximo {max_length} caracteres."
 
     return errors
+
+
+def build_duplicate_title(title: str) -> str:
+    normalized_title = _normalize(title)
+    max_length = FIELD_LIMITS["title"]
+
+    if not normalized_title:
+        return DUPLICATE_TITLE_SUFFIX.strip()
+
+    available_length = max_length - len(DUPLICATE_TITLE_SUFFIX)
+    if available_length <= 0:
+        return normalized_title[:max_length]
+
+    base_title = normalized_title[:available_length].rstrip()
+    if not base_title:
+        return normalized_title[:max_length]
+
+    return f"{base_title}{DUPLICATE_TITLE_SUFFIX}"
 
 
 def _normalize(value: str) -> str:

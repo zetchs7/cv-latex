@@ -1,11 +1,11 @@
 # CV LaTeX Builder
 
-Aplicacion web local, pequena y portable para construir curriculums vitae profesionales con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 3.1.
+Aplicacion web local, pequena y portable para construir curriculums vitae profesionales con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabaja por etapas auditables; esta version corresponde a la Etapa 3.2.
 
 ## Estado actual
 
-- Version: `0.4.1`
-- Etapa: `3.1 - PDF ATS Text Extraction / Encoding Fix`
+- Version: `0.4.2`
+- Etapa: `3.2 - Baseline Hardening & Consistency`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 - Exportaciones: `/data/exports` dentro del contenedor, visible en `./data/exports` en el host
@@ -36,6 +36,7 @@ Variables principales:
 - `APP_ENV`: entorno logico de ejecucion.
 - `APP_DATA_DIR`: directorio persistente dentro del contenedor. En Docker debe ser `/data`.
 - `APP_DB_FILENAME`: nombre del archivo SQLite.
+- `APP_HOST_BIND`: interfaz del host usada para publicar el puerto HTTP. Por defecto `127.0.0.1`.
 - `APP_VERSION`: version visible de la aplicacion.
 
 ## Levantar la aplicacion
@@ -47,6 +48,8 @@ docker compose ps
 ```
 
 Abrir:
+
+La publicacion por defecto queda limitada a `127.0.0.1`, por lo que la app responde localmente en:
 
 ```text
 http://localhost:8000
@@ -142,6 +145,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 2: Plantillas LaTeX propias y sanitizacion. Completada.
 - Etapa 3: Export Engine PDF/TEX/JSON. Completada.
 - Etapa 3.1: PDF ATS Text Extraction / Encoding Fix. Completada.
+- Etapa 3.2: Baseline Hardening & Consistency. Completada.
 - Etapa 4: Cartas de presentacion.
 - Etapa 5: Tracker de postulaciones.
 - Etapa 6: ATS Basic Check.
@@ -203,7 +207,9 @@ Formatos soportados:
 - PDF: se compila con `pdflatex` en un temporal controlado bajo `/data/exports/_tmp` y el PDF final se copia a `/data/exports`.
 - JSON: contiene los campos editables del CV y metadatos de exportacion.
 
-La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titulo. No acepta rutas de salida desde inputs del usuario y los nombres de archivo exportados se sanitizan.
+La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titulo. No acepta rutas de salida desde inputs del usuario, los nombres de archivo exportados se sanitizan y el upload JSON se lee en chunks con limite maximo de `512 KB`.
+
+Si el archivo supera el limite, la UI muestra un error claro sin cargar el archivo completo en memoria. Si la compilacion PDF falla, la UI devuelve un mensaje resumido y el detalle tecnico queda para logs y troubleshooting.
 
 Advertencia operativa: el Dockerfile instala TeX Live, `lmodern`, `poppler-utils` y dependencias PDF para compilar y validar PDFs de forma reproducible dentro del contenedor. Esto aumenta el tamano de la imagen de manera relevante.
 
@@ -222,6 +228,7 @@ Advertencia operativa: el Dockerfile instala TeX Live, `lmodern`, `poppler-utils
 11. Importar el JSON desde el listado.
 12. Generar y descargar PDF.
 13. Confirmar que los archivos quedan en `./data/exports`.
+14. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
 
 ## Troubleshooting basico
 
@@ -232,6 +239,6 @@ Advertencia operativa: el Dockerfile instala TeX Live, `lmodern`, `poppler-utils
 
 ## Alcance de esta version
 
-Incluye dashboard, CV Builder Core, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion.
+Incluye dashboard, CV Builder Core, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion.
 
 No incluye cartas, postulaciones, ATS, IA, login, PostgreSQL ni deploy cloud.

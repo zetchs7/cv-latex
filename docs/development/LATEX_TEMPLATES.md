@@ -2,7 +2,7 @@
 
 ## Version
 
-`0.4.1`
+`0.4.2`
 
 ## Objetivo
 
@@ -68,6 +68,8 @@ Desde Etapa 3.1 las cuatro plantillas incluyen:
 - `\usepackage{lmodern}`
 
 Este bloque mejora el mapeo Unicode de los glifos generados por `pdflatex`, lo que ayuda a copy/paste, `pdftotext` y parsers tipo ATS.
+
+Si la compilacion PDF falla, la UI muestra un mensaje seguro y resumido. El detalle tecnico queda para logs y troubleshooting.
 
 ## Secciones vacias
 

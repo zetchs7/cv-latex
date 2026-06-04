@@ -22,6 +22,8 @@ Los PDF se compilan en un directorio temporal controlado bajo `/data/exports/_tm
 
 En Etapa 3.1 se refuerza la extraccion de texto para PDF agregando `cmap`, Latin Modern (`lmodern`), `glyphtounicode` y `pdfgentounicode=1` a las plantillas. Tambien se agrega `poppler-utils` al contenedor para validar con `pdftotext` que palabras con acentos, `ñ`, `ü` y signos comunes en espanol se extraigan correctamente.
 
+En Etapa 3.2 los fallos de compilacion PDF dejan de exponerse completos al usuario final. La UI recibe un mensaje resumido y el detalle tecnico queda separado para logs y troubleshooting.
+
 ## Consecuencias
 
 - La logica LaTeX queda separada de rutas y templates HTML.
@@ -31,4 +33,5 @@ En Etapa 3.1 se refuerza la extraccion de texto para PDF agregando `cmap`, Latin
 - `/data/exports` concentra los artefactos persistidos TEX, JSON y PDF.
 - La imagen Docker crece de forma relevante por las dependencias LaTeX.
 - La imagen incluye `poppler-utils` para validacion tecnica de extraccion de texto PDF.
+- Los errores PDF mantienen capacidad de diagnostico sin exponer logs completos en la interfaz.
 - La compatibilidad ATS mejora a nivel de texto extraible, pero parsers ATS reales pueden tener comportamientos propios y deberan validarse en una etapa futura.

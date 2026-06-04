@@ -1,8 +1,11 @@
+import logging
+
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.repositories import cv_repository
+from app.repositories.cv_repository import DuplicateCVError
 from app.models import CV
 from app.schemas import CVFormData
 from app.services.export_service import (
@@ -10,6 +13,7 @@ from app.services.export_service import (
     build_cv_form_data_from_json,
     export_cv_json,
     export_cv_tex,
+    read_limited_upload_bytes,
 )
 from app.services.latex_service import (
     DEFAULT_TEMPLATE_KEY,
@@ -23,6 +27,7 @@ from app.validations.cv_validations import build_cv_form_data, validate_cv_form
 
 router = APIRouter(prefix="/cvs", tags=["CVs"])
 templates = Jinja2Templates(directory="app/templates")
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_class=HTMLResponse, name="cvs_list")
@@ -92,9 +97,8 @@ def create_cv(
 
 @router.post("/import/json", response_class=HTMLResponse, name="cvs_import_json")
 def import_cv_json(request: Request, json_file: UploadFile = File(...)) -> RedirectResponse:
-    raw_content = json_file.file.read()
-
     try:
+        raw_content = read_limited_upload_bytes(json_file.file)
         form_data = build_cv_form_data_from_json(raw_content)
     except ExportServiceError as error:
         return _redirect_to_list(request, f"No se pudo importar el JSON: {error}")
@@ -173,7 +177,7 @@ def export_json(cv_id: int) -> FileResponse:
 
 
 @router.get("/{cv_id}/export/pdf", name="cvs_export_pdf")
-def export_pdf(cv_id: int, template_key: str = DEFAULT_TEMPLATE_KEY) -> FileResponse:
+def export_pdf(request: Request, cv_id: int, template_key: str = DEFAULT_TEMPLATE_KEY):
     cv = _get_existing_cv(cv_id)
 
     try:
@@ -181,7 +185,13 @@ def export_pdf(cv_id: int, template_key: str = DEFAULT_TEMPLATE_KEY) -> FileResp
     except LatexTemplateError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
     except PdfCompilationError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
+        logger.error(
+            "PDF generation failed for cv_id=%s template=%s: %s",
+            cv_id,
+            template_key,
+            error.technical_detail or str(error),
+        )
+        return _redirect_to_detail(request, cv_id, error.user_message)
     except ExportServiceError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
@@ -259,9 +269,13 @@ def update_cv(
 
 @router.post("/{cv_id}/duplicate", response_class=HTMLResponse, name="cvs_duplicate")
 def duplicate_cv(request: Request, cv_id: int) -> RedirectResponse:
-    duplicate_id = cv_repository.duplicate_cv(cv_id)
-    if duplicate_id is None:
-        raise HTTPException(status_code=404, detail="CV no encontrado.")
+    try:
+        duplicate_id = cv_repository.duplicate_cv(cv_id)
+        if duplicate_id is None:
+            raise HTTPException(status_code=404, detail="CV no encontrado.")
+    except DuplicateCVError as error:
+        logger.warning("CV duplication blocked for cv_id=%s: %s", cv_id, error)
+        return _redirect_to_detail(request, cv_id, "No se pudo duplicar el CV porque los datos no cumplen las validaciones actuales.")
 
     return _redirect_to_detail(request, duplicate_id, "CV duplicado correctamente.")
 
