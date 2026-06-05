@@ -157,9 +157,11 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |   |-- ats.py
 |   |   |-- cover_letters.py
 |   |   |-- cvs.py
-|   |   `-- dashboard.py
+|   |   |-- dashboard.py
+|   |   `-- documentation.py
 |   |-- services/
 |   |   |-- ats_service.py
+|   |   |-- documentation_service.py
 |   |   |-- export_service.py
 |   |   |-- file_naming.py
 |   |   |-- latex_service.py
@@ -179,7 +181,8 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |   |   |-- form.html
 |   |   |   `-- index.html
 |   |   |-- ats/
-|   |   |   `-- cv_analysis.html
+|   |   |   |-- cv_analysis.html
+|   |   |   `-- index.html
 |   |   |-- cover_letters/
 |   |   |   |-- confirm_delete.html
 |   |   |   |-- detail.html
@@ -192,6 +195,8 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |   |   |-- index.html
 |   |   |   `-- tex_preview.html
 |   |   |-- dashboard.html
+|   |   |-- documentation/
+|   |   |   `-- index.html
 |   |   `-- layout.html
 |   |-- validations/
 |   |   |-- application_validations.py
@@ -201,11 +206,17 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   `-- static/
 |       |-- css/
 |       |   `-- app.css
+|       |-- docs/
+|       |   |-- Manual_Uso_Web_CV_LaTeX_Builder.pdf
+|       |   `-- Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf
 |       `-- js/
 |           `-- app.js
 |-- data/
 |   `-- .gitkeep
 |-- docs/
+|   |-- user/
+|   |   |-- PROJECT_TECHNICAL_DOCUMENTATION.md
+|   |   `-- WEB_USAGE_MANUAL.md
 |   |-- development/
 |   `-- adr/
 |-- tests/
@@ -215,6 +226,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |-- test_ats_service.py
 |   |-- test_cover_letter_repository.py
 |   |-- test_cv_repository.py
+|   |-- test_documentation_routes.py
 |   |-- test_export_service.py
 |   |-- test_latex_sanitizer.py
 |   |-- test_latex_service.py
@@ -239,6 +251,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 5: Tracker de postulaciones. Completada.
 - Etapa 6: ATS Basic Check. Completada.
 - Etapa 7: Pulido final del MVP. Completada en la rama de trabajo actual.
+- Mini-etapa: Documentation Center. Incluida antes del tag estable `v0.8.0`.
 
 ## Modulos disponibles
 
@@ -304,6 +317,13 @@ El modulo ATS Basic Check solo analiza CVs guardados y muestra:
 - advertencias
 - recomendaciones
 
+### Documentacion
+
+Rutas disponibles:
+
+- `GET /documentation/`: listar los PDFs disponibles del MVP.
+- `GET /documentation/{document_key}`: abrir el visor embebido del PDF seleccionado dentro de la web.
+
 ## Export Engine
 
 Los artefactos generados se guardan en:
@@ -330,6 +350,17 @@ Formatos soportados:
 
 La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titulo. No acepta rutas de salida desde inputs del usuario, los nombres de archivo exportados se sanitizan y se acotan a un maximo seguro de `180` caracteres, y el upload JSON se lee en chunks con limite maximo de `512 KB`.
 
+## Centro de documentacion
+
+- Fuentes editables:
+  - `docs/user/PROJECT_TECHNICAL_DOCUMENTATION.md`
+  - `docs/user/WEB_USAGE_MANUAL.md`
+- PDFs servidos por la app:
+  - `app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf`
+  - `app/static/docs/Manual_Uso_Web_CV_LaTeX_Builder.pdf`
+- Generacion reproducible:
+  - `docker run --rm -v ${PWD}:/workspace -w /workspace cv-latex-app python -m app.services.documentation_service`
+
 ## Prueba manual rapida
 
 1. Abrir `http://localhost:8000`.
@@ -346,6 +377,7 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 12. Confirmar que los archivos de export siguen quedando en `./data/exports`.
 13. Exportar un CV a JSON e importarlo de nuevo.
 14. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
+15. Entrar a `Documentacion` y abrir ambos PDFs dentro de la misma web.
 
 ## Troubleshooting basico
 
@@ -357,6 +389,6 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 
 ## Alcance de esta version
 
-Incluye dashboard, CV Builder Core, cover letters, application tracker, ATS Basic Check, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion minima de operacion local del MVP.
+Incluye dashboard, CV Builder Core, cover letters, application tracker, ATS Basic Check, centro de documentacion con PDFs embebidos, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion minima de operacion local del MVP.
 
 No incluye IA, login, PostgreSQL ni deploy cloud.

@@ -10,6 +10,7 @@ from app.routes.ats import router as ats_router
 from app.routes.cover_letters import router as cover_letters_router
 from app.routes.cvs import router as cvs_router
 from app.routes.dashboard import router as dashboard_router
+from app.routes.documentation import router as documentation_router
 
 
 APP_VERSION = os.getenv("APP_VERSION", "0.8.0")
@@ -29,6 +30,7 @@ app = FastAPI(
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(dashboard_router)
+app.include_router(documentation_router)
 app.include_router(cvs_router)
 app.include_router(ats_router)
 app.include_router(cover_letters_router)

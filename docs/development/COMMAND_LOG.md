@@ -1,5 +1,38 @@
 # Command Log
 
+## 2026-06-05 - Documentation Center
+
+Accion:
+Agregar una seccion web de documentacion con dos PDFs embebidos y fuentes editables en Markdown.
+
+Motivo:
+Cerrar el MVP local con documentacion visible desde la propia app antes del tag estable `v0.8.0`.
+
+Comandos:
+- `git status --short --branch`
+- `git fetch origin`
+- `git checkout development`
+- `git checkout -b feature/documentation-center`
+- `Get-Content` sobre `app/main.py`, `app/routes/dashboard.py`, `app/templates/layout.html`, `app/templates/dashboard.html`, `app/static/css/app.css`, `README.md` y docs operativas
+- `python -m compileall app tests`
+- `docker compose build`
+- `docker run --rm -v "${PWD}:/workspace" -w /workspace cv-latex-app python -m app.services.documentation_service`
+- `docker compose build`
+- `docker compose up -d`
+- `docker compose ps`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest -Uri http://localhost:8000/documentation/ -UseBasicParsing`
+- `Invoke-WebRequest -Uri http://localhost:8000/documentation/technical -UseBasicParsing`
+- `Invoke-WebRequest` sobre ambos PDFs bajo `/static/docs/`
+- `docker compose exec app pdftotext ...`
+- `docker compose exec app pdftoppm ...`
+- `git diff --check`
+
+Resultado:
+- Se creo el centro de documentacion en la web con visor embebido, links de apertura y descarga.
+- Los dos PDFs se generaron desde fuentes Markdown usando `python -m app.services.documentation_service` y `pdflatex` del contenedor.
+- La legibilidad de ambos PDFs se valido con `pdftotext` y render de la primera pagina a PNG.
+
 ## 2026-06-05 - Release cleanup changelog merge
 
 Accion:

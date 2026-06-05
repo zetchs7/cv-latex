@@ -1,5 +1,32 @@
 # Development Log
 
+## Documentation Center
+
+- Fecha: 2026-06-05
+- Rama: `feature/documentation-center`
+- Objetivo: agregar una seccion web de documentacion con PDFs embebidos, servidos localmente y generados desde fuentes Markdown editables.
+- Modulos afectados: `documentation`, `dashboard`, `layout`, `static/docs`, `docs/user`, `docs/development`, `tests`.
+- Resumen de cambios:
+  - Se agrego la ruta `app/routes/documentation.py`.
+  - Se agrego el template `app/templates/documentation/index.html`.
+  - Se incorporo el acceso `Documentacion` en header y dashboard.
+  - Se agrego `app/services/documentation_service.py` para catalogar documentos y generar PDFs desde Markdown.
+  - Se crearon las fuentes `docs/user/PROJECT_TECHNICAL_DOCUMENTATION.md` y `docs/user/WEB_USAGE_MANUAL.md`.
+  - Se generaron y publicaron los PDFs en `app/static/docs/`.
+  - Se agregaron tests basicos de rutas para la nueva seccion.
+- Validaciones ejecutadas:
+  - `python -m compileall app tests`
+  - `docker compose build`
+  - `docker run --rm -v "${PWD}:/workspace" -w /workspace cv-latex-app python -m app.services.documentation_service`
+  - `docker compose build`
+  - `docker compose up -d`
+  - `docker compose ps`
+  - `docker compose exec app python -m pytest`
+  - `Invoke-WebRequest` sobre `/documentation/`, `/documentation/technical` y los dos PDFs estaticos
+  - `pdftotext` y `pdftoppm` dentro del contenedor para validar legibilidad
+  - `git diff --check`
+- Resultado: seccion de documentacion funcional, assets PDF locales servidos desde la app y contenido legible validado antes del tag `v0.8.0`.
+
 ## Release Cleanup v0.8.0 - Changelog Consolidation
 
 - Fecha: 2026-06-05

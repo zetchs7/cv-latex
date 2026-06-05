@@ -5,16 +5,21 @@
 ### Agregado
 
 - Ruta `GET /ats/` para acceder al analizador ATS desde navegacion global.
+- Ruta `GET /documentation/` y visor `GET /documentation/{document_key}` para leer PDFs del MVP dentro de la web.
 - Checklist manual del MVP en `docs/development/MVP_VALIDATION.md`.
 - Secciones de backup y restore basicos en `README.md`.
+- Fuentes Markdown editables en `docs/user/` para documentacion tecnica y manual de uso web.
+- PDFs locales servidos desde `app/static/docs/`.
 
 ### Cambiado
 
 - Dashboard y header alineados al cierre del MVP local.
 - Textos visibles de CVs, Cartas, Postulaciones y ATS ajustados para mayor consistencia.
+- Dashboard y header ahora exponen tambien el acceso a `Documentacion`.
 - Version visible de la app ahora se toma desde `request.app.version` para evitar drift entre layout y configuracion.
 - `Dockerfile` alineado a `APP_VERSION=0.8.0`.
 - `README.md` corregido para que `ATS Basic Check` describa solo el analisis ATS y no mezcle campos de Postulaciones.
+- `README.md`, `MODULE_INDEX.md`, `MVP_VALIDATION.md` y logs de desarrollo actualizados para reflejar el centro de documentacion.
 - `README.md`, `MODULE_INDEX.md`, `VERSIONING.md` y `BRANCH_STRATEGY.md` actualizados al baseline final del MVP.
 - Version del proyecto actualizada a `0.8.0`.
 - Logs de desarrollo actualizados con el ajuste de release cleanup y su correccion documental.

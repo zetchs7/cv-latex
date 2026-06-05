@@ -26,6 +26,7 @@ docker compose exec app python -m pytest
 - Abrir `http://localhost:8000`.
 - Confirmar que el dashboard carga sin errores.
 - Confirmar accesos visibles a `CVs`, `Cartas`, `Postulaciones` y `ATS` desde el header.
+- Confirmar acceso visible a `Documentacion` desde el header y el dashboard.
 - Confirmar que la version visible coincide con `VERSION` y `/health`.
 
 ### CVs
@@ -64,6 +65,14 @@ docker compose exec app python -m pytest
 - Ejecutar analisis sobre un CV completo.
 - Ejecutar analisis sobre un CV incompleto.
 - Confirmar score, checklist, recomendaciones y advertencias.
+
+### Documentacion
+
+- Abrir `http://localhost:8000/documentation/`.
+- Confirmar que aparecen los dos PDFs del MVP.
+- Abrir el PDF tecnico dentro de la web.
+- Abrir el manual de uso dentro de la web.
+- Confirmar opcion visible de abrir o descargar cada PDF.
 
 ### Persistencia y artefactos
 

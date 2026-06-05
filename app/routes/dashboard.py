@@ -45,6 +45,14 @@ def dashboard(request: Request) -> HTMLResponse:
             "action_label": "Abrir ATS",
         },
         {
+            "name": "Documentacion",
+            "status": "Activo - MVP local",
+            "description": "Leer dentro de la web la documentacion tecnica y el manual de uso en PDF local.",
+            "url_name": "documentation_index",
+            "is_active": True,
+            "action_label": "Abrir documentacion",
+        },
+        {
             "name": "Configuracion local",
             "status": "Pendiente",
             "description": "Reservado para ajustes operativos futuros fuera del alcance del MVP actual.",
