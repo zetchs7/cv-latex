@@ -1,5 +1,20 @@
 # Command Log
 
+## 2026-06-05 - Release cleanup changelog merge
+
+Accion:
+Fusionar las notas de cleanup dentro de la entrada existente `0.8.0` del changelog.
+
+Motivo:
+Evitar duplicar encabezados de release y dejar la documentacion del cierre del MVP en una sola entrada.
+
+Comandos:
+- `Get-Content docs/development/CHANGELOG_GENERAL.md`
+- `apply_patch`
+
+Resultado:
+- La entrada `0.8.0` queda unica y contiene tanto el baseline del MVP como las notas del release cleanup.
+
 ## 2026-06-05 - Release cleanup v0.8.0
 
 Accion:

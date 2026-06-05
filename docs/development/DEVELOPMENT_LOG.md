@@ -1,5 +1,16 @@
 # Development Log
 
+## Release Cleanup v0.8.0 - Changelog Consolidation
+
+- Fecha: 2026-06-05
+- Rama: `feature/release-cleanup-v0.8.0`
+- Objetivo: integrar las notas del cleanup dentro de la unica entrada `0.8.0` del changelog.
+- Modulos afectados: `docs/development`.
+- Resumen de cambios:
+  - Se elimino el encabezado duplicado `0.8.0 - 2026-06-05`.
+  - Las notas de cleanup quedaron integradas en la entrada existente `0.8.0 - 2026-06-04`.
+- Resultado: la documentacion de release queda no ambigua y sin versiones repetidas.
+
 ## Release Cleanup v0.8.0
 
 - Fecha: 2026-06-05

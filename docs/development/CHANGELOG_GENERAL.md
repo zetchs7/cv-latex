@@ -1,13 +1,5 @@
 # Changelog General
 
-## 0.8.0 - 2026-06-05
-
-### Cambiado
-
-- `Dockerfile` alineado a `APP_VERSION=0.8.0`.
-- `README.md` corregido para que `ATS Basic Check` describa solo el analisis ATS y no mezcle campos de Postulaciones.
-- Logs de desarrollo actualizados con el ajuste de release cleanup.
-
 ## 0.8.0 - 2026-06-04
 
 ### Agregado
@@ -21,8 +13,11 @@
 - Dashboard y header alineados al cierre del MVP local.
 - Textos visibles de CVs, Cartas, Postulaciones y ATS ajustados para mayor consistencia.
 - Version visible de la app ahora se toma desde `request.app.version` para evitar drift entre layout y configuracion.
+- `Dockerfile` alineado a `APP_VERSION=0.8.0`.
+- `README.md` corregido para que `ATS Basic Check` describa solo el analisis ATS y no mezcle campos de Postulaciones.
 - `README.md`, `MODULE_INDEX.md`, `VERSIONING.md` y `BRANCH_STRATEGY.md` actualizados al baseline final del MVP.
 - Version del proyecto actualizada a `0.8.0`.
+- Logs de desarrollo actualizados con el ajuste de release cleanup y su correccion documental.
 
 ### No incluido en esta version
 
