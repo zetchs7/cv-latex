@@ -1,0 +1,87 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ page.asset.title }} - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header documentation-header">
+  <div>
+    <p class="eyebrow">Centro de documentacion</p>
+    <h1>{{ page.asset.title }}</h1>
+    <p class="section-copy">{{ page.intro }}</p>
+  </div>
+  <div class="stack-actions">
+    <a class="button" href="{{ url_for('documentation_index') }}">Volver al listado</a>
+    <a class="button primary" href="{{ url_for('static', path='/docs/' ~ page.asset.pdf_filename) }}" download>Descargar PDF</a>
+    <a class="text-link" href="{{ url_for('static', path='/docs/' ~ page.asset.pdf_filename) }}" target="_blank" rel="noopener noreferrer">Abrir PDF directo</a>
+  </div>
+</section>
+
+<section class="documentation-layout">
+  <aside class="documentation-toc">
+    <div class="documentation-toc-card">
+      <h2>Indice</h2>
+      <nav aria-label="Tabla de contenidos">
+        <ul class="documentation-toc-list">
+          {% for section in page.sections %}
+          <li><a href="#{{ section.anchor }}">{{ section.title }}</a></li>
+          {% endfor %}
+        </ul>
+      </nav>
+    </div>
+  </aside>
+
+  <div class="documentation-content">
+    {% for section in page.sections %}
+    <article id="{{ section.anchor }}" class="documentation-section documentation-section-{{ section.tone }}">
+      <header class="documentation-section-head">
+        <h2>{{ section.title }}</h2>
+      </header>
+      <div class="documentation-section-body">
+        {% for block in section.blocks %}
+          {% if block.kind == "paragraph" %}
+          <p>{{ block.content }}</p>
+          {% elif block.kind == "subheading" %}
+          <h3>{{ block.content }}</h3>
+          {% elif block.kind == "list" %}
+          <ul class="documentation-list">
+            {% for item in block.content %}
+            <li>{{ item }}</li>
+            {% endfor %}
+          </ul>
+          {% elif block.kind == "ordered_list" %}
+          <ol class="documentation-list documentation-list-ordered">
+            {% for item in block.content %}
+            <li>{{ item }}</li>
+            {% endfor %}
+          </ol>
+          {% elif block.kind == "code" %}
+          <pre class="documentation-code"><code>{{ block.content }}</code></pre>
+          {% elif block.kind == "table" %}
+          <div class="table-wrap documentation-table-wrap">
+            <table class="data-table documentation-table">
+              <thead>
+                <tr>
+                  {% for header in block.content.headers %}
+                  <th>{{ header }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in block.content.rows %}
+                <tr>
+                  {% for cell in row %}
+                  <td>{{ cell }}</td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -26,6 +26,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY docs ./docs
 COPY tests ./tests
 
 RUN mkdir -p /data && chown -R appuser:appuser /app /data

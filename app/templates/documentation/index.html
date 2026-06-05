@@ -8,45 +8,25 @@
     <p class="eyebrow">Centro de documentacion</p>
     <h1>Documentacion del MVP</h1>
     <p class="section-copy">
-      Esta seccion centraliza la documentacion tecnica y el manual de uso web en PDF,
-      embebidos dentro de la aplicacion y servidos desde assets locales controlados.
+      Esta seccion centraliza la documentacion tecnica y el manual de uso web como
+      lectura HTML dentro de la aplicacion, manteniendo los PDFs como descarga local.
     </p>
   </div>
   <a class="button" href="{{ url_for('dashboard') }}">Volver al dashboard</a>
 </section>
 
-{% if selected_document %}
-<section class="documentation-viewer" aria-label="Visor de documento">
-  <div class="documentation-viewer-header">
-    <div>
-      <h2>{{ selected_document.title }}</h2>
-      <p>{{ selected_document.summary }}</p>
-    </div>
-    <div class="stack-actions">
-      <a class="button" href="{{ url_for('documentation_index') }}">Ver listado</a>
-      <a class="button" href="{{ url_for('static', path='/docs/' ~ selected_document.pdf_filename) }}" target="_blank" rel="noopener noreferrer">Abrir en otra pestana</a>
-      <a class="button primary" href="{{ url_for('static', path='/docs/' ~ selected_document.pdf_filename) }}" download>Descargar PDF</a>
-    </div>
-  </div>
-  <iframe
-    class="documentation-frame"
-    src="{{ url_for('static', path='/docs/' ~ selected_document.pdf_filename) }}"
-    title="{{ selected_document.title }}"
-  ></iframe>
-</section>
-{% endif %}
-
 <section class="documentation-grid" aria-label="Documentos disponibles">
   {% for document in documents %}
-  <article class="module-card documentation-card">
-    <div class="module-card-header">
+  <article class="documentation-card">
+    <div class="documentation-card-head">
+      <span class="documentation-badge">HTML + PDF</span>
       <h2>{{ document.title }}</h2>
-      <span>PDF local</span>
+      <p>{{ document.summary }}</p>
     </div>
-    <p>{{ document.summary }}</p>
-    <div class="stack-actions">
-      <a class="text-link" href="{{ url_for('documentation_view', document_key=document.key) }}">Abrir en la web</a>
-      <a class="text-link" href="{{ url_for('static', path='/docs/' ~ document.pdf_filename) }}" target="_blank" rel="noopener noreferrer">Abrir directo</a>
+    <div class="documentation-card-actions">
+      <a class="button primary" href="{{ url_for('documentation_view', document_key=document.key) }}">Leer en la web</a>
+      <a class="button" href="{{ url_for('static', path='/docs/' ~ document.pdf_filename) }}" download>Descargar PDF</a>
+      <a class="text-link" href="{{ url_for('static', path='/docs/' ~ document.pdf_filename) }}" target="_blank" rel="noopener noreferrer">Abrir PDF directo</a>
     </div>
   </article>
   {% endfor %}

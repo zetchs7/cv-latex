@@ -27,6 +27,14 @@
   - `git diff --check`
 - Resultado: seccion de documentacion funcional, assets PDF locales servidos desde la app y contenido legible validado antes del tag `v0.8.0`.
 
+### Ajuste posterior - lectura HTML
+
+- Cambio de decision: la lectura principal deja de usar `iframe` PDF y pasa a paginas HTML dentro de la app.
+- Se agrego parsing simple de Markdown a secciones HTML para `technical` y `usage`.
+- Cada pagina mantiene indice, bloques visuales y accion `Descargar PDF`.
+- Los PDFs quedan como artefacto descargable y no como flujo principal de lectura.
+- La imagen Docker pasa a incluir `docs/` para que el runtime pueda leer las fuentes Markdown durante el render HTML.
+
 ## Release Cleanup v0.8.0 - Changelog Consolidation
 
 - Fecha: 2026-06-05

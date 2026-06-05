@@ -196,6 +196,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |   |   `-- tex_preview.html
 |   |   |-- dashboard.html
 |   |   |-- documentation/
+|   |   |   |-- detail.html
 |   |   |   `-- index.html
 |   |   `-- layout.html
 |   |-- validations/
@@ -321,8 +322,9 @@ El modulo ATS Basic Check solo analiza CVs guardados y muestra:
 
 Rutas disponibles:
 
-- `GET /documentation/`: listar los PDFs disponibles del MVP.
-- `GET /documentation/{document_key}`: abrir el visor embebido del PDF seleccionado dentro de la web.
+- `GET /documentation/`: listar las dos documentaciones disponibles.
+- `GET /documentation/technical`: leer la documentacion tecnica como HTML dentro de la web.
+- `GET /documentation/usage`: leer el manual de uso como HTML dentro de la web.
 
 ## Export Engine
 
@@ -355,6 +357,9 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 - Fuentes editables:
   - `docs/user/PROJECT_TECHNICAL_DOCUMENTATION.md`
   - `docs/user/WEB_USAGE_MANUAL.md`
+- Lectura principal en la app:
+  - `http://localhost:8000/documentation/technical`
+  - `http://localhost:8000/documentation/usage`
 - PDFs servidos por la app:
   - `app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf`
   - `app/static/docs/Manual_Uso_Web_CV_LaTeX_Builder.pdf`
@@ -377,7 +382,7 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 12. Confirmar que los archivos de export siguen quedando en `./data/exports`.
 13. Exportar un CV a JSON e importarlo de nuevo.
 14. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
-15. Entrar a `Documentacion` y abrir ambos PDFs dentro de la misma web.
+15. Entrar a `Documentacion` y leer ambas documentaciones en HTML dentro de la misma web.
 
 ## Troubleshooting basico
 
@@ -389,6 +394,6 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 
 ## Alcance de esta version
 
-Incluye dashboard, CV Builder Core, cover letters, application tracker, ATS Basic Check, centro de documentacion con PDFs embebidos, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion minima de operacion local del MVP.
+Incluye dashboard, CV Builder Core, cover letters, application tracker, ATS Basic Check, centro de documentacion con lectura HTML y descarga PDF, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion minima de operacion local del MVP.
 
 No incluye IA, login, PostgreSQL ni deploy cloud.

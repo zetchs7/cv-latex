@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from app.services.documentation_service import get_documentation_asset, list_documentation_assets
+from app.services.documentation_service import list_documentation_assets, load_documentation_page
 
 
 router = APIRouter(prefix="/documentation", tags=["Documentation"])
@@ -16,22 +16,21 @@ def documentation_index(request: Request) -> HTMLResponse:
         "documentation/index.html",
         {
             "documents": list_documentation_assets(),
-            "selected_document": None,
         },
     )
 
 
 @router.get("/{document_key}", response_class=HTMLResponse, name="documentation_view")
 def documentation_view(request: Request, document_key: str) -> HTMLResponse:
-    selected_document = get_documentation_asset(document_key)
-    if selected_document is None:
+    page = load_documentation_page(document_key)
+    if page is None:
         raise HTTPException(status_code=404, detail="Documento no encontrado.")
 
     return templates.TemplateResponse(
         request,
-        "documentation/index.html",
+        "documentation/detail.html",
         {
             "documents": list_documentation_assets(),
-            "selected_document": selected_document,
+            "page": page,
         },
     )

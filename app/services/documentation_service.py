@@ -5,6 +5,8 @@ import shutil
 import subprocess
 import tempfile
 
+from markupsafe import Markup
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOCUMENTATION_SOURCE_DIR = REPO_ROOT / "docs" / "user"
@@ -29,6 +31,28 @@ class DocumentationAsset:
     @property
     def output_path(self) -> Path:
         return DOCUMENTATION_OUTPUT_DIR / self.pdf_filename
+
+
+@dataclass(frozen=True)
+class DocumentationBlock:
+    kind: str
+    content: object
+
+
+@dataclass(frozen=True)
+class DocumentationSection:
+    anchor: str
+    title: str
+    tone: str
+    blocks: tuple[DocumentationBlock, ...]
+
+
+@dataclass(frozen=True)
+class DocumentationPage:
+    asset: DocumentationAsset
+    heading: str
+    intro: str
+    sections: tuple[DocumentationSection, ...]
 
 
 DOCUMENTATION_ASSETS = (
@@ -61,6 +85,23 @@ def list_documentation_assets() -> tuple[DocumentationAsset, ...]:
 
 def get_documentation_asset(document_key: str) -> DocumentationAsset | None:
     return DOCUMENTATION_ASSET_BY_KEY.get(document_key)
+
+
+def load_documentation_page(document_key: str) -> DocumentationPage | None:
+    asset = get_documentation_asset(document_key)
+    if asset is None:
+        return None
+
+    markdown_content = asset.source_path.read_text(encoding="utf-8")
+    heading, sections = _parse_markdown_sections(markdown_content)
+    intro = _extract_intro(sections) or asset.summary
+
+    return DocumentationPage(
+        asset=asset,
+        heading=heading,
+        intro=intro,
+        sections=sections,
+    )
 
 
 def generate_all_documentation_pdfs() -> list[Path]:
@@ -166,6 +207,169 @@ def _render_markdown_document(title: str, markdown_content: str) -> str:
 {body}
 \end{{document}}
 """
+
+
+def _parse_markdown_sections(markdown_content: str) -> tuple[str, tuple[DocumentationSection, ...]]:
+    lines = markdown_content.splitlines()
+    heading = ""
+    sections: list[DocumentationSection] = []
+    current_title: str | None = None
+    current_lines: list[str] = []
+
+    for raw_line in lines:
+        line = raw_line.rstrip()
+        stripped = line.strip()
+
+        if stripped.startswith("# "):
+            heading = stripped[2:].strip()
+            continue
+
+        if stripped.startswith("## "):
+            if current_title is not None:
+                sections.append(_build_section(current_title, current_lines))
+            current_title = stripped[3:].strip()
+            current_lines = []
+            continue
+
+        if current_title is not None:
+            current_lines.append(line)
+
+    if current_title is not None:
+        sections.append(_build_section(current_title, current_lines))
+
+    return heading, tuple(sections)
+
+
+def _build_section(title: str, lines: list[str]) -> DocumentationSection:
+    blocks = _parse_section_blocks(lines)
+    anchor = _slugify(title)
+    tone = _section_tone(title)
+
+    return DocumentationSection(
+        anchor=anchor,
+        title=title,
+        tone=tone,
+        blocks=tuple(blocks),
+    )
+
+
+def _parse_section_blocks(lines: list[str]) -> list[DocumentationBlock]:
+    blocks: list[DocumentationBlock] = []
+    paragraph_lines: list[str] = []
+    index = 0
+
+    def flush_paragraph() -> None:
+        if not paragraph_lines:
+            return
+        paragraph = " ".join(line.strip() for line in paragraph_lines).strip()
+        if paragraph:
+            blocks.append(DocumentationBlock(kind="paragraph", content=_format_inline_html(paragraph)))
+        paragraph_lines.clear()
+
+    while index < len(lines):
+        stripped = lines[index].strip()
+
+        if not stripped:
+            flush_paragraph()
+            index += 1
+            continue
+
+        if stripped.startswith("```"):
+            flush_paragraph()
+            code_lines: list[str] = []
+            index += 1
+            while index < len(lines) and not lines[index].strip().startswith("```"):
+                code_lines.append(lines[index])
+                index += 1
+            blocks.append(DocumentationBlock(kind="code", content="\n".join(code_lines)))
+            index += 1
+            continue
+
+        if _is_table_header(lines, index):
+            flush_paragraph()
+            table_rows, next_index = _consume_table(lines, index)
+            blocks.append(
+                DocumentationBlock(
+                    kind="table",
+                    content={
+                        "headers": tuple(_format_inline_html(cell) for cell in table_rows[0]),
+                        "rows": tuple(
+                            tuple(_format_inline_html(cell) for cell in row)
+                            for row in table_rows[1:]
+                        ),
+                    },
+                )
+            )
+            index = next_index
+            continue
+
+        if stripped.startswith("### "):
+            flush_paragraph()
+            blocks.append(DocumentationBlock(kind="subheading", content=_format_inline_html(stripped[4:].strip())))
+            index += 1
+            continue
+
+        if stripped.startswith(("- ", "* ")):
+            flush_paragraph()
+            items, next_index = _consume_list(lines, index, ordered=False)
+            blocks.append(
+                DocumentationBlock(
+                    kind="list",
+                    content=tuple(_format_inline_html(item) for item in items),
+                )
+            )
+            index = next_index
+            continue
+
+        if re.match(r"^\d+\.\s+", stripped):
+            flush_paragraph()
+            items, next_index = _consume_list(lines, index, ordered=True)
+            blocks.append(
+                DocumentationBlock(
+                    kind="ordered_list",
+                    content=tuple(_format_inline_html(item) for item in items),
+                )
+            )
+            index = next_index
+            continue
+
+        paragraph_lines.append(stripped)
+        index += 1
+
+    flush_paragraph()
+    return blocks
+
+
+def _extract_intro(sections: tuple[DocumentationSection, ...]) -> str:
+    for section in sections:
+        for block in section.blocks:
+            if block.kind == "paragraph":
+                return str(block.content)
+    return ""
+
+
+def _section_tone(title: str) -> str:
+    normalized = title.lower()
+
+    if "resumen" in normalized or "objetivo" in normalized or "estado final" in normalized:
+        return "summary"
+    if "comando" in normalized or "levantar" in normalized or "tests" in normalized or "backup" in normalized or "restore" in normalized:
+        return "commands"
+    if "riesgo" in normalized or "alcance" in normalized:
+        return "warning"
+    if "backlog" in normalized:
+        return "backlog"
+    if "como " in normalized or "git flow" in normalized or "validaciones" in normalized or "prs" in normalized:
+        return "steps"
+    return "neutral"
+
+
+def _slugify(value: str) -> str:
+    normalized = value.lower().strip()
+    normalized = normalized.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+    normalized = normalized.replace("ñ", "n").replace("ü", "u")
+    normalized = re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")
+    return normalized or "section"
 
 
 def _markdown_to_latex(markdown_content: str) -> str:
@@ -349,6 +553,24 @@ def _format_inline(text: str) -> str:
     return "".join(rendered)
 
 
+def _format_inline_html(text: str) -> Markup:
+    parts = re.split(r"(`[^`]+`|\*\*[^*]+\*\*)", text)
+    rendered: list[str] = []
+
+    for part in parts:
+        if not part:
+            continue
+        if part.startswith("`") and part.endswith("`"):
+            rendered.append(f"<code>{_escape_html(part[1:-1])}</code>")
+            continue
+        if part.startswith("**") and part.endswith("**"):
+            rendered.append(f"<strong>{_escape_html(part[2:-2])}</strong>")
+            continue
+        rendered.append(_escape_html(part))
+
+    return Markup("".join(rendered))
+
+
 def _escape_latex(value: str) -> str:
     escaped = value
     for source, target in (
@@ -362,6 +584,19 @@ def _escape_latex(value: str) -> str:
         ("}", r"\}"),
         ("~", r"\textasciitilde{}"),
         ("^", r"\textasciicircum{}"),
+    ):
+        escaped = escaped.replace(source, target)
+    return escaped
+
+
+def _escape_html(value: str) -> str:
+    escaped = value
+    for source, target in (
+        ("&", "&amp;"),
+        ("<", "&lt;"),
+        (">", "&gt;"),
+        ('"', "&quot;"),
+        ("'", "&#39;"),
     ):
         escaped = escaped.replace(source, target)
     return escaped

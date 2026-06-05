@@ -33,6 +33,32 @@ Resultado:
 - Los dos PDFs se generaron desde fuentes Markdown usando `python -m app.services.documentation_service` y `pdflatex` del contenedor.
 - La legibilidad de ambos PDFs se valido con `pdftotext` y render de la primera pagina a PNG.
 
+---
+
+Accion:
+Reemplazar la lectura embebida de PDF por lectura HTML dentro de la app, manteniendo la descarga PDF.
+
+Motivo:
+Los PDFs no se visualizaban bien embebidos en navegador y debian pasar a ser un artefacto descargable, no el flujo principal de lectura.
+
+Comandos:
+- `Get-Content` sobre `app/routes/documentation.py`, `app/services/documentation_service.py`, `app/templates/documentation/index.html`, `app/static/css/app.css`, `tests/test_documentation_routes.py`
+- `apply_patch`
+- `python -m compileall app tests`
+- `docker compose build`
+- `docker compose up -d`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest` sobre `/documentation/`, `/documentation/technical`, `/documentation/usage`
+- `Invoke-WebRequest` sobre ambos PDFs estaticos
+- `git diff --check`
+
+Resultado:
+- La seccion `Documentacion` ahora renderiza HTML propio con indice y bloques visuales.
+- Los botones `Descargar PDF` siguen apuntando a los assets bajo `app/static/docs/`.
+- La imagen Docker ahora copia `docs/` para que el runtime pueda leer las fuentes Markdown y renderizar `/documentation/technical` y `/documentation/usage`.
+
 ## 2026-06-05 - Release cleanup changelog merge
 
 Accion:

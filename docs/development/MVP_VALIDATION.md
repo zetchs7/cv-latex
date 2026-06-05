@@ -69,10 +69,11 @@ docker compose exec app python -m pytest
 ### Documentacion
 
 - Abrir `http://localhost:8000/documentation/`.
-- Confirmar que aparecen los dos PDFs del MVP.
-- Abrir el PDF tecnico dentro de la web.
-- Abrir el manual de uso dentro de la web.
-- Confirmar opcion visible de abrir o descargar cada PDF.
+- Confirmar que aparecen las dos documentaciones del MVP.
+- Abrir `http://localhost:8000/documentation/technical`.
+- Abrir `http://localhost:8000/documentation/usage`.
+- Confirmar lectura HTML dentro de la web para ambas paginas.
+- Confirmar boton visible de descarga PDF en ambas paginas.
 
 ### Persistencia y artefactos
 

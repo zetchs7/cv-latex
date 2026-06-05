@@ -14,15 +14,29 @@ class DocumentationRoutesTest(unittest.TestCase):
         self.assertIn("Centro de documentacion", response.text)
         self.assertIn("Documentacion tecnica", response.text)
         self.assertIn("Manual de uso web", response.text)
+        self.assertIn("Leer en la web", response.text)
+        self.assertNotIn("iframe", response.text)
 
-    def test_renders_documentation_viewer_for_known_document(self):
+    def test_renders_technical_document_as_html(self):
         with TestClient(app) as client:
             response = client.get("/documentation/technical")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("Documentacion tecnica", response.text)
-        self.assertIn("iframe", response.text)
+        self.assertIn("Indice", response.text)
+        self.assertIn("Arquitectura general", response.text)
         self.assertIn("Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf", response.text)
+        self.assertNotIn("iframe", response.text)
+
+    def test_renders_usage_document_as_html(self):
+        with TestClient(app) as client:
+            response = client.get("/documentation/usage")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Manual de uso web", response.text)
+        self.assertIn("Como levantar la app", response.text)
+        self.assertIn("Manual_Uso_Web_CV_LaTeX_Builder.pdf", response.text)
+        self.assertNotIn("iframe", response.text)
 
     def test_returns_not_found_for_unknown_document(self):
         with TestClient(app) as client:
