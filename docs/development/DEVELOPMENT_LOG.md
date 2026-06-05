@@ -1,5 +1,17 @@
 # Development Log
 
+## Release Cleanup v0.8.0
+
+- Fecha: 2026-06-05
+- Rama: `feature/release-cleanup-v0.8.0`
+- Objetivo: alinear version y documentacion antes del tag `v0.8.0`.
+- Modulos afectados: `Dockerfile`, `README.md`, `docs/development`.
+- Resumen de cambios:
+  - Se actualizo `APP_VERSION` en `Dockerfile` a `0.8.0`.
+  - Se limpio la seccion `ATS Basic Check` del README para que describa solo el analisis ATS.
+  - Se registro el ajuste en logs de desarrollo para dejar trazabilidad del release cleanup.
+- Resultado: cambio menor de consistencia aplicado sin tocar logica funcional ni rutas.
+
 ## Etapa 0 - Base tecnica, Docker y documentacion inicial
 
 - Fecha: 2026-06-02

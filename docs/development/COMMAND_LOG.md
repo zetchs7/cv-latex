@@ -1,5 +1,30 @@
 # Command Log
 
+## 2026-06-05 - Release cleanup v0.8.0
+
+Accion:
+Corregir consistencia final de version y documentacion antes del tag `v0.8.0`.
+
+Motivo:
+Eliminar una referencia vieja de `APP_VERSION` en `Dockerfile` y aclarar la seccion `ATS Basic Check` del README para que no mezcle campos de Postulaciones.
+
+Comandos:
+- `git status --short --branch`
+- `git fetch origin`
+- `git checkout development`
+- `git checkout -b feature/release-cleanup-v0.8.0`
+- `Get-Content Dockerfile`
+- `Get-Content README.md`
+- `Get-Content docs/development/COMMAND_LOG.md`
+- `Get-Content docs/development/DEVELOPMENT_LOG.md`
+- `Get-Content docs/development/CHANGELOG_GENERAL.md`
+- `Get-Content VERSION`
+
+Resultado:
+- `Dockerfile` quedo alineado con `APP_VERSION=0.8.0`.
+- `README.md` dejo de mezclar datos de Application Tracker dentro de ATS Basic Check.
+- La documentacion de desarrollo quedo lista para el cierre de release.
+
 ## 2026-06-02 - Preparacion de ramas y estado inicial
 
 Accion:

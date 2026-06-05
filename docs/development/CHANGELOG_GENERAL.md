@@ -1,5 +1,13 @@
 # Changelog General
 
+## 0.8.0 - 2026-06-05
+
+### Cambiado
+
+- `Dockerfile` alineado a `APP_VERSION=0.8.0`.
+- `README.md` corregido para que `ATS Basic Check` describa solo el analisis ATS y no mezcle campos de Postulaciones.
+- Logs de desarrollo actualizados con el ajuste de release cleanup.
+
 ## 0.8.0 - 2026-06-04
 
 ### Agregado

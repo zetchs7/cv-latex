@@ -296,28 +296,13 @@ Rutas disponibles:
 - `GET /ats/`: listar CVs disponibles para analisis ATS.
 - `GET /ats/cvs/{cv_id}`: mostrar score, checklist y recomendaciones ATS basicas para un CV existente.
 
-Campos del modulo:
+El modulo ATS Basic Check solo analiza CVs guardados y muestra:
 
-- `company`
-- `position`
-- `link`
-- `source`
-- `applied_on`
-- `status`
-- `associated_cv_id` opcional
-- `associated_cover_letter_id` opcional
-- `notes`
-- `next_action`
-- `follow_up_date`
-
-Estados permitidos:
-
-- `pendiente`
-- `enviado`
-- `entrevista`
-- `rechazado`
-- `oferta`
-- `pausado`
+- estado general
+- score simple
+- checklist de campos y secciones criticas
+- advertencias
+- recomendaciones
 
 ## Export Engine
 
