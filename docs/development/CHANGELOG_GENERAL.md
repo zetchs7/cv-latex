@@ -32,6 +32,13 @@
 - Modal ATS pulido con badge semantico, cards mas compactas y mejor alineacion de score, estado y longitud.
 - Pantalla `Editar CV` ajustada para mostrar contexto del CV y de la persona tambien cuando se llega desde el modal ATS.
 - Miniaturas reales de PDF, selector de paletas visuales e IA real documentados como backlog de etapas futuras en lugar de implementarlos ahora.
+- Resumen del workspace simplificado a una linea horizontal sin cuadrados internos ni numeros gigantes.
+- Cards principales del dashboard simplificadas sin badges numericos grandes.
+- CTA duplicada `Nueva carta` removida de la seccion de recientes; quedan las acciones rapidas superiores como unica entrada de creacion.
+- `Herramientas avanzadas` en CVs convertido a boton secundario.
+- `Exportacion` y `Ficha rapida` ajustadas con separacion final de acciones secundarias y encabezados consistentes.
+- Estado general del modal ATS reordenado con titulo, badge semantico, score y longitud en estructura vertical clara.
+- Contexto visual de `Editar CV` desde ATS reforzado con subtitulo `titulo - persona`.
 
 ## 0.8.0 - 2026-06-04
 

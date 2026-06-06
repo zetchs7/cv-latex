@@ -7,7 +7,7 @@ Aplicacion web local, pequena y portable para construir CVs, cartas de presentac
 - Version: `0.8.0`
 - Base estable: `tag v0.8.0`
 - Commit base estable: `eab9556 fix(docs): render documentation as html with pdf downloads`
-- Etapa visual en trabajo: `8.1.2.1 - Correccion fina visual final antes del PR`
+- Etapa visual en trabajo: `8.1.2.2 - Cierre visual definitivo antes del PR`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 - Exportaciones: `/data/exports` dentro del contenedor, visible en `./data/exports` en el host
@@ -260,6 +260,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 8.1: rediseno visual privado con sidebar fija, dashboard operativo, dark/light mode y borrado seguro por coincidencia exacta. En curso sobre `feature/ui-private-dashboard`.
 - Correccion urgente UI: restauracion de layout pulido, cache busting de assets y navegacion privada visible dentro de la misma rama `feature/ui-private-dashboard`.
 - Etapa 8.1.2.1: correccion fina visual final de dashboard, listados, detalle CV y modal ATS antes de abrir PR. En curso sobre `feature/ui-private-dashboard`.
+- Etapa 8.1.2.2: cierre visual definitivo antes del PR, con resumen workspace simplificado, cards sin numeros grandes, CTA duplicada removida y modal ATS reordenado.
 
 ## Modulos disponibles
 
@@ -379,16 +380,16 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 
 1. Abrir `http://localhost:8000`.
 2. Revisar el dashboard, la sidebar izquierda y el toggle dark/light.
-3. Confirmar que la card de resumen del dashboard muestra metricas limpias de `Curriculums`, `Cartas` y `Postulaciones`, sin cortes de palabras.
+3. Confirmar que el resumen del dashboard es una linea simple `CVs`, `Cartas`, `Postulaciones`, sin cuadrados internos ni numeros gigantes.
 4. Revisar que `Abrir CVs` y `Abrir cartas` se muestran como botones y no como links de texto.
-5. Verificar que el dashboard usa previews visuales CSS y que las miniaturas PDF reales quedan como backlog futuro.
+5. Confirmar que las cards principales no muestran badges numericos grandes y que no existe CTA duplicada `Nueva carta` dentro de recientes.
 6. Entrar a `CVs` y crear o reutilizar un CV.
 7. Revisar que cada fila muestra acciones principales a la derecha, fecha `dd/mm/yyyy HH:mm` integrada en metadata y `Mas acciones` con cierre por click externo o `Escape`.
-8. Verificar que `Importar JSON` queda en `Herramientas avanzadas` y no domina la vista principal.
+8. Verificar que `Herramientas avanzadas` se ve como boton secundario y que `Importar JSON` queda dentro de esa seccion.
 9. Abrir el detalle del CV y confirmar que `Exportacion` y `Ficha rapida` usan spacing mas compacto, labels cortos y fechas `dd/mm/yyyy HH:mm`.
 10. Probar `Duplicar CV` y confirmar que primero aparece un modal de confirmacion.
 11. Ejecutar `Analizar ATS` desde el detalle o desde `ATS` y confirmar que abre un modal sin sacar al usuario de la pagina actual.
-12. Revisar que el modal ATS mantiene acciones superiores, badge semantico de estado y cards compactas sin cortes de palabras.
+12. Revisar que el modal ATS muestra `Estado general` con badge a la derecha, score debajo y longitud estimada debajo del score.
 13. Desde el modal ATS, entrar a `Editar CV` y confirmar que la pantalla muestra contexto del CV y de la persona.
 14. Entrar a `ATS` y repetir el analisis completo sobre un CV desde la ruta dedicada.
 15. Entrar a `Cartas` y crear o reutilizar una carta.

@@ -89,6 +89,8 @@ class AtsRoutesTest(unittest.TestCase):
                 self.assertIn("Abrir vista completa", response.text)
                 self.assertIn("Editar CV", response.text)
                 self.assertIn("ats-status-", response.text)
+                self.assertIn("ats-state-head", response.text)
+                self.assertIn("ats-score-card-stacked", response.text)
 
 
 if __name__ == "__main__":

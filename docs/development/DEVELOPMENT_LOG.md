@@ -618,6 +618,25 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
   - Validacion visual manual fina del modal ATS y del cierre real de menus con navegador interactivo.
   - PR hacia `development` cuando el usuario lo pida.
 
+## Etapa 8.1.2.2 - Cierre visual definitivo antes del PR
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: simplificar los componentes visuales que seguian cargados o desalineados antes de abrir PR.
+- Modulos afectados: `dashboard`, `cvs`, `cover_letters`, `ats`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se reemplazo el resumen del workspace con cuadrados internos por una linea horizontal simple: `CVs`, `Cartas`, `Postulaciones`.
+  - Se eliminaron los numeros grandes de las cards principales `Curriculum Vitae` y `Cartas de presentacion`.
+  - Se elimino la CTA duplicada `Nueva carta` dentro de recientes; las altas quedan en las acciones rapidas superiores.
+  - `Herramientas avanzadas` en CVs paso a verse como boton secundario, manteniendo `Importar JSON` dentro de la seccion colapsable.
+  - Se ajustaron fecha y metadata de CVs/cartas para mantener formato `dd/mm/yyyy HH:mm` sin competir con los botones.
+  - Se separaron las acciones secundarias de `Exportacion` y se mantuvieron labels cortos en `Ficha rapida`.
+  - Se reordeno `Estado general` en el modal ATS con badge semantico arriba, score destacado y longitud estimada debajo.
+  - Se limpio el subtitulo contextual de `Editar CV` desde ATS con formato `titulo - persona`.
+- Pendientes:
+  - Validacion visual manual final antes de PR.
+  - Miniaturas reales de PDF y selector de paletas quedan fuera de esta etapa.
+
 ## Fix ATS - Critical Sections Status Cap
 
 - Fecha: 2026-06-04

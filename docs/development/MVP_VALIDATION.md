@@ -30,9 +30,10 @@ docker compose exec app python -m pytest
 - Confirmar que el tema persiste al recargar.
 - Confirmar que la version visible coincide con `VERSION` y `/health`.
 - Confirmar que `GET /static/css/app.css` y `GET /static/js/app.js` responden `200`.
-- Confirmar que el resumen del workspace se ve compacto, sin palabras partidas.
+- Confirmar que el resumen del workspace se ve como una linea horizontal simple, sin cuadrados internos ni numeros gigantes.
 - Confirmar que `Abrir CVs` y `Abrir cartas` se ven como botones.
-- Confirmar que el dashboard usa previews CSS y que las miniaturas PDF reales siguen pendientes.
+- Confirmar que las cards principales no muestran contadores grandes.
+- Confirmar que no hay CTA duplicada `Nueva carta` dentro de recientes.
 - Confirmar que `Postulaciones` se ve como metrica secundaria y no domina la card.
 
 ### CVs
@@ -43,7 +44,7 @@ docker compose exec app python -m pytest
 - Confirmar que el listado no muestra `SQLite activo`.
 - Confirmar que cada fila muestra la fecha `dd/mm/yyyy HH:mm` como metadata secundaria, sin badge flotando arriba.
 - Confirmar que `Mas acciones` queda a la derecha y se cierra con click externo o `Escape`.
-- Confirmar que `Importar JSON` queda en `Herramientas avanzadas`.
+- Confirmar que `Herramientas avanzadas` se ve como boton secundario y que `Importar JSON` queda dentro.
 - Confirmar que `Exportacion` y `Ficha rapida` usan spacing consistente, labels cortos y fechas `dd/mm/yyyy HH:mm`.
 - Duplicar el CV.
 - Confirmar que `Duplicar CV` pide confirmacion antes de ejecutar.
@@ -82,7 +83,7 @@ docker compose exec app python -m pytest
 - Abrir `http://localhost:8000/ats/`.
 - Ejecutar `Analizar ATS` desde el detalle del CV y confirmar apertura modal.
 - Confirmar que el modal ATS muestra `Abrir vista completa`, `Editar CV` y `Cerrar` arriba.
-- Confirmar que el badge del estado usa color semantico y que score/estado/longitud quedan mejor alineados.
+- Confirmar que `Estado general` muestra titulo, badge semantico, score y longitud en estructura clara.
 - Confirmar que desde `Editar CV` en el modal se ve contexto del CV y de la persona en la cabecera del formulario.
 - Ejecutar analisis sobre un CV completo.
 - Ejecutar analisis sobre un CV incompleto.

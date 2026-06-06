@@ -22,20 +22,11 @@
     <div class="workspace-card-head workspace-card-head-compact">
       <p class="eyebrow">Resumen del workspace</p>
     </div>
-    <dl class="metric-list metric-list-compact">
-      <div class="metric-card">
-        <dt>Curriculums</dt>
-        <dd>{{ counts.cvs }}</dd>
-      </div>
-      <div class="metric-card">
-        <dt>Cartas</dt>
-        <dd>{{ counts.cover_letters }}</dd>
-      </div>
-      <div class="metric-card metric-card-secondary">
-        <dt>Postulaciones</dt>
-        <dd>{{ counts.applications }}</dd>
-      </div>
-    </dl>
+    <p class="workspace-inline-summary">
+      <span>CVs: <strong>{{ counts.cvs }}</strong></span>
+      <span>Cartas: <strong>{{ counts.cover_letters }}</strong></span>
+      <span class="workspace-inline-summary-muted">Postulaciones: <strong>{{ counts.applications }}</strong></span>
+    </p>
   </article>
 </section>
 
@@ -43,25 +34,7 @@
   {% for module in primary_modules %}
   <article class="focus-card">
     <div class="focus-card-head">
-      <span class="focus-count">{{ module.count }}</span>
       <h2>{{ module.name }}</h2>
-    </div>
-    <div class="focus-preview-stack" aria-hidden="true">
-      {% if module.preview_total %}
-        {% for _ in range(module.preview_total) %}
-        <span class="focus-preview-sheet {% if module.name == 'Cartas de presentacion' %}focus-preview-sheet-letter{% endif %}">
-          <span class="document-line short"></span>
-          <span class="document-line"></span>
-          <span class="document-line short"></span>
-        </span>
-        {% endfor %}
-      {% else %}
-        <span class="focus-preview-sheet {% if module.name == 'Cartas de presentacion' %}focus-preview-sheet-letter{% endif %}">
-          <span class="document-line short"></span>
-          <span class="document-line"></span>
-          <span class="document-line short"></span>
-        </span>
-      {% endif %}
     </div>
     <p>{{ module.description }}</p>
     <a class="button small" href="{{ url_for(module.url_name) }}">{{ module.action_label }}</a>
@@ -141,25 +114,11 @@
         </div>
       </article>
       {% endfor %}
-      <article class="dashboard-preview-card dashboard-preview-card-create">
-        <span class="dashboard-preview-create-mark" aria-hidden="true">+</span>
-        <div class="dashboard-preview-copy">
-          <strong>Nueva carta</strong>
-          <small>Prepara una carta base o asociada a un CV.</small>
-        </div>
-        <a class="button small primary" href="{{ url_for('cover_letters_new') }}">Crear nueva carta</a>
-      </article>
     </div>
     {% else %}
-    <div class="dashboard-preview-grid dashboard-preview-grid-letters">
-      <article class="dashboard-preview-card dashboard-preview-card-create">
-        <span class="dashboard-preview-create-mark" aria-hidden="true">+</span>
-        <div class="dashboard-preview-copy">
-          <strong>Nueva carta</strong>
-          <small>Crea una carta reutilizable y mantenla asociada a un CV cuando haga falta.</small>
-        </div>
-        <a class="button small primary" href="{{ url_for('cover_letters_new') }}">Crear nueva carta</a>
-      </article>
+    <div class="empty-card">
+      <h3>No hay cartas recientes</h3>
+      <p>Usa la accion rapida superior cuando necesites crear una carta nueva.</p>
     </div>
     {% endif %}
   </article>

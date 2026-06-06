@@ -3061,3 +3061,37 @@ Resultado:
 - El detalle de CV muestra `Titulo`, `Nombre`, fechas formateadas y una cabecera contextual en `Editar CV`.
 - El modal ATS adopta badge semantico y resumen rapido mas compacto.
 - Se documento backlog explicito para 8.1.3 (previews reales y selector de paletas) y 8.3 (IA real).
+
+---
+
+Accion:
+Simplificar el cierre visual definitivo 8.1.2.2.
+
+Motivo:
+Eliminar elementos que seguian generando ruido visual antes de abrir PR, sin agregar funcionalidades nuevas.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/main.py`
+- `app/templates/dashboard.html`
+- `app/templates/cvs/index.html`
+- `app/templates/cvs/form.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- Resumen del workspace reducido a una linea horizontal sin cards internas.
+- Cards principales sin badges numericos grandes.
+- CTA duplicada `Nueva carta` removida de recientes.
+- `Herramientas avanzadas` ahora se ve como boton secundario.
+- Acciones secundarias de `Exportacion` separadas del selector.
+- `Estado general` del modal ATS reorganizado con badge, score y longitud en estructura clara.
+- Contexto visual de edicion desde ATS reforzado con subtitulo `titulo - persona`.

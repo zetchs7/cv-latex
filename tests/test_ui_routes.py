@@ -26,10 +26,14 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("Curriculum Vitae", response.text)
                 self.assertIn("data-theme-toggle", response.text)
                 self.assertIn("Resumen del workspace", response.text)
-                self.assertIn("Curriculums", response.text)
+                self.assertIn("CVs:", response.text)
+                self.assertIn("workspace-inline-summary", response.text)
                 self.assertIn("Abrir CVs", response.text)
                 self.assertIn("Abrir cartas", response.text)
                 self.assertNotIn("Postulacion es", response.text)
+                self.assertNotIn("metric-card", response.text)
+                self.assertNotIn("focus-count", response.text)
+                self.assertNotIn("dashboard-preview-card-create", response.text)
                 self.assertIn('class="button small" href="http://testserver/cvs/"', response.text)
                 self.assertIn('class="button small" href="http://testserver/cover-letters/"', response.text)
 
@@ -58,6 +62,7 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("Mas acciones", response.text)
                 self.assertIn("Descargar PDF", response.text)
                 self.assertIn("Herramientas avanzadas", response.text)
+                self.assertIn('class="button" href="#advanced-tools"', response.text)
                 self.assertIn("Importar o restaurar desde JSON", response.text)
                 self.assertIn("data-confirm-submit", response.text)
                 self.assertRegex(response.text, r"Actualizado \d{2}/\d{2}/\d{4} \d{2}:\d{2}")
@@ -116,6 +121,7 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("Editar CV", response.text)
                 self.assertIn("CV ATS Edit", response.text)
                 self.assertIn("Persona Edit", response.text)
+                self.assertIn("CV ATS Edit - Persona Edit", response.text)
 
     def test_cv_delete_requires_exact_title_match(self):
         with tempfile.TemporaryDirectory() as data_directory:

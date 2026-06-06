@@ -532,7 +532,8 @@ summary.button {
 
 .workspace-card {
   display: grid;
-  gap: 14px;
+  align-content: center;
+  gap: 10px;
 }
 
 .workspace-card-head {
@@ -542,6 +543,31 @@ summary.button {
 
 .workspace-card-head-compact {
   gap: 0;
+}
+
+.workspace-inline-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.workspace-inline-summary span + span::before {
+  content: "|";
+  margin-right: 10px;
+  color: var(--text-muted);
+}
+
+.workspace-inline-summary strong {
+  color: var(--text);
+}
+
+.workspace-inline-summary-muted {
+  color: var(--text-muted);
 }
 
 .metric-list {
@@ -618,12 +644,13 @@ summary.button {
 .focus-card {
   display: grid;
   gap: 14px;
-  min-height: 210px;
+  align-content: start;
+  min-height: 158px;
 }
 
 .focus-card-head {
   display: grid;
-  gap: 14px;
+  gap: 6px;
 }
 
 .focus-card > .button {
@@ -966,6 +993,7 @@ html[data-theme="dark"] .document-sheet {
 .entity-meta-date {
   color: var(--text-muted);
   font-size: 0.82rem;
+  margin-left: auto;
   white-space: nowrap;
 }
 
@@ -1011,6 +1039,9 @@ html[data-theme="dark"] .document-sheet {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
 .secondary-actions form {
@@ -1085,6 +1116,7 @@ html[data-theme="dark"] .document-sheet {
 .detail-card-head {
   display: grid;
   gap: 4px;
+  padding-bottom: 2px;
 }
 
 .detail-side-panel h2,
@@ -1113,8 +1145,8 @@ html[data-theme="dark"] .document-sheet {
 dl {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
-  gap: 10px 14px;
-  margin: 0;
+  gap: 12px 14px;
+  margin: 10px 0 0;
 }
 
 dt {
@@ -1303,6 +1335,12 @@ textarea {
   margin-bottom: 0;
 }
 
+.ats-score-card-stacked {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 0;
+}
+
 .ats-score {
   color: var(--accent-strong);
   font-size: 2.4rem;
@@ -1319,6 +1357,13 @@ textarea {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.ats-state-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
 }
 
 .ats-status-excellent {
@@ -1355,6 +1400,7 @@ textarea {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
   gap: 12px;
+  margin-top: 14px;
 }
 
 .ats-metric {
@@ -1380,8 +1426,15 @@ textarea {
 }
 
 .form-context-copy {
+  display: inline-flex;
+  align-items: center;
   max-width: 700px;
   margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-soft);
+  font-weight: 700;
 }
 
 .ats-check-item.passed {
