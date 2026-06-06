@@ -25,6 +25,59 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("Panel de control", response.text)
                 self.assertIn("Curriculum Vitae", response.text)
                 self.assertIn("data-theme-toggle", response.text)
+                self.assertIn("Workspace privado listo para trabajar", response.text)
+                self.assertNotIn("Postulacion es", response.text)
+
+    def test_cv_list_hides_sqlite_status_and_keeps_actions(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                create_cv(
+                    CVFormData(
+                        title="CV Layout",
+                        full_name="Persona Layout",
+                        email="layout@example.com",
+                        phone="",
+                        professional_summary="Perfil",
+                        experience_summary="Experiencia",
+                        education_summary="Educacion",
+                        skills="Python",
+                    )
+                )
+
+                with TestClient(app) as client:
+                    response = client.get("/cvs/")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertNotIn("SQLite activo", response.text)
+                self.assertIn("Mas acciones", response.text)
+                self.assertIn("Descargar PDF", response.text)
+
+    def test_cv_detail_renders_secondary_actions_as_buttons_and_ats_modal_trigger(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_cv(
+                    CVFormData(
+                        title="CV Detalle",
+                        full_name="Persona Detalle",
+                        email="detalle@example.com",
+                        phone="",
+                        professional_summary="Perfil",
+                        experience_summary="Experiencia",
+                        education_summary="Educacion",
+                        skills="Python",
+                    )
+                )
+
+                with TestClient(app) as client:
+                    response = client.get(f"/cvs/{cv_id}")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("data-ats-modal-url", response.text)
+                self.assertIn("Descargar JSON", response.text)
+                self.assertIn("Duplicar CV", response.text)
+                self.assertIn("Eliminar CV", response.text)
 
     def test_cv_delete_requires_exact_title_match(self):
         with tempfile.TemporaryDirectory() as data_directory:

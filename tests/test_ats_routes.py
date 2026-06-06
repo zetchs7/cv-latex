@@ -62,6 +62,31 @@ class AtsRoutesTest(unittest.TestCase):
                 self.assertIn("Checklist", response.text)
                 self.assertIn("CV ATS", response.text)
 
+    def test_renders_analysis_modal_for_existing_cv(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_cv(
+                    CVFormData(
+                        title="CV ATS Modal",
+                        full_name="Persona ATS Modal",
+                        email="modal@example.com",
+                        phone="+54 11 4000 0001",
+                        professional_summary="Perfil profesional orientado a backend y APIs.",
+                        experience_summary="Experiencia en FastAPI, SQL y despliegues.",
+                        education_summary="Analista de sistemas.",
+                        skills="Python, FastAPI, Docker",
+                    )
+                )
+
+                with TestClient(app) as client:
+                    response = client.get(f"/ats/cvs/{cv_id}/modal")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn('data-ats-modal', response.text)
+                self.assertIn("CV ATS Modal", response.text)
+                self.assertIn("Recomendaciones", response.text)
+
 
 if __name__ == "__main__":
     unittest.main()

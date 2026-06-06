@@ -51,34 +51,38 @@
     </a>
 
     <div class="entity-body">
-      <div class="entity-head">
-        <div>
-          <h2><a href="{{ url_for('cvs_detail', cv_id=cv.id) }}">{{ cv.title }}</a></h2>
-          <p>{{ cv.full_name }}</p>
-        </div>
-        <span class="entity-date">Actualizado {{ cv.updated_at }}</span>
-      </div>
-
-      <div class="entity-meta">
-        <span>{{ cv.email or "Sin email" }}</span>
-        <span>SQLite activo</span>
-      </div>
-
-      <div class="entity-actions">
-        <a class="button small primary" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Abrir</a>
-        <a class="button small" href="{{ url_for('cvs_export_pdf', cv_id=cv.id) }}?template_key={{ default_template }}">Descargar PDF</a>
-        <a class="button small" href="{{ url_for('cvs_export_json', cv_id=cv.id) }}">JSON</a>
-
-        <details class="action-menu">
-          <summary class="button small">Mas acciones</summary>
-          <div class="action-menu-panel">
-            <a class="text-link" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar</a>
-            <form method="post" action="{{ url_for('cvs_duplicate', cv_id=cv.id) }}">
-              <button class="text-button" type="submit">Duplicar</button>
-            </form>
-            <a class="text-link danger-link" href="{{ url_for('cvs_confirm_delete', cv_id=cv.id) }}">Eliminar</a>
+      <div class="entity-body-layout">
+        <div class="entity-main">
+          <div class="entity-head">
+            <div>
+              <h2><a href="{{ url_for('cvs_detail', cv_id=cv.id) }}">{{ cv.title }}</a></h2>
+              <p>{{ cv.full_name }}</p>
+            </div>
+            <span class="entity-date">Actualizado {{ cv.updated_at }}</span>
           </div>
-        </details>
+
+          <div class="entity-meta">
+            <span>{{ cv.email or "Sin email" }}</span>
+          </div>
+        </div>
+
+        <div class="entity-actions entity-actions-end">
+          <a class="button small primary" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Abrir</a>
+          <a class="button small" href="{{ url_for('cvs_export_pdf', cv_id=cv.id) }}?template_key={{ default_template }}">Descargar PDF</a>
+          <a class="button small" href="{{ url_for('cvs_export_json', cv_id=cv.id) }}">JSON</a>
+
+          <details class="action-menu" data-action-menu>
+            <summary class="button small" aria-haspopup="menu" aria-expanded="false" data-action-menu-toggle>Mas acciones</summary>
+            <div class="action-menu-panel" role="menu">
+              <a class="text-link" href="{{ url_for('cvs_edit', cv_id=cv.id) }}" role="menuitem">Editar</a>
+              <a class="text-link" href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}" data-ats-open data-ats-modal-url="{{ url_for('ats_cv_analysis_modal', cv_id=cv.id) }}" role="menuitem">Analizar ATS</a>
+              <form method="post" action="{{ url_for('cvs_duplicate', cv_id=cv.id) }}">
+                <button class="text-button" type="submit" role="menuitem">Duplicar</button>
+              </form>
+              <a class="text-link danger-link" href="{{ url_for('cvs_confirm_delete', cv_id=cv.id) }}" role="menuitem">Eliminar</a>
+            </div>
+          </details>
+        </div>
       </div>
     </div>
   </article>

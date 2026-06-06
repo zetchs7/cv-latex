@@ -15,6 +15,7 @@ class DocumentationRoutesTest(unittest.TestCase):
         self.assertIn("Documentacion tecnica", response.text)
         self.assertIn("Manual de uso web", response.text)
         self.assertIn("Leer en la web", response.text)
+        self.assertNotIn("Abrir PDF directo", response.text)
         self.assertNotIn("iframe", response.text)
 
     def test_renders_technical_document_as_html(self):
@@ -26,6 +27,7 @@ class DocumentationRoutesTest(unittest.TestCase):
         self.assertIn("Indice", response.text)
         self.assertIn("Arquitectura general", response.text)
         self.assertIn("Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf", response.text)
+        self.assertNotIn("Abrir PDF directo", response.text)
         self.assertNotIn("iframe", response.text)
 
     def test_renders_usage_document_as_html(self):
@@ -36,6 +38,7 @@ class DocumentationRoutesTest(unittest.TestCase):
         self.assertIn("Manual de uso web", response.text)
         self.assertIn("Como levantar la app", response.text)
         self.assertIn("Manual_Uso_Web_CV_LaTeX_Builder.pdf", response.text)
+        self.assertNotIn("Abrir PDF directo", response.text)
         self.assertNotIn("iframe", response.text)
 
     def test_returns_not_found_for_unknown_document(self):

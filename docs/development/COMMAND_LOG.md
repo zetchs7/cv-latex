@@ -2901,3 +2901,68 @@ Resultado:
 - ATS completo (`cv_id=41`) responde `Bueno`.
 - ATS incompleto (`cv_id=42`) responde `Insuficiente`.
 - `/data/exports` contiene archivos persistidos de CV y carta del flujo de validacion.
+
+---
+
+Accion:
+Aplicar ajustes finos de UX/UI en el dashboard privado y modulos asociados.
+
+Motivo:
+Corregir detalles visuales reportados por el usuario sin avanzar a una etapa nueva ni tocar base de datos.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/routes/dashboard.py`
+- `app/routes/ats.py`
+- `app/templates/dashboard.html`
+- `app/templates/cvs/index.html`
+- `app/templates/cvs/detail.html`
+- `app/templates/cover_letters/index.html`
+- `app/templates/ats/index.html`
+- `app/templates/ats/cv_analysis.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/templates/ats/modal.html`
+- `app/templates/documentation/index.html`
+- `app/templates/documentation/detail.html`
+- `app/templates/layout.html`
+- `app/static/css/app.css`
+- `app/static/js/app.js`
+- `app/main.py`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `tests/test_documentation_routes.py`
+
+Resultado:
+- Dashboard con resumen mas claro.
+- Listados de CVs/cartas con acciones a la derecha y menus secundarios mas controlados.
+- ATS disponible en modal sin romper la ruta completa.
+- Documentacion HTML sin el enlace redundante `Abrir PDF directo`.
+
+---
+
+Accion:
+Validar compilacion, runtime, tests y DOM del refinamiento 8.1.1.
+
+Motivo:
+Confirmar que el ajuste fino mantiene el MVP estable en Docker Compose.
+
+Comandos:
+- `python -m compileall app tests`
+- `docker compose build`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose logs app --tail 80`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest -UseBasicParsing` sobre `/`, `/cvs/`, `/cover-letters/`, `/applications/`, `/ats/`, `/documentation/`
+- `Invoke-WebRequest -UseBasicParsing` sobre `/documentation/technical` y `/documentation/usage`
+- `Invoke-WebRequest -UseBasicParsing` sobre `/ats/cvs/43` y `/ats/cvs/43/modal`
+- `git diff --check`
+
+Resultado:
+- `pytest`: `45 passed in 1.10s`.
+- Contenedor `cv_latex_app` healthy en `127.0.0.1:8000`.
+- Rutas principales responden `200`.
+- El DOM confirma ausencia de `SQLite activo` y de `Abrir PDF directo`.
+- El DOM confirma `data-ats-modal-url`, `secondary-actions` y modal ATS con score, checklist, advertencias y recomendaciones.
+- La validacion visual real del menu y del modal queda pendiente manual por falta de browser automatizado confiable en este host.

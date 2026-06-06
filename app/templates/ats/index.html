@@ -31,7 +31,7 @@
         <td>{{ cv.updated_at }}</td>
         <td>
           <div class="action-row compact">
-            <a class="button small" href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}">Analizar ATS</a>
+            <a class="button small" href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}" data-ats-open data-ats-modal-url="{{ url_for('ats_cv_analysis_modal', cv_id=cv.id) }}">Analizar ATS</a>
             <a class="button small" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Ver CV</a>
           </div>
         </td>

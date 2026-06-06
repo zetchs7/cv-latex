@@ -2,7 +2,6 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from app.database import get_database_status
 from app.repositories import application_repository, cover_letter_repository, cv_repository
 
 
@@ -73,8 +72,7 @@ def dashboard(request: Request) -> HTMLResponse:
         "dashboard.html",
         {
             "app_name": "CV LaTeX Builder",
-            "app_status": "Workspace privado listo",
-            "database_status": get_database_status(),
+            "app_status": "Workspace privado listo para trabajar",
             "primary_modules": primary_modules,
             "secondary_modules": secondary_modules,
             "recent_cvs": cvs[:4],

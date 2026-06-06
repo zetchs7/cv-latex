@@ -15,6 +15,10 @@
 - Dashboard redisenado con foco principal en CVs y cartas, modulos secundarios mas compactos y menos texto explicativo largo.
 - Listados de CVs y cartas redisenados como filas compactas con preview visual CSS, acciones primarias y menu de acciones secundarias.
 - Detalle de CV con selector unificado de plantilla para exportar TEX y PDF.
+- Dashboard refinado con metricas claras de `Curriculums`, `Cartas` y `Postulaciones`, sin copy tecnico redundante.
+- Listados de CVs y cartas ajustados para alinear acciones a la derecha, quitar `SQLite activo` y cerrar `Mas acciones` con click externo o `Escape`.
+- ATS ahora puede abrirse como modal desde la UI privada, manteniendo la ruta completa `/ats/cvs/{cv_id}` para compatibilidad.
+- Centro de documentacion simplificado para dejar solo `Leer en la web` y `Descargar PDF`.
 - Confirmaciones de eliminacion de CVs y cartas endurecidas para exigir coincidencia exacta del texto esperado.
 - Sidebar y resaltado de modulo activo dejan de depender solo de JS y quedan reforzados desde el render del template base.
 - README, manual web y documentacion tecnica actualizados para reflejar sidebar, tema y rollback visual.

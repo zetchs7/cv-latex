@@ -79,6 +79,10 @@ body {
   line-height: 1.5;
 }
 
+body.modal-open {
+  overflow: hidden;
+}
+
 a {
   color: inherit;
 }
@@ -534,6 +538,11 @@ summary.button {
   font-size: 1.16rem;
 }
 
+.workspace-card-head .section-copy {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
 .metric-list {
   display: grid;
   gap: 14px;
@@ -793,6 +802,23 @@ html[data-theme="dark"] .document-sheet {
   gap: 10px;
 }
 
+.entity-body {
+  width: 100%;
+}
+
+.entity-body-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+}
+
+.entity-main {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
 .entity-head {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
@@ -816,6 +842,12 @@ html[data-theme="dark"] .document-sheet {
   display: flex;
   gap: 18px;
   flex-wrap: wrap;
+}
+
+.entity-actions-end {
+  justify-content: flex-end;
+  align-self: center;
+  flex-wrap: nowrap;
 }
 
 .action-menu {
@@ -847,6 +879,17 @@ html[data-theme="dark"] .document-sheet {
   border-radius: 18px;
   background: var(--surface-strong);
   box-shadow: var(--shadow-lg);
+}
+
+.secondary-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.secondary-actions form {
+  margin: 0;
 }
 
 .empty-card {
@@ -1151,6 +1194,57 @@ textarea {
   margin-top: 8px;
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 16, 14, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.modal-frame {
+  position: relative;
+  width: min(1080px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
+.ats-modal-card {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.ats-modal-head,
+.ats-modal-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ats-modal-head .section-copy {
+  margin: 8px 0 0;
+}
+
+.ats-modal-content {
+  display: grid;
+  gap: 18px;
+}
+
 .documentation-card {
   display: grid;
   gap: 18px;
@@ -1314,7 +1408,8 @@ textarea {
   .entity-head,
   .section-heading,
   .compact-item,
-  .detail-summary-card {
+  .detail-summary-card,
+  .entity-body-layout {
     grid-template-columns: 1fr;
   }
 
@@ -1332,6 +1427,14 @@ textarea {
 
   .entity-row {
     gap: 16px;
+  }
+
+  .entity-actions-end,
+  .ats-modal-head,
+  .ats-modal-footer {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .entity-preview {

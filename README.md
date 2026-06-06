@@ -377,20 +377,23 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 
 1. Abrir `http://localhost:8000`.
 2. Revisar el dashboard, la sidebar izquierda y el toggle dark/light.
-3. Entrar a `CVs` y crear o reutilizar un CV.
-4. Abrir el detalle del CV, elegir una plantilla unica y exportar TEX/PDF/JSON.
-5. Entrar a `ATS` y repetir el analisis sobre un CV completo y uno incompleto.
-6. Entrar a `Cartas` y crear o reutilizar una carta.
-7. Exportar TEX y PDF de la carta.
-8. Entrar a `Postulaciones`.
-9. Crear una postulacion y asociarla opcionalmente a un CV y a una carta.
-10. Editar la postulacion y cambiar su estado.
-11. Abrir el detalle y confirmar persistencia en SQLite.
-12. Confirmar que los archivos de export siguen quedando en `./data/exports`.
-13. Exportar un CV a JSON e importarlo de nuevo.
-14. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
-15. Probar eliminacion segura de un CV y una carta con texto incorrecto y correcto.
-16. Entrar a `Documentacion` y leer ambas documentaciones en HTML dentro de la misma web.
+3. Confirmar que la card de resumen del dashboard muestra metricas claras de `Curriculums`, `Cartas` y `Postulaciones`.
+4. Entrar a `CVs` y crear o reutilizar un CV.
+5. Revisar que cada fila muestra acciones principales a la derecha y que `Mas acciones` se cierra al interactuar fuera del menu o con `Escape`.
+6. Abrir el detalle del CV, elegir una plantilla unica y exportar TEX/PDF/JSON.
+7. Ejecutar `Analizar ATS` desde el detalle o desde `ATS` y confirmar que abre un modal sin sacar al usuario de la pagina actual.
+8. Entrar a `ATS` y repetir el analisis completo sobre un CV desde la ruta dedicada.
+9. Entrar a `Cartas` y crear o reutilizar una carta.
+10. Exportar TEX y PDF de la carta y verificar acciones alineadas a la derecha en el listado.
+11. Entrar a `Postulaciones`.
+12. Crear una postulacion y asociarla opcionalmente a un CV y a una carta.
+13. Editar la postulacion y cambiar su estado.
+14. Abrir el detalle y confirmar persistencia en SQLite.
+15. Confirmar que los archivos de export siguen quedando en `./data/exports`.
+16. Exportar un CV a JSON e importarlo de nuevo.
+17. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
+18. Probar eliminacion segura de un CV y una carta con texto incorrecto y correcto.
+19. Entrar a `Documentacion`, leer ambas documentaciones en HTML dentro de la misma web y confirmar que solo quede `Descargar PDF`.
 
 ## Troubleshooting basico
 

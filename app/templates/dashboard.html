@@ -20,16 +20,17 @@
 
   <article class="workspace-card">
     <div class="workspace-card-head">
-      <span class="status-pill">Local</span>
+      <p class="eyebrow">Resumen del workspace</p>
       <strong>{{ app_status }}</strong>
+      <p class="section-copy">Metricas principales del panel privado para seguir el estado del MVP local sin ruido tecnico.</p>
     </div>
     <dl class="metric-list">
       <div>
-        <dt>CVs activos</dt>
+        <dt>Curriculums</dt>
         <dd>{{ counts.cvs }}</dd>
       </div>
       <div>
-        <dt>Cartas activas</dt>
+        <dt>Cartas</dt>
         <dd>{{ counts.cover_letters }}</dd>
       </div>
       <div>
@@ -37,7 +38,6 @@
         <dd>{{ counts.applications }}</dd>
       </div>
     </dl>
-    <p class="subtle-copy">SQLite: <code>{{ database_status.path }}</code></p>
   </article>
 </section>
 

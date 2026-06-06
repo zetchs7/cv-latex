@@ -1,0 +1,19 @@
+<div class="ats-modal-card" data-ats-modal tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="ats-modal-title">
+  <div class="ats-modal-head">
+    <div>
+      <p class="eyebrow">Analisis ATS</p>
+      <h2 id="ats-modal-title">{{ cv.title }}</h2>
+      <p class="section-copy">Chequeo rapido sin salir de la pantalla actual.</p>
+    </div>
+    <button class="button small" type="button" data-ats-close>Cerrar</button>
+  </div>
+
+  <div class="ats-modal-content">
+    {% include "ats/_analysis_sections.html" %}
+  </div>
+
+  <div class="ats-modal-footer">
+    <a class="button" href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}">Abrir vista completa</a>
+    <a class="button primary" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar CV</a>
+  </div>
+</div>

@@ -489,6 +489,53 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
   - Preparar push de la rama feature y PR hacia `development`.
   - Pedir `@codex review` manual despues del PR.
 
+## Etapa 8.1.1 - Ajustes finos visuales y UX post-review
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: pulir dashboard, listados, acciones secundarias, modal ATS y documentacion web sin tocar DB ni etapas futuras.
+- Modulos afectados: `dashboard`, `cvs`, `cover_letters`, `ats`, `documentation`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se simplifico la card de resumen del dashboard para mostrar metricas claras de curriculums, cartas y postulaciones.
+  - Se quitaron referencias visuales a `SQLite activo` en el listado de CVs.
+  - Se movieron acciones principales de CVs y cartas al extremo derecho de cada fila.
+  - Se agrego cierre de menus `Mas acciones` con click externo y tecla `Escape`.
+  - Se incorporo un modal ATS reutilizando el servicio existente y manteniendo la ruta completa `/ats/cvs/{cv_id}`.
+  - Se reagruparon acciones secundarias del detalle de CV como botones consistentes.
+  - Se removio `Abrir PDF directo` del centro de documentacion.
+  - Se aumento el asset version para evitar cache obsoleta tras el refinamiento.
+- Archivos principales:
+  - `app/routes/dashboard.py`
+  - `app/routes/ats.py`
+  - `app/templates/dashboard.html`
+  - `app/templates/cvs/index.html`
+  - `app/templates/cvs/detail.html`
+  - `app/templates/cover_letters/index.html`
+  - `app/templates/ats/index.html`
+  - `app/templates/ats/cv_analysis.html`
+  - `app/templates/ats/_analysis_sections.html`
+  - `app/templates/ats/modal.html`
+  - `app/templates/documentation/index.html`
+  - `app/templates/documentation/detail.html`
+  - `app/static/css/app.css`
+  - `app/static/js/app.js`
+  - `tests/test_ui_routes.py`
+  - `tests/test_ats_routes.py`
+  - `tests/test_documentation_routes.py`
+- Validaciones ejecutadas:
+  - `python -m compileall app tests`
+  - `docker compose build`
+  - `docker compose up -d --force-recreate`
+  - `docker compose ps`
+  - `docker compose logs app --tail 80`
+  - `docker compose exec app python -m pytest`
+  - Requests HTTP y validacion DOM sobre `/`, `/cvs/`, `/cover-letters/`, `/applications/`, `/ats/`, `/documentation/`, `/documentation/technical`, `/documentation/usage`, `/ats/cvs/43` y `/ats/cvs/43/modal`
+  - `git diff --check`
+- Resultado: refinamiento UX aplicado con runtime estable, tests en verde y compatibilidad ATS/documentacion conservada.
+- Pendientes:
+  - Validacion visual manual del modal ATS y del cierre de menus en un navegador real.
+  - Crear PR hacia `development` cuando el usuario lo pida.
+
 ## Fix ATS - Critical Sections Status Cap
 
 - Fecha: 2026-06-04

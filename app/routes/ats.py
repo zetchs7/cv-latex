@@ -23,11 +23,7 @@ def ats_index(request: Request) -> HTMLResponse:
 
 @router.get("/cvs/{cv_id}", response_class=HTMLResponse, name="ats_cv_analysis")
 def ats_cv_analysis(request: Request, cv_id: int) -> HTMLResponse:
-    cv = cv_repository.get_cv(cv_id)
-    if cv is None:
-        raise HTTPException(status_code=404, detail="CV no encontrado.")
-
-    analysis = analyze_cv_ats(cv)
+    cv, analysis = _get_cv_analysis(cv_id)
 
     return templates.TemplateResponse(
         request,
@@ -37,3 +33,25 @@ def ats_cv_analysis(request: Request, cv_id: int) -> HTMLResponse:
             "analysis": analysis,
         },
     )
+
+
+@router.get("/cvs/{cv_id}/modal", response_class=HTMLResponse, name="ats_cv_analysis_modal")
+def ats_cv_analysis_modal(request: Request, cv_id: int) -> HTMLResponse:
+    cv, analysis = _get_cv_analysis(cv_id)
+
+    return templates.TemplateResponse(
+        request,
+        "ats/modal.html",
+        {
+            "cv": cv,
+            "analysis": analysis,
+        },
+    )
+
+
+def _get_cv_analysis(cv_id: int):
+    cv = cv_repository.get_cv(cv_id)
+    if cv is None:
+        raise HTTPException(status_code=404, detail="CV no encontrado.")
+
+    return cv, analyze_cv_ats(cv)

@@ -36,6 +36,8 @@ docker compose exec app python -m pytest
 - Crear un CV nuevo.
 - Editar el CV.
 - Ver el detalle.
+- Confirmar que el listado no muestra `SQLite activo`.
+- Confirmar que `Mas acciones` queda a la derecha y se cierra con click externo o `Escape`.
 - Duplicar el CV.
 - Exportar TEX desde el selector unificado.
 - Exportar PDF desde el selector unificado.
@@ -49,6 +51,7 @@ docker compose exec app python -m pytest
 - Crear una carta.
 - Editar la carta.
 - Ver el detalle.
+- Confirmar que `Abrir`, `Generar PDF`, `Descargar TEX` y `Mas acciones` quedan a la derecha.
 - Asociarla opcionalmente a un CV existente.
 - Exportar TEX.
 - Exportar PDF.
@@ -68,6 +71,7 @@ docker compose exec app python -m pytest
 ### ATS
 
 - Abrir `http://localhost:8000/ats/`.
+- Ejecutar `Analizar ATS` desde el detalle del CV y confirmar apertura modal.
 - Ejecutar analisis sobre un CV completo.
 - Ejecutar analisis sobre un CV incompleto.
 - Confirmar score, checklist, recomendaciones y advertencias.
@@ -79,7 +83,7 @@ docker compose exec app python -m pytest
 - Abrir `http://localhost:8000/documentation/technical`.
 - Abrir `http://localhost:8000/documentation/usage`.
 - Confirmar lectura HTML dentro de la web para ambas paginas.
-- Confirmar boton visible de descarga PDF en ambas paginas.
+- Confirmar boton visible de descarga PDF en ambas paginas y ausencia de `Abrir PDF directo`.
 
 ### Persistencia y artefactos
 
