@@ -38,12 +38,12 @@
               <h2><a href="{{ url_for('cover_letters_detail', cover_letter_id=cover_letter.id) }}">{{ cover_letter.company }}</a></h2>
               <p>{{ cover_letter.position }}</p>
             </div>
-            <span class="entity-date">Actualizada {{ cover_letter.updated_at }}</span>
           </div>
 
           <div class="entity-meta">
             <span>{{ cover_letter.associated_cv_title or "Sin CV asociado" }}</span>
             <span>{{ cover_letter.contact or "Sin contacto" }}</span>
+            <span class="entity-meta-date">Actualizada {{ cover_letter.updated_at|format_datetime_ar }}</span>
           </div>
         </div>
 

@@ -26,6 +26,12 @@
 - Confirmaciones de eliminacion de CVs y cartas endurecidas para exigir coincidencia exacta del texto esperado.
 - Sidebar y resaltado de modulo activo dejan de depender solo de JS y quedan reforzados desde el render del template base.
 - README, manual web y documentacion tecnica actualizados para reflejar sidebar, tema y rollback visual.
+- Resumen del workspace corregido para evitar cortes de palabras, bajar el peso visual de `Postulaciones` y centrar mejor las metricas.
+- Fechas de CVs y cartas visibles en formato `dd/mm/yyyy HH:mm`, integradas como metadata secundaria mejor alineada.
+- Detalle de CV ajustado para compactar `Exportacion`, acortar labels de `Ficha rapida` y unificar spacing entre ambos bloques.
+- Modal ATS pulido con badge semantico, cards mas compactas y mejor alineacion de score, estado y longitud.
+- Pantalla `Editar CV` ajustada para mostrar contexto del CV y de la persona tambien cuando se llega desde el modal ATS.
+- Miniaturas reales de PDF, selector de paletas visuales e IA real documentados como backlog de etapas futuras en lugar de implementarlos ahora.
 
 ## 0.8.0 - 2026-06-04
 

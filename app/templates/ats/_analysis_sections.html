@@ -4,8 +4,11 @@
     <div class="ats-score-card ats-score-card-balanced">
       <strong class="ats-score">{{ analysis.score }}/{{ analysis.max_score }}</strong>
       <div class="ats-score-copy">
-        <span class="ats-status">{{ analysis.status }}</span>
-        <p class="ats-meta">Longitud estimada: {{ analysis.total_characters }} caracteres.</p>
+        <div class="ats-score-head">
+          <span class="ats-status ats-status-{{ analysis.status|ats_status_variant(analysis.score, analysis.max_score) }}">{{ analysis.status }}</span>
+          <span class="ats-score-note">Longitud estimada: {{ analysis.total_characters }} caracteres.</span>
+        </div>
+        <p class="ats-meta">Lectura rapida de score, estado y longitud del CV.</p>
       </div>
     </div>
   </article>

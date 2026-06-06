@@ -7,6 +7,11 @@
   <div>
     <p class="eyebrow">CV Builder Core</p>
     <h1>{{ page_title }}</h1>
+    {% if context_title or context_full_name %}
+    <p class="section-copy form-context-copy">
+      {{ context_title or "Sin titulo" }}{% if context_full_name %} · {{ context_full_name }}{% endif %}
+    </p>
+    {% endif %}
   </div>
   <a class="button" href="{{ url_for('cvs_list') }}">Volver al listado</a>
 </section>

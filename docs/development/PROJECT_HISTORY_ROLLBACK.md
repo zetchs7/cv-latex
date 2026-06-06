@@ -49,3 +49,4 @@ git checkout feature/ui-private-dashboard
 ## Nota operativa
 
 - `main` y `development` deben seguir reflejando la base estable publicada hasta que la nueva etapa UI sea validada, mergeada y vuelva a pasar por review.
+- La rama `feature/ui-private-dashboard` sigue en iteracion 8.1.x: miniaturas reales de PDF y selector de paletas quedan reservados para 8.1.3, mientras que IA real queda fuera hasta 8.3.

@@ -30,6 +30,8 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("Abrir CVs", response.text)
                 self.assertIn("Abrir cartas", response.text)
                 self.assertNotIn("Postulacion es", response.text)
+                self.assertIn('class="button small" href="http://testserver/cvs/"', response.text)
+                self.assertIn('class="button small" href="http://testserver/cover-letters/"', response.text)
 
     def test_cv_list_hides_sqlite_status_and_keeps_actions(self):
         with tempfile.TemporaryDirectory() as data_directory:
@@ -58,6 +60,7 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("Herramientas avanzadas", response.text)
                 self.assertIn("Importar o restaurar desde JSON", response.text)
                 self.assertIn("data-confirm-submit", response.text)
+                self.assertRegex(response.text, r"Actualizado \d{2}/\d{2}/\d{4} \d{2}:\d{2}")
 
     def test_cv_detail_renders_secondary_actions_as_buttons_and_ats_modal_trigger(self):
         with tempfile.TemporaryDirectory() as data_directory:
@@ -84,9 +87,35 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("Descargar JSON", response.text)
                 self.assertIn("Duplicar CV", response.text)
                 self.assertIn("Eliminar CV", response.text)
-                self.assertIn("Titulo interno", response.text)
-                self.assertIn("Nombre completo", response.text)
+                self.assertIn("Titulo", response.text)
+                self.assertIn("Nombre", response.text)
                 self.assertIn("data-confirm-submit", response.text)
+                self.assertRegex(response.text, r"\d{2}/\d{2}/\d{4} \d{2}:\d{2}")
+
+    def test_cv_edit_shows_contextual_header(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_cv(
+                    CVFormData(
+                        title="CV ATS Edit",
+                        full_name="Persona Edit",
+                        email="edit@example.com",
+                        phone="",
+                        professional_summary="Perfil",
+                        experience_summary="Experiencia",
+                        education_summary="Educacion",
+                        skills="Python",
+                    )
+                )
+
+                with TestClient(app) as client:
+                    response = client.get(f"/cvs/{cv_id}/edit")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("Editar CV", response.text)
+                self.assertIn("CV ATS Edit", response.text)
+                self.assertIn("Persona Edit", response.text)
 
     def test_cv_delete_requires_exact_title_match(self):
         with tempfile.TemporaryDirectory() as data_directory:
@@ -154,6 +183,31 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("no coincide exactamente", failed_response.text)
                 self.assertEqual(success_response.status_code, 303)
                 self.assertTrue(success_response.headers["location"].endswith("/cover-letters/?message=Carta+eliminada+correctamente."))
+
+    def test_cover_letter_list_formats_updated_date_and_keeps_actions_right(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                create_cover_letter(
+                    CoverLetterFormData(
+                        company="Acme",
+                        position="Designer",
+                        contact="RRHH",
+                        greeting="Hola",
+                        introduction="Intro",
+                        body="Body",
+                        closing="Cierre",
+                        signature="Firma",
+                        associated_cv_id=None,
+                    )
+                )
+
+                with TestClient(app) as client:
+                    response = client.get("/cover-letters/")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("entity-actions-end", response.text)
+                self.assertRegex(response.text, r"Actualizada \d{2}/\d{2}/\d{4} \d{2}:\d{2}")
 
 
 if __name__ == "__main__":

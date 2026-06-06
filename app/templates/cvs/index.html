@@ -45,7 +45,7 @@
 
           <div class="entity-meta">
             <span>{{ cv.email or "Sin email" }}</span>
-            <span class="entity-meta-date">Actualizado {{ cv.updated_at }}</span>
+            <span class="entity-meta-date">Actualizado {{ cv.updated_at|format_datetime_ar }}</span>
           </div>
         </div>
 

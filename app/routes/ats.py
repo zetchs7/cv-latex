@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from app.repositories import cv_repository
 from app.services.ats_service import analyze_cv_ats
+from app.template_utils import create_templates
 
 
 router = APIRouter(prefix="/ats", tags=["ATS"])
-templates = Jinja2Templates(directory="app/templates")
+templates = create_templates()
 
 
 @router.get("/", response_class=HTMLResponse, name="ats_index")

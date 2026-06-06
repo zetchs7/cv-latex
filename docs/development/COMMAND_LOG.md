@@ -3020,3 +3020,44 @@ Resultado:
 - Listado de CVs `200`, sin `SQLite activo`, con `Herramientas avanzadas`, `entity-meta-date` y `data-confirm-submit`.
 - Modal ATS `200`, con acciones superiores `Abrir vista completa`, `Editar CV`, `Cerrar` y sin evidencia DOM de cortes tipo `Recomendaci ones`.
 - La interaccion real de modal/menu queda pendiente de validacion manual por falta de browser automatizado confiable.
+
+---
+
+Accion:
+Aplicar la correccion fina visual final 8.1.2.1 antes del PR.
+
+Motivo:
+Cerrar los ultimos desalineados visuales de dashboard, listados, detalle de CV y modal ATS sin implementar previews reales, selector de paletas ni IA.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/template_utils.py`
+- `app/main.py`
+- `app/routes/dashboard.py`
+- `app/routes/cvs.py`
+- `app/routes/cover_letters.py`
+- `app/routes/ats.py`
+- `app/templates/dashboard.html`
+- `app/templates/cvs/index.html`
+- `app/templates/cvs/detail.html`
+- `app/templates/cvs/form.html`
+- `app/templates/cover_letters/index.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+- `docs/development/PROJECT_HISTORY_ROLLBACK.md`
+
+Resultado:
+- Se agrego un helper comun de templates para formatear fechas `dd/mm/yyyy HH:mm` y mapear variantes visuales del estado ATS.
+- El resumen del workspace quedo mas compacto, con `Postulaciones` menos protagonista y sin riesgo de cortes evidentes.
+- Los listados de CVs y cartas ahora muestran la fecha como metadata secundaria alineada.
+- El detalle de CV muestra `Titulo`, `Nombre`, fechas formateadas y una cabecera contextual en `Editar CV`.
+- El modal ATS adopta badge semantico y resumen rapido mas compacto.
+- Se documento backlog explicito para 8.1.3 (previews reales y selector de paletas) y 8.3 (IA real).

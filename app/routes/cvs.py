@@ -2,7 +2,6 @@ import logging
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 
 from app.repositories import cv_repository
 from app.repositories.cv_repository import DuplicateCVError
@@ -22,11 +21,12 @@ from app.services.latex_service import (
     generate_cv_tex_document,
 )
 from app.services.pdf_service import PdfCompilationError, generate_cv_pdf_export
+from app.template_utils import create_templates
 from app.validations.cv_validations import build_cv_form_data, validate_cv_form
 
 
 router = APIRouter(prefix="/cvs", tags=["CVs"])
-templates = Jinja2Templates(directory="app/templates")
+templates = create_templates()
 logger = logging.getLogger(__name__)
 
 
@@ -223,6 +223,8 @@ def edit_cv(request: Request, cv_id: int) -> HTMLResponse:
         page_title="Editar CV",
         submit_label="Guardar cambios",
         cv_id=cv.id,
+        context_title=cv.title,
+        context_full_name=cv.full_name,
     )
 
 
@@ -252,6 +254,10 @@ def update_cv(
     errors = validate_cv_form(form_data)
 
     if errors:
+        current_cv = cv_repository.get_cv(cv_id)
+        if current_cv is None:
+            raise HTTPException(status_code=404, detail="CV no encontrado.")
+
         return _render_form(
             request=request,
             form_data=form_data,
@@ -260,6 +266,8 @@ def update_cv(
             page_title="Editar CV",
             submit_label="Guardar cambios",
             cv_id=cv_id,
+            context_title=form_data.title or current_cv.title,
+            context_full_name=form_data.full_name or current_cv.full_name,
             status_code=422,
         )
 
@@ -373,6 +381,8 @@ def _render_form(
     page_title: str,
     submit_label: str,
     cv_id: int | None = None,
+    context_title: str | None = None,
+    context_full_name: str | None = None,
     status_code: int = 200,
 ) -> HTMLResponse:
     return templates.TemplateResponse(
@@ -385,6 +395,8 @@ def _render_form(
             "page_title": page_title,
             "submit_label": submit_label,
             "cv_id": cv_id,
+            "context_title": context_title,
+            "context_full_name": context_full_name,
         },
         status_code=status_code,
     )

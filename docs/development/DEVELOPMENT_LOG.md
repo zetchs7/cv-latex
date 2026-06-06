@@ -575,6 +575,49 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
   - Validacion manual real del cierre de menus y del modal de duplicado en navegador interactivo.
   - PR hacia `development` cuando el usuario lo pida.
 
+## Etapa 8.1.2.1 - Correccion fina visual final antes del PR
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: cerrar el pulido visual fino del dashboard privado, listados, detalle de CV y modal ATS sin avanzar a la etapa 8.2.
+- Modulos afectados: `dashboard`, `cvs`, `cover_letters`, `ats`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se corrigio el resumen del workspace para evitar cortes de palabras, centrar mejor las metricas y bajar el peso visual de `Postulaciones`.
+  - Se mantuvieron las cards principales del dashboard con CTA de boton y se dejaron las miniaturas reales como backlog de la etapa 8.1.3.
+  - Se formatearon fechas visibles de CVs y cartas a `dd/mm/yyyy HH:mm` y se alinearon como metadata secundaria.
+  - Se pulieron `Exportacion` y `Ficha rapida` en el detalle del CV con spacing mas compacto, labels mas cortos y helper comun de templates.
+  - Se refino el modal ATS con badge semantico, resumen rapido mas compacto y mejor alineacion de score, estado y longitud.
+  - Se corrigio la cabecera de `Editar CV` para mostrar contexto del CV y de la persona tambien desde el flujo ATS.
+  - Se documento explicitamente que miniaturas reales y selector de paletas quedan para la etapa 8.1.3, mientras que IA real queda para la etapa 8.3.
+- Archivos principales:
+  - `app/template_utils.py`
+  - `app/main.py`
+  - `app/routes/cvs.py`
+  - `app/routes/cover_letters.py`
+  - `app/routes/ats.py`
+  - `app/routes/dashboard.py`
+  - `app/templates/dashboard.html`
+  - `app/templates/cvs/index.html`
+  - `app/templates/cvs/detail.html`
+  - `app/templates/cvs/form.html`
+  - `app/templates/cover_letters/index.html`
+  - `app/templates/ats/_analysis_sections.html`
+  - `app/static/css/app.css`
+  - `tests/test_ui_routes.py`
+  - `tests/test_ats_routes.py`
+- Validaciones previstas:
+  - `python -m compileall app tests`
+  - `docker compose build`
+  - `docker compose up -d --force-recreate`
+  - `docker compose ps`
+  - `docker compose logs app --tail 80`
+  - `docker compose exec app python -m pytest`
+  - Validacion HTTP/DOM sobre dashboard, listados, detalle de CV y modal ATS
+  - `git diff --check`
+- Pendientes:
+  - Validacion visual manual fina del modal ATS y del cierre real de menus con navegador interactivo.
+  - PR hacia `development` cuando el usuario lo pida.
+
 ## Fix ATS - Critical Sections Status Cap
 
 - Fecha: 2026-06-04

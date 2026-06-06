@@ -388,6 +388,10 @@ h3 {
   font-size: 1.05rem;
 }
 
+.section-copy {
+  margin: 0;
+}
+
 .hero-actions,
 .action-row,
 .form-actions,
@@ -567,13 +571,15 @@ summary.button {
 
 .metric-list-compact div {
   display: grid;
-  gap: 6px;
-  align-content: start;
-  min-height: 94px;
+  gap: 8px;
+  align-content: center;
+  justify-items: center;
+  min-height: 88px;
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 18px;
   background: var(--surface-soft);
+  text-align: center;
 }
 
 .metric-list dt {
@@ -586,6 +592,16 @@ summary.button {
   margin: 0;
   font-size: 1.3rem;
   font-weight: 700;
+}
+
+.metric-card-secondary {
+  background: color-mix(in srgb, var(--surface-soft) 90%, transparent);
+  border-color: rgba(107, 82, 54, 0.1);
+}
+
+.metric-card-secondary dt,
+.metric-card-secondary dd {
+  color: var(--text-soft);
 }
 
 .subtle-copy {
@@ -608,6 +624,10 @@ summary.button {
 .focus-card-head {
   display: grid;
   gap: 14px;
+}
+
+.focus-card > .button {
+  justify-self: start;
 }
 
 .focus-preview-stack {
@@ -1059,12 +1079,12 @@ html[data-theme="dark"] .document-sheet {
 
 .detail-summary-copy {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .detail-card-head {
   display: grid;
-  gap: 8px;
+  gap: 4px;
 }
 
 .detail-side-panel h2,
@@ -1080,14 +1100,19 @@ html[data-theme="dark"] .document-sheet {
   margin: 0;
 }
 
+.ats-metric strong {
+  font-size: 1.45rem;
+}
+
 .unified-export-form {
   align-items: flex-end;
+  margin-top: 2px;
 }
 
 .detail-side-panel dl,
 dl {
   display: grid;
-  grid-template-columns: 120px minmax(0, 1fr);
+  grid-template-columns: 96px minmax(0, 1fr);
   gap: 10px 14px;
   margin: 0;
 }
@@ -1289,17 +1314,56 @@ textarea {
   gap: 8px;
 }
 
+.ats-score-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ats-status-excellent {
+  border-color: #22c55e;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.ats-status-good {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.ats-status-warning {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+  color: #9a6700;
+}
+
+.ats-status-danger {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.ats-score-note {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .ats-metrics {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
+  gap: 12px;
 }
 
 .ats-metric {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   background: var(--surface-soft);
-  min-height: 118px;
-  align-content: start;
+  min-height: 104px;
+  align-content: center;
+  justify-items: start;
 }
 
 .ats-metric span {
@@ -1313,6 +1377,11 @@ textarea {
 .ats-metric small {
   color: var(--text-muted);
   font-size: 0.8rem;
+}
+
+.form-context-copy {
+  max-width: 700px;
+  margin-top: 10px;
 }
 
 .ats-check-item.passed {
@@ -1524,6 +1593,20 @@ textarea {
 .notice {
   border-color: var(--warning-border);
   background: var(--warning-bg);
+}
+
+html[data-theme="dark"] .ats-status-excellent {
+  background: rgba(22, 101, 52, 0.28);
+  border-color: rgba(74, 222, 128, 0.36);
+  color: #dcfce7;
+}
+
+html[data-theme="dark"] .ats-status-warning {
+  color: #fde68a;
+}
+
+html[data-theme="dark"] .metric-card-secondary {
+  border-color: rgba(242, 220, 194, 0.08);
 }
 
 @media (max-width: 1180px) {

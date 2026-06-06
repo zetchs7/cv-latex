@@ -2,7 +2,6 @@ import logging
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 
 from app.models import CoverLetter
 from app.repositories import cv_repository
@@ -15,11 +14,12 @@ from app.services.latex_service import (
     generate_cover_letter_tex_document,
 )
 from app.services.pdf_service import PdfCompilationError, generate_cover_letter_pdf_export
+from app.template_utils import create_templates
 from app.validations.cover_letter_validations import build_cover_letter_form_data, validate_cover_letter_form
 
 
 router = APIRouter(prefix="/cover-letters", tags=["Cover Letters"])
-templates = Jinja2Templates(directory="app/templates")
+templates = create_templates()
 logger = logging.getLogger(__name__)
 
 

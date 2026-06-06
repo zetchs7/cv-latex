@@ -72,18 +72,18 @@
       </div>
     </div>
     <dl>
-      <dt>Titulo interno</dt>
+      <dt>Titulo</dt>
       <dd>{{ cv.title or "Sin dato" }}</dd>
-      <dt>Nombre completo</dt>
+      <dt>Nombre</dt>
       <dd>{{ cv.full_name or "Sin dato" }}</dd>
       <dt>Email</dt>
       <dd>{{ cv.email or "Sin dato" }}</dd>
       <dt>Telefono</dt>
       <dd>{{ cv.phone or "Sin dato" }}</dd>
       <dt>Creado</dt>
-      <dd>{{ cv.created_at or "Sin dato" }}</dd>
+      <dd>{{ cv.created_at|format_datetime_ar }}</dd>
       <dt>Actualizado</dt>
-      <dd>{{ cv.updated_at or "Sin dato" }}</dd>
+      <dd>{{ cv.updated_at|format_datetime_ar }}</dd>
     </dl>
   </aside>
 </section>

@@ -33,6 +33,7 @@ docker compose exec app python -m pytest
 - Confirmar que el resumen del workspace se ve compacto, sin palabras partidas.
 - Confirmar que `Abrir CVs` y `Abrir cartas` se ven como botones.
 - Confirmar que el dashboard usa previews CSS y que las miniaturas PDF reales siguen pendientes.
+- Confirmar que `Postulaciones` se ve como metrica secundaria y no domina la card.
 
 ### CVs
 
@@ -40,8 +41,10 @@ docker compose exec app python -m pytest
 - Editar el CV.
 - Ver el detalle.
 - Confirmar que el listado no muestra `SQLite activo`.
+- Confirmar que cada fila muestra la fecha `dd/mm/yyyy HH:mm` como metadata secundaria, sin badge flotando arriba.
 - Confirmar que `Mas acciones` queda a la derecha y se cierra con click externo o `Escape`.
 - Confirmar que `Importar JSON` queda en `Herramientas avanzadas`.
+- Confirmar que `Exportacion` y `Ficha rapida` usan spacing consistente, labels cortos y fechas `dd/mm/yyyy HH:mm`.
 - Duplicar el CV.
 - Confirmar que `Duplicar CV` pide confirmacion antes de ejecutar.
 - Exportar TEX desde el selector unificado.
@@ -57,6 +60,7 @@ docker compose exec app python -m pytest
 - Editar la carta.
 - Ver el detalle.
 - Confirmar que `Abrir`, `Generar PDF`, `Descargar TEX` y `Mas acciones` quedan a la derecha.
+- Confirmar que la fecha del listado se ve como metadata secundaria en formato `dd/mm/yyyy HH:mm`.
 - Asociarla opcionalmente a un CV existente.
 - Exportar TEX.
 - Exportar PDF.
@@ -78,6 +82,8 @@ docker compose exec app python -m pytest
 - Abrir `http://localhost:8000/ats/`.
 - Ejecutar `Analizar ATS` desde el detalle del CV y confirmar apertura modal.
 - Confirmar que el modal ATS muestra `Abrir vista completa`, `Editar CV` y `Cerrar` arriba.
+- Confirmar que el badge del estado usa color semantico y que score/estado/longitud quedan mejor alineados.
+- Confirmar que desde `Editar CV` en el modal se ve contexto del CV y de la persona en la cabecera del formulario.
 - Ejecutar analisis sobre un CV completo.
 - Ejecutar analisis sobre un CV incompleto.
 - Confirmar score, checklist, recomendaciones y advertencias.
@@ -105,3 +111,4 @@ docker compose exec app python -m pytest
 - Exportaciones funcionando.
 - Persistencia en `./data`.
 - Sin depender de IA, login ni servicios externos.
+- Miniaturas reales de PDF y selector de paletas quedan como backlog posterior, no como funcionalidad actual.
