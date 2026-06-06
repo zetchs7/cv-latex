@@ -45,6 +45,9 @@
 - Encabezados internos de `Exportacion` y `Ficha rapida` mantenidos coherentes, con acciones secundarias de exportacion mejor espaciadas.
 - Badge de `Estado general` en el modal ATS agrandado y complementado con referencia discreta de score.
 - Header de edicion de CV corregido para usar persona o titulo de CV como H1 principal y dejar `Editar CV` como contexto.
+- El label de `Exportacion` queda explicitamente alineado con el mismo acento visual de `Ficha rapida`.
+- La vista `Ver TEX` se reajusto para mantener `Export Engine` dentro del mismo layout y contener mejor titulos de archivo largos.
+- `Estado general` en ATS ahora muestra referencia vertical de score y el rango real recomendado de longitud (`280` a `4500` caracteres).
 
 ## 0.8.0 - 2026-06-04
 

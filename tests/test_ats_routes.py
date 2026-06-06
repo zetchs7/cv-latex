@@ -91,7 +91,10 @@ class AtsRoutesTest(unittest.TestCase):
                 self.assertIn("ats-status-", response.text)
                 self.assertIn("ats-state-head", response.text)
                 self.assertIn("ats-score-card-stacked", response.text)
-                self.assertIn("Referencia: 0-49 insuficiente", response.text)
+                self.assertIn("Referencia longitud: rango recomendado de 280 a 4500 caracteres.", response.text)
+                self.assertIn("Referencia de score ATS", response.text)
+                self.assertIn("Insuficiente", response.text)
+                self.assertIn("Excelente", response.text)
 
 
 if __name__ == "__main__":

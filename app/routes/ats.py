@@ -2,7 +2,11 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
 from app.repositories import cv_repository
-from app.services.ats_service import analyze_cv_ats
+from app.services.ats_service import (
+    MAX_RECOMMENDED_CV_LENGTH,
+    MIN_RECOMMENDED_CV_LENGTH,
+    analyze_cv_ats,
+)
 from app.template_utils import create_templates
 
 
@@ -31,6 +35,10 @@ def ats_cv_analysis(request: Request, cv_id: int) -> HTMLResponse:
         {
             "cv": cv,
             "analysis": analysis,
+            "ats_length_reference": {
+                "min": MIN_RECOMMENDED_CV_LENGTH,
+                "max": MAX_RECOMMENDED_CV_LENGTH,
+            },
         },
     )
 
@@ -45,6 +53,10 @@ def ats_cv_analysis_modal(request: Request, cv_id: int) -> HTMLResponse:
         {
             "cv": cv,
             "analysis": analysis,
+            "ats_length_reference": {
+                "min": MIN_RECOMMENDED_CV_LENGTH,
+                "max": MAX_RECOMMENDED_CV_LENGTH,
+            },
         },
     )
 

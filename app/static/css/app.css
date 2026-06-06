@@ -1126,6 +1126,10 @@ html[data-theme="dark"] .document-sheet {
   padding-bottom: 2px;
 }
 
+.detail-card-head .eyebrow {
+  color: var(--accent-strong);
+}
+
 .detail-side-panel h2,
 .detail-panel h2,
 .content-sections h2,
@@ -1311,6 +1315,17 @@ textarea {
   gap: 12px;
 }
 
+.tex-preview-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.tex-preview-header h1 {
+  max-width: 980px;
+  font-size: clamp(1.7rem, 4vw, 2.8rem);
+  line-height: 1.02;
+}
+
 .tex-preview,
 .documentation-code {
   overflow-x: auto;
@@ -1327,6 +1342,16 @@ textarea {
 .tex-preview {
   font-size: 0.85rem;
   white-space: pre;
+}
+
+.tex-engine-note {
+  width: 100%;
+  margin: 0;
+  padding: 20px;
+}
+
+.tex-engine-note h2 {
+  margin-bottom: 10px;
 }
 
 .ats-score-card {
@@ -1413,6 +1438,43 @@ textarea {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.82rem;
+}
+
+.ats-score-length-reference {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.ats-score-reference-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ats-score-reference-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-soft);
+  color: var(--text-soft);
+  font-size: 0.82rem;
+}
+
+.ats-score-reference-list span {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.ats-score-reference-list strong {
+  color: var(--text);
+  font-size: 0.84rem;
 }
 
 .ats-metrics {

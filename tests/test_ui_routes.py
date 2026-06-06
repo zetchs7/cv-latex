@@ -98,6 +98,33 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("data-confirm-submit", response.text)
                 self.assertRegex(response.text, r"\d{2}/\d{2}/\d{4} \d{2}:\d{2} hs")
 
+    def test_cv_tex_preview_keeps_export_engine_inside_layout(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_cv(
+                    CVFormData(
+                        title="CV TEX Preview",
+                        full_name="Persona TEX Preview",
+                        email="tex@example.com",
+                        phone="",
+                        professional_summary="Perfil",
+                        experience_summary="Experiencia",
+                        education_summary="Educacion",
+                        skills="Python",
+                    )
+                )
+
+                with TestClient(app) as client:
+                    response = client.get(f"/cvs/{cv_id}/tex?template_key=classic")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("tex-preview-header", response.text)
+                self.assertIn("tex-preview-layout", response.text)
+                self.assertIn("tex-engine-note", response.text)
+                self.assertIn("Export Engine", response.text)
+                self.assertIn("/data/exports", response.text)
+
     def test_cv_edit_shows_contextual_header(self):
         with tempfile.TemporaryDirectory() as data_directory:
             with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):

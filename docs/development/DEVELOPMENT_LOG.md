@@ -654,6 +654,21 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
 - Pendientes:
   - Validacion visual manual final de estos puntos antes de PR.
 
+## Etapa 8.1.2.4 - Cierre de ultimos detalles visuales antes del PR
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: cerrar gaps visuales puntuales sin tocar logica, DB ni backlog ya diferido.
+- Modulos afectados: `cvs`, `ats`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se reforzo el mismo acento visual entre `Exportacion` y `Ficha rapida` en el detalle del CV.
+  - Se corrigio la vista `Ver TEX` para mantener `Export Engine` dentro del mismo layout y mejorar el comportamiento de titulos largos.
+  - `Estado general` del ATS conserva score, badge y longitud, pero ahora muestra una referencia vertical mas legible.
+  - Se agrego la referencia real de longitud ATS usando el rango existente en codigo (`280` a `4500` caracteres).
+  - Se mantuvo intacto `Resumen rapido` y no se tocaron reglas de scoring.
+- Pendientes:
+  - Validacion visual manual final del bloque `Ver TEX` y del modal ATS antes de abrir PR.
+
 ## Fix ATS - Critical Sections Status Cap
 
 - Fecha: 2026-06-04

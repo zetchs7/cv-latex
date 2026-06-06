@@ -3130,3 +3130,33 @@ Resultado:
 - Acciones secundarias de `Exportacion` mejor separadas.
 - Badge ATS mas visible y referencia de score agregada.
 - Header de edicion de CV corregido para usar persona/titulo como H1.
+
+---
+
+Accion:
+Cerrar micro-fix visual 8.1.2.4 antes del PR.
+
+Motivo:
+Corregir solo gaps visuales finales en detalle CV, vista TEX y `Estado general` del ATS sin tocar logica funcional.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/routes/ats.py`
+- `app/templates/ats/_analysis_sections.html`
+- `app/templates/cvs/tex_preview.html`
+- `app/main.py`
+- `app/static/css/app.css`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- `Exportacion` queda alineada visualmente con `Ficha rapida`.
+- `Export Engine` se mantiene dentro del layout de `Ver TEX`.
+- `Estado general` del ATS usa referencia vertical de score y muestra el rango real de longitud.
+- Se versionaron assets con `ui8124fix1` para evitar cache visual obsoleta.

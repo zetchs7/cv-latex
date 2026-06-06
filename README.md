@@ -7,7 +7,7 @@ Aplicacion web local, pequena y portable para construir CVs, cartas de presentac
 - Version: `0.8.0`
 - Base estable: `tag v0.8.0`
 - Commit base estable: `eab9556 fix(docs): render documentation as html with pdf downloads`
-- Etapa visual en trabajo: `8.1.2.3 - Micro-ajuste final visual antes del PR`
+- Etapa visual en trabajo: `8.1.2.4 - Cierre de ultimos detalles visuales antes del PR`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 - Exportaciones: `/data/exports` dentro del contenedor, visible en `./data/exports` en el host
@@ -262,6 +262,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 8.1.2.1: correccion fina visual final de dashboard, listados, detalle CV y modal ATS antes de abrir PR. En curso sobre `feature/ui-private-dashboard`.
 - Etapa 8.1.2.2: cierre visual definitivo antes del PR, con resumen workspace simplificado, cards sin numeros grandes, CTA duplicada removida y modal ATS reordenado.
 - Etapa 8.1.2.3: micro-ajuste final visual con resumen workspace compactado, fechas con `hs`, metadata `Actualizado` reubicada y header de edicion contextual.
+- Etapa 8.1.2.4: cierre de gaps visuales en `Exportacion`, vista TEX y referencia vertical del estado ATS, sin tocar logica funcional.
 
 ## Modulos disponibles
 
@@ -387,23 +388,24 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 6. Entrar a `CVs` y crear o reutilizar un CV.
 7. Revisar que cada fila muestra acciones principales a la derecha, fecha `Actualizado: dd/mm/yyyy HH:mm hs` debajo de los datos principales y `Mas acciones` con cierre por click externo o `Escape`.
 8. Verificar que `Herramientas avanzadas` se ve como boton secundario y que `Importar JSON` queda dentro de esa seccion.
-9. Abrir el detalle del CV y confirmar que `Exportacion` y `Ficha rapida` usan spacing mas compacto, labels cortos, encabezados coherentes y fechas `dd/mm/yyyy HH:mm hs`.
+9. Abrir el detalle del CV y confirmar que `Exportacion` y `Ficha rapida` usan el mismo acento visual, spacing compacto y fechas `dd/mm/yyyy HH:mm hs`.
 10. Probar `Duplicar CV` y confirmar que primero aparece un modal de confirmacion.
 11. Ejecutar `Analizar ATS` desde el detalle o desde `ATS` y confirmar que abre un modal sin sacar al usuario de la pagina actual.
-12. Revisar que el modal ATS muestra `Estado general` con badge mas visible, score, longitud estimada y referencia de score.
+12. Revisar que el modal ATS muestra `Estado general` con badge mas visible, score, longitud estimada, referencia vertical de score y rango real de longitud recomendado.
 13. Desde el modal ATS, entrar a `Editar CV` y confirmar que el H1 principal es la persona o titulo del CV, con contexto `Editando CV`.
-14. Entrar a `ATS` y repetir el analisis completo sobre un CV desde la ruta dedicada.
-15. Entrar a `Cartas` y crear o reutilizar una carta.
-16. Exportar TEX y PDF de la carta y verificar acciones alineadas a la derecha y fecha `Actualizada: dd/mm/yyyy HH:mm hs` en el listado.
-17. Entrar a `Postulaciones`.
-18. Crear una postulacion y asociarla opcionalmente a un CV y a una carta.
-19. Editar la postulacion y cambiar su estado.
-20. Abrir el detalle y confirmar persistencia en SQLite.
-21. Confirmar que los archivos de export siguen quedando en `./data/exports`.
-22. Exportar un CV a JSON e importarlo de nuevo.
-23. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
-24. Probar eliminacion segura de un CV y una carta con texto incorrecto y correcto.
-25. Entrar a `Documentacion`, leer ambas documentaciones en HTML dentro de la misma web y confirmar que solo quede `Descargar PDF`.
+14. Abrir `Ver TEX` y confirmar que `Export Engine` queda alineado dentro del mismo layout, con titulo largo del archivo sin romper la pantalla.
+15. Entrar a `ATS` y repetir el analisis completo sobre un CV desde la ruta dedicada.
+16. Entrar a `Cartas` y crear o reutilizar una carta.
+17. Exportar TEX y PDF de la carta y verificar acciones alineadas a la derecha y fecha `Actualizada: dd/mm/yyyy HH:mm hs` en el listado.
+18. Entrar a `Postulaciones`.
+19. Crear una postulacion y asociarla opcionalmente a un CV y a una carta.
+20. Editar la postulacion y cambiar su estado.
+21. Abrir el detalle y confirmar persistencia en SQLite.
+22. Confirmar que los archivos de export siguen quedando en `./data/exports`.
+23. Exportar un CV a JSON e importarlo de nuevo.
+24. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
+25. Probar eliminacion segura de un CV y una carta con texto incorrecto y correcto.
+26. Entrar a `Documentacion`, leer ambas documentaciones en HTML dentro de la misma web y confirmar que solo quede `Descargar PDF`.
 
 ## Troubleshooting basico
 
