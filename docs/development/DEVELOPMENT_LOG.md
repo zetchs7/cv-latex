@@ -536,6 +536,45 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
   - Validacion visual manual del modal ATS y del cierre de menus en un navegador real.
   - Crear PR hacia `development` cuando el usuario lo pida.
 
+## Etapa 8.1.2 - Pulido fino del dashboard privado, listados y ATS modal
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: terminar el pulido fino visual de dashboard, listados, detalle de CV y modal ATS antes del PR.
+- Modulos afectados: `dashboard`, `cvs`, `ats`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se compactaron las metricas del resumen del workspace y se removio texto sobrante.
+  - Se convirtieron las acciones `Abrir CVs` y `Abrir cartas` en botones visibles dentro de cards con previews CSS.
+  - Se movio `Importar JSON` a una seccion secundaria `Herramientas avanzadas`.
+  - Se integro la fecha del listado de CVs como metadata secundaria mejor alineada.
+  - Se agrego confirmacion modal para `Duplicar CV` tanto en detalle como en listado.
+  - Se ordeno el modal ATS con acciones superiores y score/estado mejor agrupados.
+  - Se documento que las miniaturas reales de PDF quedan como backlog futuro y no se implementan en esta etapa.
+- Archivos principales:
+  - `app/routes/dashboard.py`
+  - `app/templates/dashboard.html`
+  - `app/templates/cvs/index.html`
+  - `app/templates/cvs/detail.html`
+  - `app/templates/ats/modal.html`
+  - `app/templates/ats/_analysis_sections.html`
+  - `app/static/css/app.css`
+  - `app/static/js/app.js`
+  - `tests/test_ui_routes.py`
+  - `tests/test_ats_routes.py`
+- Validaciones ejecutadas:
+  - `python -m compileall app tests`
+  - `docker compose build`
+  - `docker compose up -d --force-recreate`
+  - `docker compose ps`
+  - `docker compose logs app --tail 80`
+  - `docker compose exec app python -m pytest`
+  - Validacion HTTP/DOM sobre dashboard, listado CVs, listado cartas, detalle CV, modal ATS y documentacion
+  - `git diff --check`
+- Resultado: iteracion 8.1.2 estable, sin regresiones de tests y con mejor jerarquia visual para dashboard, CVs y ATS.
+- Pendientes:
+  - Validacion manual real del cierre de menus y del modal de duplicado en navegador interactivo.
+  - PR hacia `development` cuando el usuario lo pida.
+
 ## Fix ATS - Critical Sections Status Cap
 
 - Fecha: 2026-06-04

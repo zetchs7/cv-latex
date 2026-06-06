@@ -11,31 +11,14 @@
     <p class="hero-copy">Gestiona CVs activos, importaciones JSON y exportaciones del espacio privado.</p>
   </div>
   <div class="action-row">
-    <a class="button" href="#import-json">Importar JSON</a>
     <a class="button primary" href="{{ url_for('cvs_new') }}">Crear nuevo curriculum vitae</a>
+    <a class="text-link" href="#advanced-tools">Herramientas avanzadas</a>
   </div>
 </section>
 
 {% if message %}
 <div class="flash-message" role="status">{{ message }}</div>
 {% endif %}
-
-<section id="import-json" class="surface-panel import-panel-card">
-  <div class="section-heading">
-    <div>
-      <p class="eyebrow">Importacion</p>
-      <h2>Importar desde JSON</h2>
-    </div>
-  </div>
-  <p class="section-copy">El archivo debe provenir del modulo CVs. La importacion siempre crea un nuevo registro.</p>
-  <form class="inline-form" method="post" action="{{ url_for('cvs_import_json') }}" enctype="multipart/form-data">
-    <label class="grow-field">
-      <span>Archivo JSON</span>
-      <input type="file" name="json_file" accept="application/json,.json" required>
-    </label>
-    <button class="button" type="submit">Importar</button>
-  </form>
-</section>
 
 {% if cvs %}
 <section class="entity-stack" aria-label="Listado de CVs">
@@ -58,11 +41,11 @@
               <h2><a href="{{ url_for('cvs_detail', cv_id=cv.id) }}">{{ cv.title }}</a></h2>
               <p>{{ cv.full_name }}</p>
             </div>
-            <span class="entity-date">Actualizado {{ cv.updated_at }}</span>
           </div>
 
           <div class="entity-meta">
             <span>{{ cv.email or "Sin email" }}</span>
+            <span class="entity-meta-date">Actualizado {{ cv.updated_at }}</span>
           </div>
         </div>
 
@@ -76,7 +59,7 @@
             <div class="action-menu-panel" role="menu">
               <a class="text-link" href="{{ url_for('cvs_edit', cv_id=cv.id) }}" role="menuitem">Editar</a>
               <a class="text-link" href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}" data-ats-open data-ats-modal-url="{{ url_for('ats_cv_analysis_modal', cv_id=cv.id) }}" role="menuitem">Analizar ATS</a>
-              <form method="post" action="{{ url_for('cvs_duplicate', cv_id=cv.id) }}">
+              <form method="post" action="{{ url_for('cvs_duplicate', cv_id=cv.id) }}" data-confirm-submit data-confirm-title="Duplicar CV" data-confirm-message="Se va a crear una copia de {{ cv.title }} con el mismo contenido actual." data-confirm-label="Duplicar CV">
                 <button class="text-button" type="submit" role="menuitem">Duplicar</button>
               </form>
               <a class="text-link danger-link" href="{{ url_for('cvs_confirm_delete', cv_id=cv.id) }}" role="menuitem">Eliminar</a>
@@ -96,4 +79,24 @@
   <a class="button primary" href="{{ url_for('cvs_new') }}">Crear primer CV</a>
 </section>
 {% endif %}
+
+<details id="advanced-tools" class="surface-panel import-tools-panel">
+  <summary class="advanced-tools-toggle">
+    <div>
+      <p class="eyebrow">Herramientas avanzadas</p>
+      <h2>Importar o restaurar desde JSON</h2>
+    </div>
+    <span class="button small" aria-hidden="true">Abrir</span>
+  </summary>
+  <div class="advanced-tools-body">
+    <p class="section-copy">El archivo debe provenir del modulo CVs. La importacion siempre crea un nuevo registro.</p>
+    <form class="inline-form" method="post" action="{{ url_for('cvs_import_json') }}" enctype="multipart/form-data">
+      <label class="grow-field">
+        <span>Archivo JSON</span>
+        <input type="file" name="json_file" accept="application/json,.json" required>
+      </label>
+      <button class="button" type="submit">Importar</button>
+    </form>
+  </div>
+</details>
 {% endblock %}

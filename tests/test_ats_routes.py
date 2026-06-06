@@ -86,6 +86,8 @@ class AtsRoutesTest(unittest.TestCase):
                 self.assertIn('data-ats-modal', response.text)
                 self.assertIn("CV ATS Modal", response.text)
                 self.assertIn("Recomendaciones", response.text)
+                self.assertIn("Abrir vista completa", response.text)
+                self.assertIn("Editar CV", response.text)
 
 
 if __name__ == "__main__":

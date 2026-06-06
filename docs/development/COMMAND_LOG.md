@@ -2966,3 +2966,57 @@ Resultado:
 - El DOM confirma ausencia de `SQLite activo` y de `Abrir PDF directo`.
 - El DOM confirma `data-ats-modal-url`, `secondary-actions` y modal ATS con score, checklist, advertencias y recomendaciones.
 - La validacion visual real del menu y del modal queda pendiente manual por falta de browser automatizado confiable en este host.
+
+---
+
+Accion:
+Pulir detalles visuales finales del dashboard privado y del flujo CV/ATS.
+
+Motivo:
+Corregir alineaciones concretas reportadas por el usuario antes de abrir PR, sin avanzar a la etapa 8.2.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/routes/dashboard.py`
+- `app/templates/dashboard.html`
+- `app/templates/cvs/index.html`
+- `app/templates/cvs/detail.html`
+- `app/templates/ats/modal.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `app/static/js/app.js`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+
+Resultado:
+- Resumen del dashboard compactado.
+- Botones principales del dashboard convertidos a CTA visuales.
+- Import JSON movido a `Herramientas avanzadas`.
+- Confirmacion modal para `Duplicar CV`.
+- Modal ATS con acciones superiores, score mejor alineado y cards mas estables.
+
+---
+
+Accion:
+Validar la iteracion 8.1.2 en runtime y DOM.
+
+Motivo:
+Confirmar que el pulido visual no rompe la UI privada, el modal ATS ni el flujo de duplicado.
+
+Comandos:
+- `python -m compileall app tests`
+- `docker compose build`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose logs app --tail 80`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest -UseBasicParsing` sobre `/`, `/cvs/`, `/cover-letters/`, `/documentation/`, `/ats/cvs/46`, `/ats/cvs/46/modal`
+- `git diff --check`
+
+Resultado:
+- `pytest`: `45 passed in 1.02s`.
+- Dashboard `200`, con resumen compacto, previews CSS y botones visibles para `Abrir CVs` y `Abrir cartas`.
+- Listado de CVs `200`, sin `SQLite activo`, con `Herramientas avanzadas`, `entity-meta-date` y `data-confirm-submit`.
+- Modal ATS `200`, con acciones superiores `Abrir vista completa`, `Editar CV`, `Cerrar` y sin evidencia DOM de cortes tipo `Recomendaci ones`.
+- La interaccion real de modal/menu queda pendiente de validacion manual por falta de browser automatizado confiable.

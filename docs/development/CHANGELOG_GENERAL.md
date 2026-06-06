@@ -19,6 +19,10 @@
 - Listados de CVs y cartas ajustados para alinear acciones a la derecha, quitar `SQLite activo` y cerrar `Mas acciones` con click externo o `Escape`.
 - ATS ahora puede abrirse como modal desde la UI privada, manteniendo la ruta completa `/ats/cvs/{cv_id}` para compatibilidad.
 - Centro de documentacion simplificado para dejar solo `Leer en la web` y `Descargar PDF`.
+- Dashboard pulido con previews visuales CSS, botones en cards principales y card compacta de resumen sin texto sobrante.
+- `Importar JSON` movido a `Herramientas avanzadas` para bajar su peso visual en la pantalla principal de CVs.
+- El detalle de CV ahora muestra confirmacion modal antes de duplicar y una ficha rapida mas completa.
+- Miniaturas reales de PDF quedan registradas como pendiente futuro, fuera del alcance de esta etapa.
 - Confirmaciones de eliminacion de CVs y cartas endurecidas para exigir coincidencia exacta del texto esperado.
 - Sidebar y resaltado de modulo activo dejan de depender solo de JS y quedan reforzados desde el render del template base.
 - README, manual web y documentacion tecnica actualizados para reflejar sidebar, tema y rollback visual.

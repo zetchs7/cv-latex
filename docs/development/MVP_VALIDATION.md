@@ -30,6 +30,9 @@ docker compose exec app python -m pytest
 - Confirmar que el tema persiste al recargar.
 - Confirmar que la version visible coincide con `VERSION` y `/health`.
 - Confirmar que `GET /static/css/app.css` y `GET /static/js/app.js` responden `200`.
+- Confirmar que el resumen del workspace se ve compacto, sin palabras partidas.
+- Confirmar que `Abrir CVs` y `Abrir cartas` se ven como botones.
+- Confirmar que el dashboard usa previews CSS y que las miniaturas PDF reales siguen pendientes.
 
 ### CVs
 
@@ -38,7 +41,9 @@ docker compose exec app python -m pytest
 - Ver el detalle.
 - Confirmar que el listado no muestra `SQLite activo`.
 - Confirmar que `Mas acciones` queda a la derecha y se cierra con click externo o `Escape`.
+- Confirmar que `Importar JSON` queda en `Herramientas avanzadas`.
 - Duplicar el CV.
+- Confirmar que `Duplicar CV` pide confirmacion antes de ejecutar.
 - Exportar TEX desde el selector unificado.
 - Exportar PDF desde el selector unificado.
 - Exportar JSON.
@@ -72,6 +77,7 @@ docker compose exec app python -m pytest
 
 - Abrir `http://localhost:8000/ats/`.
 - Ejecutar `Analizar ATS` desde el detalle del CV y confirmar apertura modal.
+- Confirmar que el modal ATS muestra `Abrir vista completa`, `Editar CV` y `Cerrar` arriba.
 - Ejecutar analisis sobre un CV completo.
 - Ejecutar analisis sobre un CV incompleto.
 - Confirmar score, checklist, recomendaciones y advertencias.

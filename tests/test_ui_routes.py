@@ -25,7 +25,10 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("Panel de control", response.text)
                 self.assertIn("Curriculum Vitae", response.text)
                 self.assertIn("data-theme-toggle", response.text)
-                self.assertIn("Workspace privado listo para trabajar", response.text)
+                self.assertIn("Resumen del workspace", response.text)
+                self.assertIn("Curriculums", response.text)
+                self.assertIn("Abrir CVs", response.text)
+                self.assertIn("Abrir cartas", response.text)
                 self.assertNotIn("Postulacion es", response.text)
 
     def test_cv_list_hides_sqlite_status_and_keeps_actions(self):
@@ -52,6 +55,9 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertNotIn("SQLite activo", response.text)
                 self.assertIn("Mas acciones", response.text)
                 self.assertIn("Descargar PDF", response.text)
+                self.assertIn("Herramientas avanzadas", response.text)
+                self.assertIn("Importar o restaurar desde JSON", response.text)
+                self.assertIn("data-confirm-submit", response.text)
 
     def test_cv_detail_renders_secondary_actions_as_buttons_and_ats_modal_trigger(self):
         with tempfile.TemporaryDirectory() as data_directory:
@@ -78,6 +84,9 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("Descargar JSON", response.text)
                 self.assertIn("Duplicar CV", response.text)
                 self.assertIn("Eliminar CV", response.text)
+                self.assertIn("Titulo interno", response.text)
+                self.assertIn("Nombre completo", response.text)
+                self.assertIn("data-confirm-submit", response.text)
 
     def test_cv_delete_requires_exact_title_match(self):
         with tempfile.TemporaryDirectory() as data_directory:

@@ -22,6 +22,7 @@ def dashboard(request: Request) -> HTMLResponse:
             "description": "CRUD completo, importacion JSON y exportaciones TEX, PDF y JSON.",
             "url_name": "cvs_list",
             "action_label": "Abrir CVs",
+            "preview_total": min(len(cvs), 3),
         },
         {
             "name": "Cartas de presentacion",
@@ -29,6 +30,7 @@ def dashboard(request: Request) -> HTMLResponse:
             "description": "Cartas reutilizables con exportacion TEX y PDF y asociacion opcional a un CV.",
             "url_name": "cover_letters_list",
             "action_label": "Abrir cartas",
+            "preview_total": min(len(cover_letters), 3),
         },
     ]
 
@@ -72,11 +74,10 @@ def dashboard(request: Request) -> HTMLResponse:
         "dashboard.html",
         {
             "app_name": "CV LaTeX Builder",
-            "app_status": "Workspace privado listo para trabajar",
             "primary_modules": primary_modules,
             "secondary_modules": secondary_modules,
-            "recent_cvs": cvs[:4],
-            "recent_cover_letters": cover_letters[:4],
+            "recent_cvs": cvs[:3],
+            "recent_cover_letters": cover_letters[:3],
             "counts": {
                 "cvs": len(cvs),
                 "cover_letters": len(cover_letters),

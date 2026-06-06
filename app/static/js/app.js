@@ -87,6 +87,57 @@ function closeAtsModal() {
   document.body.classList.remove("modal-open");
 }
 
+function closeConfirmModal() {
+  const overlay = document.querySelector("[data-confirm-overlay]");
+  if (!overlay) {
+    return;
+  }
+
+  overlay.remove();
+  document.body.classList.remove("modal-open");
+}
+
+function openConfirmModal({ title, message, confirmLabel, onConfirm }) {
+  closeConfirmModal();
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.dataset.confirmOverlay = "true";
+  overlay.innerHTML = `
+    <div class="modal-backdrop" data-confirm-close></div>
+    <div class="modal-frame">
+      <div class="confirm-dialog-card" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" tabindex="-1">
+        <div class="confirm-dialog-head">
+          <div>
+            <p class="eyebrow">Confirmacion</p>
+            <h2 id="confirm-dialog-title">${title}</h2>
+          </div>
+          <button class="button small" type="button" data-confirm-close>Cerrar</button>
+        </div>
+        <p class="section-copy">${message}</p>
+        <div class="confirm-dialog-actions">
+          <button class="button" type="button" data-confirm-close>Cancelar</button>
+          <button class="button primary" type="button" data-confirm-accept>${confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const root = document.getElementById("app-modal-root") || document.body;
+  root.appendChild(overlay);
+  document.body.classList.add("modal-open");
+
+  const dialog = overlay.querySelector(".confirm-dialog-card");
+  if (dialog) {
+    dialog.focus();
+  }
+
+  overlay.querySelector("[data-confirm-accept]")?.addEventListener("click", () => {
+    closeConfirmModal();
+    onConfirm();
+  });
+}
+
 async function openAtsModal(trigger) {
   const modalUrl = trigger.getAttribute("data-ats-modal-url");
   const fallbackUrl = trigger.getAttribute("href");
@@ -154,9 +205,45 @@ function initializeAtsModal() {
   });
 }
 
+function initializeConfirmSubmit() {
+  document.addEventListener("submit", (event) => {
+    const form = event.target.closest("[data-confirm-submit]");
+    if (!form || form.dataset.confirmed === "true") {
+      return;
+    }
+
+    event.preventDefault();
+    closeActionMenus();
+
+    openConfirmModal({
+      title: form.getAttribute("data-confirm-title") || "Confirmar accion",
+      message: form.getAttribute("data-confirm-message") || "Confirma la accion para continuar.",
+      confirmLabel: form.getAttribute("data-confirm-label") || "Confirmar",
+      onConfirm: () => {
+        form.dataset.confirmed = "true";
+        HTMLFormElement.prototype.submit.call(form);
+      },
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (event.target.closest("[data-confirm-close]")) {
+      event.preventDefault();
+      closeConfirmModal();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeConfirmModal();
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initializeThemeToggle();
   initializeActiveNavigation();
   initializeActionMenus();
   initializeAtsModal();
+  initializeConfirmSubmit();
 });

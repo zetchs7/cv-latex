@@ -19,12 +19,10 @@
   </div>
 
   <article class="workspace-card">
-    <div class="workspace-card-head">
+    <div class="workspace-card-head workspace-card-head-compact">
       <p class="eyebrow">Resumen del workspace</p>
-      <strong>{{ app_status }}</strong>
-      <p class="section-copy">Metricas principales del panel privado para seguir el estado del MVP local sin ruido tecnico.</p>
     </div>
-    <dl class="metric-list">
+    <dl class="metric-list metric-list-compact">
       <div>
         <dt>Curriculums</dt>
         <dd>{{ counts.cvs }}</dd>
@@ -48,8 +46,25 @@
       <span class="focus-count">{{ module.count }}</span>
       <h2>{{ module.name }}</h2>
     </div>
+    <div class="focus-preview-stack" aria-hidden="true">
+      {% if module.preview_total %}
+        {% for _ in range(module.preview_total) %}
+        <span class="focus-preview-sheet {% if module.name == 'Cartas de presentacion' %}focus-preview-sheet-letter{% endif %}">
+          <span class="document-line short"></span>
+          <span class="document-line"></span>
+          <span class="document-line short"></span>
+        </span>
+        {% endfor %}
+      {% else %}
+        <span class="focus-preview-sheet {% if module.name == 'Cartas de presentacion' %}focus-preview-sheet-letter{% endif %}">
+          <span class="document-line short"></span>
+          <span class="document-line"></span>
+          <span class="document-line short"></span>
+        </span>
+      {% endif %}
+    </div>
     <p>{{ module.description }}</p>
-    <a class="text-link" href="{{ url_for(module.url_name) }}">{{ module.action_label }}</a>
+    <a class="button small" href="{{ url_for(module.url_name) }}">{{ module.action_label }}</a>
   </article>
   {% endfor %}
 </section>
@@ -65,16 +80,26 @@
     </div>
 
     {% if recent_cvs %}
-    <div class="compact-list">
+    <div class="dashboard-preview-grid">
       {% for cv in recent_cvs %}
-      <a class="compact-item" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">
-        <span class="doc-preview" aria-hidden="true"></span>
-        <span class="compact-item-body">
-          <strong>{{ cv.title }}</strong>
-          <small>{{ cv.full_name }}</small>
-        </span>
-        <span class="compact-item-meta">{{ cv.updated_at }}</span>
-      </a>
+      <article class="dashboard-preview-card">
+        <a class="dashboard-preview-link" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">
+          <span class="document-sheet dashboard-preview-sheet" aria-hidden="true">
+            <span class="document-line short"></span>
+            <span class="document-line"></span>
+            <span class="document-line"></span>
+            <span class="document-line short"></span>
+          </span>
+          <span class="dashboard-preview-copy">
+            <strong>{{ cv.title }}</strong>
+            <small>{{ cv.full_name }}</small>
+          </span>
+        </a>
+        <div class="dashboard-preview-foot">
+          <span class="compact-item-meta">{{ cv.updated_at }}</span>
+          <a class="button small" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Abrir</a>
+        </div>
+      </article>
       {% endfor %}
     </div>
     {% else %}
@@ -95,22 +120,46 @@
     </div>
 
     {% if recent_cover_letters %}
-    <div class="compact-list">
+    <div class="dashboard-preview-grid dashboard-preview-grid-letters">
       {% for cover_letter in recent_cover_letters %}
-      <a class="compact-item" href="{{ url_for('cover_letters_detail', cover_letter_id=cover_letter.id) }}">
-        <span class="doc-preview doc-preview-letter" aria-hidden="true"></span>
-        <span class="compact-item-body">
-          <strong>{{ cover_letter.company }}</strong>
-          <small>{{ cover_letter.position }}</small>
-        </span>
-        <span class="compact-item-meta">{{ cover_letter.updated_at }}</span>
-      </a>
+      <article class="dashboard-preview-card">
+        <a class="dashboard-preview-link" href="{{ url_for('cover_letters_detail', cover_letter_id=cover_letter.id) }}">
+          <span class="document-sheet dashboard-preview-sheet letter-sheet" aria-hidden="true">
+            <span class="document-line short"></span>
+            <span class="document-line"></span>
+            <span class="document-line short"></span>
+            <span class="document-line"></span>
+          </span>
+          <span class="dashboard-preview-copy">
+            <strong>{{ cover_letter.company }}</strong>
+            <small>{{ cover_letter.position }}</small>
+          </span>
+        </a>
+        <div class="dashboard-preview-foot">
+          <span class="compact-item-meta">{{ cover_letter.updated_at }}</span>
+          <a class="button small" href="{{ url_for('cover_letters_detail', cover_letter_id=cover_letter.id) }}">Abrir</a>
+        </div>
+      </article>
       {% endfor %}
+      <article class="dashboard-preview-card dashboard-preview-card-create">
+        <span class="dashboard-preview-create-mark" aria-hidden="true">+</span>
+        <div class="dashboard-preview-copy">
+          <strong>Nueva carta</strong>
+          <small>Prepara una carta base o asociada a un CV.</small>
+        </div>
+        <a class="button small primary" href="{{ url_for('cover_letters_new') }}">Crear nueva carta</a>
+      </article>
     </div>
     {% else %}
-    <div class="empty-card">
-      <h3>No hay cartas todavia</h3>
-      <p>Crea una carta reutilizable y mantenla asociada a un CV cuando haga falta.</p>
+    <div class="dashboard-preview-grid dashboard-preview-grid-letters">
+      <article class="dashboard-preview-card dashboard-preview-card-create">
+        <span class="dashboard-preview-create-mark" aria-hidden="true">+</span>
+        <div class="dashboard-preview-copy">
+          <strong>Nueva carta</strong>
+          <small>Crea una carta reutilizable y mantenla asociada a un CV cuando haga falta.</small>
+        </div>
+        <a class="button small primary" href="{{ url_for('cover_letters_new') }}">Crear nueva carta</a>
+      </article>
     </div>
     {% endif %}
   </article>
@@ -131,7 +180,7 @@
       <h3>{{ module.name }}</h3>
       <p>{{ module.description }}</p>
       {% if module.is_active and module.url_name %}
-      <a class="text-link" href="{{ url_for(module.url_name) }}">{{ module.action_label }}</a>
+      <a class="button small" href="{{ url_for(module.url_name) }}">{{ module.action_label }}</a>
       {% else %}
       <span class="muted-label">{{ module.action_label }}</span>
       {% endif %}

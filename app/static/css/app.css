@@ -103,7 +103,9 @@ dd,
 dt,
 span,
 small {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
 }
 
 h1,
@@ -526,7 +528,7 @@ summary.button {
 
 .workspace-card {
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .workspace-card-head {
@@ -534,19 +536,19 @@ summary.button {
   gap: 10px;
 }
 
-.workspace-card-head strong {
-  font-size: 1.16rem;
-}
-
-.workspace-card-head .section-copy {
-  margin: 0;
-  font-size: 0.92rem;
+.workspace-card-head-compact {
+  gap: 0;
 }
 
 .metric-list {
   display: grid;
   gap: 14px;
   margin: 0;
+}
+
+.metric-list-compact {
+  grid-template-columns: repeat(3, minmax(118px, 1fr));
+  gap: 10px;
 }
 
 .metric-list div {
@@ -563,9 +565,21 @@ summary.button {
   border-bottom: 0;
 }
 
+.metric-list-compact div {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-height: 94px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface-soft);
+}
+
 .metric-list dt {
   color: var(--text-muted);
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .metric-list dd {
@@ -594,6 +608,28 @@ summary.button {
 .focus-card-head {
   display: grid;
   gap: 14px;
+}
+
+.focus-preview-stack {
+  display: flex;
+  gap: 10px;
+  min-height: 74px;
+}
+
+.focus-preview-sheet {
+  display: grid;
+  align-content: start;
+  width: 56px;
+  height: 72px;
+  padding: 12px 10px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fffefb 0%, #f4ecdf 100%);
+  border: 1px solid rgba(96, 64, 40, 0.12);
+  box-shadow: var(--shadow-sm);
+}
+
+.focus-preview-sheet-letter {
+  background: linear-gradient(180deg, #fff8ef 0%, #f8e8d7 100%);
 }
 
 .focus-count {
@@ -634,6 +670,68 @@ summary.button {
 .ats-checklist {
   display: grid;
   gap: 14px;
+}
+
+.dashboard-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.dashboard-preview-grid-letters {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dashboard-preview-card {
+  display: grid;
+  gap: 12px;
+  min-height: 208px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface-soft);
+}
+
+.dashboard-preview-link {
+  display: grid;
+  gap: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.dashboard-preview-sheet {
+  width: 84px;
+  height: 108px;
+}
+
+.dashboard-preview-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.dashboard-preview-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.dashboard-preview-create-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.dashboard-preview-card-create {
+  align-content: space-between;
 }
 
 .compact-item {
@@ -842,6 +940,13 @@ html[data-theme="dark"] .document-sheet {
   display: flex;
   gap: 18px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.entity-meta-date {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .entity-actions-end {
@@ -892,6 +997,29 @@ html[data-theme="dark"] .document-sheet {
   margin: 0;
 }
 
+.advanced-tools-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.advanced-tools-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-tools-body {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.import-tools-panel {
+  margin-top: 20px;
+}
+
 .empty-card {
   display: grid;
   place-items: center;
@@ -932,6 +1060,11 @@ html[data-theme="dark"] .document-sheet {
 .detail-summary-copy {
   display: grid;
   gap: 16px;
+}
+
+.detail-card-head {
+  display: grid;
+  gap: 8px;
 }
 
 .detail-side-panel h2,
@@ -1139,20 +1272,34 @@ textarea {
   margin-bottom: 10px;
 }
 
+.ats-score-card-balanced {
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 0;
+}
+
 .ats-score {
   color: var(--accent-strong);
   font-size: 2.4rem;
   line-height: 1;
 }
 
+.ats-score-copy {
+  display: grid;
+  gap: 8px;
+}
+
 .ats-metrics {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
 }
 
 .ats-metric {
   display: grid;
   gap: 4px;
   background: var(--surface-soft);
+  min-height: 118px;
+  align-content: start;
 }
 
 .ats-metric span {
@@ -1160,6 +1307,7 @@ textarea {
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .ats-metric small {
@@ -1236,6 +1384,14 @@ textarea {
   gap: 12px;
 }
 
+.ats-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .ats-modal-head .section-copy {
   margin: 8px 0 0;
 }
@@ -1243,6 +1399,28 @@ textarea {
 .ats-modal-content {
   display: grid;
   gap: 18px;
+}
+
+.ats-modal-card .ats-summary-grid {
+  grid-template-columns: minmax(250px, 0.9fr) minmax(340px, 1.1fr);
+}
+
+.confirm-dialog-card {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.confirm-dialog-head,
+.confirm-dialog-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .documentation-card {
@@ -1363,6 +1541,13 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .dashboard-preview-grid,
+  .dashboard-preview-grid-letters,
+  .metric-list-compact,
+  .ats-modal-card .ats-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
   .documentation-toc {
     position: static;
   }
@@ -1401,6 +1586,16 @@ textarea {
   .documentation-grid {
     grid-template-columns: 1fr;
   }
+
+  .entity-body-layout {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .entity-actions-end {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1430,8 +1625,11 @@ textarea {
   }
 
   .entity-actions-end,
+  .ats-modal-actions,
   .ats-modal-head,
-  .ats-modal-footer {
+  .ats-modal-footer,
+  .confirm-dialog-head,
+  .confirm-dialog-actions {
     width: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;

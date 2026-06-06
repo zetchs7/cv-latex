@@ -1,11 +1,13 @@
 <section class="ats-summary-grid">
   <article class="detail-panel">
     <h2>Estado general</h2>
-    <div class="ats-score-card">
+    <div class="ats-score-card ats-score-card-balanced">
       <strong class="ats-score">{{ analysis.score }}/{{ analysis.max_score }}</strong>
-      <span class="ats-status">{{ analysis.status }}</span>
+      <div class="ats-score-copy">
+        <span class="ats-status">{{ analysis.status }}</span>
+        <p class="ats-meta">Longitud estimada: {{ analysis.total_characters }} caracteres.</p>
+      </div>
     </div>
-    <p class="ats-meta">Longitud estimada: {{ analysis.total_characters }} caracteres.</p>
   </article>
 
   <article class="detail-panel">
