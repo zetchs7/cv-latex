@@ -65,7 +65,8 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn('class="button" href="#advanced-tools"', response.text)
                 self.assertIn("Importar o restaurar desde JSON", response.text)
                 self.assertIn("data-confirm-submit", response.text)
-                self.assertRegex(response.text, r"Actualizado \d{2}/\d{2}/\d{4} \d{2}:\d{2}")
+                self.assertIn("entity-meta-stack", response.text)
+                self.assertRegex(response.text, r"Actualizado: \d{2}/\d{2}/\d{4} \d{2}:\d{2} hs")
 
     def test_cv_detail_renders_secondary_actions_as_buttons_and_ats_modal_trigger(self):
         with tempfile.TemporaryDirectory() as data_directory:
@@ -95,7 +96,7 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("Titulo", response.text)
                 self.assertIn("Nombre", response.text)
                 self.assertIn("data-confirm-submit", response.text)
-                self.assertRegex(response.text, r"\d{2}/\d{2}/\d{4} \d{2}:\d{2}")
+                self.assertRegex(response.text, r"\d{2}/\d{2}/\d{4} \d{2}:\d{2} hs")
 
     def test_cv_edit_shows_contextual_header(self):
         with tempfile.TemporaryDirectory() as data_directory:
@@ -121,7 +122,8 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("Editar CV", response.text)
                 self.assertIn("CV ATS Edit", response.text)
                 self.assertIn("Persona Edit", response.text)
-                self.assertIn("CV ATS Edit - Persona Edit", response.text)
+                self.assertIn("<h1>Persona Edit</h1>", response.text)
+                self.assertIn("Editando CV - CV ATS Edit", response.text)
 
     def test_cv_delete_requires_exact_title_match(self):
         with tempfile.TemporaryDirectory() as data_directory:
@@ -213,7 +215,8 @@ class UIRoutesTest(unittest.TestCase):
 
                 self.assertEqual(response.status_code, 200)
                 self.assertIn("entity-actions-end", response.text)
-                self.assertRegex(response.text, r"Actualizada \d{2}/\d{2}/\d{4} \d{2}:\d{2}")
+                self.assertIn("entity-meta-stack", response.text)
+                self.assertRegex(response.text, r"Actualizada: \d{2}/\d{2}/\d{4} \d{2}:\d{2} hs")
 
 
 if __name__ == "__main__":

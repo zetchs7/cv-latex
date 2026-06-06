@@ -40,10 +40,10 @@
             </div>
           </div>
 
-          <div class="entity-meta">
+          <div class="entity-meta entity-meta-stack">
             <span>{{ cover_letter.associated_cv_title or "Sin CV asociado" }}</span>
             <span>{{ cover_letter.contact or "Sin contacto" }}</span>
-            <span class="entity-meta-date">Actualizada {{ cover_letter.updated_at|format_datetime_ar }}</span>
+            <span class="entity-meta-date">Actualizada: {{ cover_letter.updated_at|format_datetime_ar }}</span>
           </div>
         </div>
 

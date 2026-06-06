@@ -39,6 +39,12 @@
 - `Exportacion` y `Ficha rapida` ajustadas con separacion final de acciones secundarias y encabezados consistentes.
 - Estado general del modal ATS reordenado con titulo, badge semantico, score y longitud en estructura vertical clara.
 - Contexto visual de `Editar CV` desde ATS reforzado con subtitulo `titulo - persona`.
+- Resumen del workspace compactado para reducir el alto de la card sin cambiar el formato `CVs | Cartas | Postulaciones`.
+- Fechas visibles de dashboard, CVs, cartas y detalle de CV actualizadas a `dd/mm/yyyy HH:mm hs`.
+- Metadata `Actualizado`/`Actualizada` reubicada debajo de los datos principales en listados.
+- Encabezados internos de `Exportacion` y `Ficha rapida` mantenidos coherentes, con acciones secundarias de exportacion mejor espaciadas.
+- Badge de `Estado general` en el modal ATS agrandado y complementado con referencia discreta de score.
+- Header de edicion de CV corregido para usar persona o titulo de CV como H1 principal y dejar `Editar CV` como contexto.
 
 ## 0.8.0 - 2026-06-04
 

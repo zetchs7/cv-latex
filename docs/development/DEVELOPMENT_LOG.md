@@ -637,6 +637,23 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
   - Validacion visual manual final antes de PR.
   - Miniaturas reales de PDF y selector de paletas quedan fuera de esta etapa.
 
+## Etapa 8.1.2.3 - Micro-ajuste final visual antes del PR
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: aplicar ajustes visuales puntuales sin tocar componentes ya aprobados.
+- Modulos afectados: `dashboard`, `cvs`, `cover_letters`, `ats`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se redujo el alto del resumen del workspace manteniendo el formato simple `CVs | Cartas | Postulaciones`.
+  - Se reforzo el contraste de los numeros del resumen en dark mode mediante el color de acento existente.
+  - Se actualizo el formato visible de fechas a `dd/mm/yyyy HH:mm hs`.
+  - Se reubico `Actualizado`/`Actualizada` debajo de los datos principales en los listados de CVs y cartas.
+  - Se mantuvieron los encabezados de `Exportacion` y `Ficha rapida` coherentes y se bajo levemente el bloque de acciones secundarias.
+  - Se agrando el badge de estado ATS y se agrego una referencia breve de score debajo de la longitud estimada.
+  - El formulario de edicion de CV ahora usa la persona o titulo del CV como H1 principal y deja `Editar CV` como contexto.
+- Pendientes:
+  - Validacion visual manual final de estos puntos antes de PR.
+
 ## Fix ATS - Critical Sections Status Cap
 
 - Fecha: 2026-06-04

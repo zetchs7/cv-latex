@@ -69,7 +69,7 @@
           </span>
         </a>
         <div class="dashboard-preview-foot">
-          <span class="compact-item-meta">{{ cv.updated_at|format_datetime_ar }}</span>
+          <span class="compact-item-meta">Actualizado: {{ cv.updated_at|format_datetime_ar }}</span>
           <a class="button small" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Abrir</a>
         </div>
       </article>
@@ -109,7 +109,7 @@
           </span>
         </a>
         <div class="dashboard-preview-foot">
-          <span class="compact-item-meta">{{ cover_letter.updated_at|format_datetime_ar }}</span>
+          <span class="compact-item-meta">Actualizada: {{ cover_letter.updated_at|format_datetime_ar }}</span>
           <a class="button small" href="{{ url_for('cover_letters_detail', cover_letter_id=cover_letter.id) }}">Abrir</a>
         </div>
       </article>

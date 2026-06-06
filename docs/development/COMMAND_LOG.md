@@ -3095,3 +3095,38 @@ Resultado:
 - Acciones secundarias de `Exportacion` separadas del selector.
 - `Estado general` del modal ATS reorganizado con badge, score y longitud en estructura clara.
 - Contexto visual de edicion desde ATS reforzado con subtitulo `titulo - persona`.
+
+---
+
+Accion:
+Aplicar micro-ajuste visual final 8.1.2.3.
+
+Motivo:
+Resolver solo los puntos visuales finales marcados por el usuario antes del PR.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/template_utils.py`
+- `app/main.py`
+- `app/templates/dashboard.html`
+- `app/templates/cvs/index.html`
+- `app/templates/cover_letters/index.html`
+- `app/templates/cvs/form.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- Resumen workspace compactado sin cuadrados internos ni texto nuevo.
+- Fechas visibles con sufijo `hs`.
+- Metadata `Actualizado`/`Actualizada` reubicada debajo de datos principales.
+- Acciones secundarias de `Exportacion` mejor separadas.
+- Badge ATS mas visible y referencia de score agregada.
+- Header de edicion de CV corregido para usar persona/titulo como H1.

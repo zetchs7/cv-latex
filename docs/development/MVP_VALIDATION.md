@@ -30,7 +30,7 @@ docker compose exec app python -m pytest
 - Confirmar que el tema persiste al recargar.
 - Confirmar que la version visible coincide con `VERSION` y `/health`.
 - Confirmar que `GET /static/css/app.css` y `GET /static/js/app.js` responden `200`.
-- Confirmar que el resumen del workspace se ve como una linea horizontal simple, sin cuadrados internos ni numeros gigantes.
+- Confirmar que el resumen del workspace se ve como una linea horizontal simple y compacta, sin cuadrados internos ni numeros gigantes.
 - Confirmar que `Abrir CVs` y `Abrir cartas` se ven como botones.
 - Confirmar que las cards principales no muestran contadores grandes.
 - Confirmar que no hay CTA duplicada `Nueva carta` dentro de recientes.
@@ -42,10 +42,10 @@ docker compose exec app python -m pytest
 - Editar el CV.
 - Ver el detalle.
 - Confirmar que el listado no muestra `SQLite activo`.
-- Confirmar que cada fila muestra la fecha `dd/mm/yyyy HH:mm` como metadata secundaria, sin badge flotando arriba.
+- Confirmar que cada fila muestra `Actualizado: dd/mm/yyyy HH:mm hs` como metadata secundaria debajo de los datos principales, sin badge flotando arriba.
 - Confirmar que `Mas acciones` queda a la derecha y se cierra con click externo o `Escape`.
 - Confirmar que `Herramientas avanzadas` se ve como boton secundario y que `Importar JSON` queda dentro.
-- Confirmar que `Exportacion` y `Ficha rapida` usan spacing consistente, labels cortos y fechas `dd/mm/yyyy HH:mm`.
+- Confirmar que `Exportacion` y `Ficha rapida` usan encabezados coherentes, spacing consistente, labels cortos y fechas `dd/mm/yyyy HH:mm hs`.
 - Duplicar el CV.
 - Confirmar que `Duplicar CV` pide confirmacion antes de ejecutar.
 - Exportar TEX desde el selector unificado.
@@ -61,7 +61,7 @@ docker compose exec app python -m pytest
 - Editar la carta.
 - Ver el detalle.
 - Confirmar que `Abrir`, `Generar PDF`, `Descargar TEX` y `Mas acciones` quedan a la derecha.
-- Confirmar que la fecha del listado se ve como metadata secundaria en formato `dd/mm/yyyy HH:mm`.
+- Confirmar que la fecha del listado se ve como metadata secundaria debajo de los datos principales en formato `Actualizada: dd/mm/yyyy HH:mm hs`.
 - Asociarla opcionalmente a un CV existente.
 - Exportar TEX.
 - Exportar PDF.
@@ -83,8 +83,8 @@ docker compose exec app python -m pytest
 - Abrir `http://localhost:8000/ats/`.
 - Ejecutar `Analizar ATS` desde el detalle del CV y confirmar apertura modal.
 - Confirmar que el modal ATS muestra `Abrir vista completa`, `Editar CV` y `Cerrar` arriba.
-- Confirmar que `Estado general` muestra titulo, badge semantico, score y longitud en estructura clara.
-- Confirmar que desde `Editar CV` en el modal se ve contexto del CV y de la persona en la cabecera del formulario.
+- Confirmar que `Estado general` muestra titulo, badge semantico visible, score, longitud y referencia de score en estructura clara.
+- Confirmar que desde `Editar CV` en el modal el H1 principal es la persona o titulo del CV y que `Editar CV` queda como contexto.
 - Ejecutar analisis sobre un CV completo.
 - Ejecutar analisis sobre un CV incompleto.
 - Confirmar score, checklist, recomendaciones y advertencias.

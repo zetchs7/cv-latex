@@ -18,7 +18,7 @@ def format_datetime_ar(value: str | None) -> str:
     if parsed_value is None:
         return value
 
-    return parsed_value.strftime("%d/%m/%Y %H:%M")
+    return parsed_value.strftime("%d/%m/%Y %H:%M hs")
 
 
 def ats_status_variant(status: str | None, score: int | None = None, max_score: int | None = None) -> str:
