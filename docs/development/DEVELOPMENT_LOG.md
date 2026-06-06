@@ -1,5 +1,21 @@
 # Development Log
 
+## Etapa 8.1 - UI privada y dashboard operativo
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: redisenar la experiencia visual de la app privada local sin tocar DB, login ni exportaciones profundas.
+- Modulos afectados: `layout`, `dashboard`, `cvs`, `cover_letters`, `static/css`, `static/js`, `docs/development`, `docs/user`, `tests`.
+- Resumen de cambios:
+  - Se reemplazo el header horizontal por una sidebar fija con version visible y acceso a los modulos principales y secundarios.
+  - Se agrego toggle dark/light persistido en `localStorage`.
+  - El dashboard pasa a enfocarse en CVs y cartas con listas recientes y modulos secundarios aparte.
+  - El listado de CVs y el de cartas se redisenaron como filas compactas con preview visual tipo documento.
+  - El detalle de CV unifica la seleccion de plantilla para exportar TEX y PDF.
+  - La confirmacion de borrado de CVs y cartas exige coincidencia exacta del texto esperado.
+  - Se agrego `PROJECT_HISTORY_ROLLBACK.md` para documentar la base estable `v0.8.0` y los comandos de rollback de referencia.
+- Resultado esperado: base funcional del MVP preservada con una UI privada mas moderna y segura para operar localmente.
+
 ## Documentation Center
 
 - Fecha: 2026-06-05

@@ -1,5 +1,22 @@
 # Changelog General
 
+## En desarrollo - 2026-06-06
+
+### Agregado
+
+- Sidebar fija para navegacion privada entre Dashboard, CVs, Cartas, Postulaciones, ATS, Documentacion y placeholder de configuracion local.
+- Toggle dark/light con persistencia en `localStorage`.
+- `docs/development/PROJECT_HISTORY_ROLLBACK.md` con referencia al tag `v0.8.0`, commit base `eab9556` y comandos de rollback documentados.
+- Tests de rutas UI para dashboard y confirmaciones de borrado seguro.
+
+### Cambiado
+
+- Dashboard redisenado con foco principal en CVs y cartas, modulos secundarios mas compactos y menos texto explicativo largo.
+- Listados de CVs y cartas redisenados como filas compactas con preview visual CSS, acciones primarias y menu de acciones secundarias.
+- Detalle de CV con selector unificado de plantilla para exportar TEX y PDF.
+- Confirmaciones de eliminacion de CVs y cartas endurecidas para exigir coincidencia exacta del texto esperado.
+- README, manual web y documentacion tecnica actualizados para reflejar sidebar, tema y rollback visual.
+
 ## 0.8.0 - 2026-06-04
 
 ### Agregado

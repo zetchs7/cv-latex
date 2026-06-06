@@ -26,9 +26,9 @@ logger = logging.getLogger(__name__)
 @router.get("/", response_class=HTMLResponse, name="cover_letters_list")
 def list_cover_letters(request: Request, message: str | None = None) -> HTMLResponse:
     return templates.TemplateResponse(
+        request,
         "cover_letters/index.html",
         {
-            "request": request,
             "cover_letters": cover_letter_repository.list_cover_letters(),
             "message": message,
         },
@@ -94,9 +94,9 @@ def cover_letter_detail(request: Request, cover_letter_id: int, message: str | N
         raise HTTPException(status_code=404, detail="Carta no encontrada.")
 
     return templates.TemplateResponse(
+        request,
         "cover_letters/detail.html",
         {
-            "request": request,
             "cover_letter": cover_letter,
             "message": message,
             "default_template": DEFAULT_COVER_LETTER_TEMPLATE_KEY,
@@ -181,23 +181,28 @@ def confirm_delete_cover_letter(request: Request, cover_letter_id: int) -> HTMLR
     if cover_letter is None:
         raise HTTPException(status_code=404, detail="Carta no encontrada.")
 
-    return templates.TemplateResponse(
-        "cover_letters/confirm_delete.html",
-        {
-            "request": request,
-            "cover_letter": cover_letter,
-        },
-    )
+    return _render_delete_confirmation(request, cover_letter)
 
 
 @router.post("/{cover_letter_id}/delete", response_class=HTMLResponse, name="cover_letters_delete")
 def delete_cover_letter(
     request: Request,
     cover_letter_id: int,
-    confirm_delete: str = Form(""),
-) -> RedirectResponse:
-    if confirm_delete != "yes":
-        return _redirect_to_detail(request, cover_letter_id, "Eliminacion cancelada.")
+    confirmation_value: str = Form(""),
+):
+    cover_letter = cover_letter_repository.get_cover_letter(cover_letter_id)
+    if cover_letter is None:
+        raise HTTPException(status_code=404, detail="Carta no encontrada.")
+
+    expected_value = _cover_letter_display_name(cover_letter)
+    if confirmation_value.strip() != expected_value:
+        return _render_delete_confirmation(
+            request,
+            cover_letter,
+            error="El texto ingresado no coincide exactamente con la carta a eliminar.",
+            entered_value=confirmation_value,
+            status_code=422,
+        )
 
     if not cover_letter_repository.soft_delete_cover_letter(cover_letter_id):
         raise HTTPException(status_code=404, detail="Carta no encontrada.")
@@ -324,9 +329,9 @@ def _render_form(
     status_code: int = 200,
 ) -> HTMLResponse:
     return templates.TemplateResponse(
+        request,
         "cover_letters/form.html",
         {
-            "request": request,
             "form_data": form_data,
             "errors": errors,
             "action_url": action_url,
@@ -347,3 +352,31 @@ def _redirect_to_detail(request: Request, cover_letter_id: int, message: str) ->
 def _redirect_to_list(request: Request, message: str) -> RedirectResponse:
     url = request.url_for("cover_letters_list").include_query_params(message=message)
     return RedirectResponse(str(url), status_code=303)
+
+
+def _cover_letter_display_name(cover_letter: CoverLetter) -> str:
+    position = cover_letter.position.strip()
+    if not position:
+        return cover_letter.company.strip()
+    return f"{cover_letter.company.strip()} - {position}"
+
+
+def _render_delete_confirmation(
+    request: Request,
+    cover_letter: CoverLetter,
+    *,
+    error: str | None = None,
+    entered_value: str = "",
+    status_code: int = 200,
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "cover_letters/confirm_delete.html",
+        {
+            "cover_letter": cover_letter,
+            "expected_value": _cover_letter_display_name(cover_letter),
+            "entered_value": entered_value,
+            "error": error,
+        },
+        status_code=status_code,
+    )

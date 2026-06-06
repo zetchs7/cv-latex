@@ -5,7 +5,9 @@ Aplicacion web local, pequena y portable para construir CVs, cartas de presentac
 ## Estado actual
 
 - Version: `0.8.0`
-- Etapa: `7 - Pulido final del MVP`
+- Base estable: `tag v0.8.0`
+- Commit base estable: `eab9556 fix(docs): render documentation as html with pdf downloads`
+- Etapa visual en trabajo: `8.1 - Rediseno visual privado y dashboard operativo`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 - Exportaciones: `/data/exports` dentro del contenedor, visible en `./data/exports` en el host
@@ -14,7 +16,7 @@ Aplicacion web local, pequena y portable para construir CVs, cartas de presentac
 
 - Backend: Python, FastAPI
 - Templates: Jinja2
-- Frontend: HTML, CSS simple, JavaScript minimo
+- Frontend: HTML server-side, CSS propio con dark/light mode y JavaScript minimo para UX local
 - Persistencia: SQLite en `/data/app.db`
 - Contenedores: Docker Compose
 - PDF: TeX Live con `pdflatex` dentro del contenedor
@@ -219,6 +221,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |   |-- PROJECT_TECHNICAL_DOCUMENTATION.md
 |   |   `-- WEB_USAGE_MANUAL.md
 |   |-- development/
+|   |   `-- PROJECT_HISTORY_ROLLBACK.md
 |   `-- adr/
 |-- tests/
 |   |-- test_application_repository.py
@@ -253,6 +256,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 6: ATS Basic Check. Completada.
 - Etapa 7: Pulido final del MVP. Completada en la rama de trabajo actual.
 - Mini-etapa: Documentation Center. Incluida antes del tag estable `v0.8.0`.
+- Etapa 8.1: rediseno visual privado con sidebar fija, dashboard operativo, dark/light mode y borrado seguro por coincidencia exacta. En curso sobre `feature/ui-private-dashboard`.
 
 ## Modulos disponibles
 
@@ -267,8 +271,8 @@ Rutas disponibles:
 - `GET /cvs/{cv_id}/edit`: formulario de edicion.
 - `POST /cvs/{cv_id}/edit`: actualizar CV.
 - `POST /cvs/{cv_id}/duplicate`: duplicar CV.
-- `GET /cvs/{cv_id}/delete`: confirmacion de eliminacion.
-- `POST /cvs/{cv_id}/delete`: eliminacion logica.
+- `GET /cvs/{cv_id}/delete`: confirmacion de eliminacion con texto exacto.
+- `POST /cvs/{cv_id}/delete`: eliminacion logica si coincide el titulo exacto.
 - `GET /cvs/{cv_id}/tex?template_key=classic`: previsualizar contenido `.tex`.
 - `GET /cvs/{cv_id}/export/tex?template_key=classic`: descargar archivo `.tex`.
 - `GET /cvs/{cv_id}/export/pdf?template_key=classic`: generar y descargar PDF.
@@ -285,8 +289,8 @@ Rutas disponibles:
 - `GET /cover-letters/{cover_letter_id}`: detalle.
 - `GET /cover-letters/{cover_letter_id}/edit`: formulario de edicion.
 - `POST /cover-letters/{cover_letter_id}/edit`: actualizar carta.
-- `GET /cover-letters/{cover_letter_id}/delete`: confirmacion de eliminacion.
-- `POST /cover-letters/{cover_letter_id}/delete`: eliminacion logica.
+- `GET /cover-letters/{cover_letter_id}/delete`: confirmacion de eliminacion con texto exacto.
+- `POST /cover-letters/{cover_letter_id}/delete`: eliminacion logica si coincide empresa y puesto exactos.
 - `GET /cover-letters/{cover_letter_id}/export/tex`: descargar TEX.
 - `GET /cover-letters/{cover_letter_id}/export/pdf`: generar y descargar PDF.
 
@@ -365,13 +369,15 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
   - `app/static/docs/Manual_Uso_Web_CV_LaTeX_Builder.pdf`
 - Generacion reproducible:
   - `docker run --rm -v ${PWD}:/workspace -w /workspace cv-latex-app python -m app.services.documentation_service`
+- Historial y rollback visual:
+  - `docs/development/PROJECT_HISTORY_ROLLBACK.md`
 
 ## Prueba manual rapida
 
 1. Abrir `http://localhost:8000`.
-2. Revisar el dashboard y la navegacion superior.
+2. Revisar el dashboard, la sidebar izquierda y el toggle dark/light.
 3. Entrar a `CVs` y crear o reutilizar un CV.
-4. Abrir el detalle del CV, exportar TEX/PDF/JSON y usar `Analizar ATS`.
+4. Abrir el detalle del CV, elegir una plantilla unica y exportar TEX/PDF/JSON.
 5. Entrar a `ATS` y repetir el analisis sobre un CV completo y uno incompleto.
 6. Entrar a `Cartas` y crear o reutilizar una carta.
 7. Exportar TEX y PDF de la carta.
@@ -382,7 +388,8 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 12. Confirmar que los archivos de export siguen quedando en `./data/exports`.
 13. Exportar un CV a JSON e importarlo de nuevo.
 14. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
-15. Entrar a `Documentacion` y leer ambas documentaciones en HTML dentro de la misma web.
+15. Probar eliminacion segura de un CV y una carta con texto incorrecto y correcto.
+16. Entrar a `Documentacion` y leer ambas documentaciones en HTML dentro de la misma web.
 
 ## Troubleshooting basico
 

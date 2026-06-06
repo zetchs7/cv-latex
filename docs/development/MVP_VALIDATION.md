@@ -25,8 +25,9 @@ docker compose exec app python -m pytest
 
 - Abrir `http://localhost:8000`.
 - Confirmar que el dashboard carga sin errores.
-- Confirmar accesos visibles a `CVs`, `Cartas`, `Postulaciones` y `ATS` desde el header.
-- Confirmar acceso visible a `Documentacion` desde el header y el dashboard.
+- Confirmar sidebar izquierda visible con `Panel de control`, `Curriculum Vitae`, `Cartas de presentacion`, `Postulaciones`, `ATS`, `Documentacion` y `Configuracion local`.
+- Confirmar toggle dark/light arriba a la derecha.
+- Confirmar que el tema persiste al recargar.
 - Confirmar que la version visible coincide con `VERSION` y `/health`.
 
 ### CVs
@@ -35,10 +36,12 @@ docker compose exec app python -m pytest
 - Editar el CV.
 - Ver el detalle.
 - Duplicar el CV.
-- Exportar TEX.
-- Exportar PDF.
+- Exportar TEX desde el selector unificado.
+- Exportar PDF desde el selector unificado.
 - Exportar JSON.
 - Importar el JSON y confirmar que crea un nuevo CV.
+- Intentar eliminar con titulo incorrecto y confirmar rechazo.
+- Eliminar con titulo exacto y confirmar exito.
 
 ### Cartas
 
@@ -48,6 +51,8 @@ docker compose exec app python -m pytest
 - Asociarla opcionalmente a un CV existente.
 - Exportar TEX.
 - Exportar PDF.
+- Intentar eliminar con texto incorrecto y confirmar rechazo.
+- Eliminar con `Empresa - Puesto` exacto y confirmar exito.
 
 ### Postulaciones
 

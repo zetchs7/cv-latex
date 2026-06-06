@@ -59,6 +59,40 @@ Resultado:
 - Los botones `Descargar PDF` siguen apuntando a los assets bajo `app/static/docs/`.
 - La imagen Docker ahora copia `docs/` para que el runtime pueda leer las fuentes Markdown y renderizar `/documentation/technical` y `/documentation/usage`.
 
+---
+
+Accion:
+Redisenar la app privada con sidebar fija, dashboard operativo, dark/light mode y borrado seguro.
+
+Motivo:
+Mejorar la experiencia visual del workspace local sin tocar modelo de datos, base de datos ni logica de exportacion principal.
+
+Comandos:
+- `git status`
+- `git branch --show-current`
+- `git log --oneline --decorate -7`
+- `git fetch origin`
+- `git checkout development`
+- `git checkout -b feature/ui-private-dashboard`
+- `Get-Content` sobre layout, dashboard, listados, detalle de CV, CSS, JS, README y docs
+- `apply_patch`
+- `python -m compileall app tests`
+- `docker compose build`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose logs app --tail 80`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest` sobre `/`, `/cvs/`, `/cover-letters/`, `/applications/`, `/ats/`, `/documentation/`
+- validacion visual con navegador local disponible
+- `git diff --check`
+
+Resultado:
+- La app pasa a usar sidebar fija, topbar con toggle de tema y dashboard centrado en CVs y cartas.
+- Los listados de CVs y cartas se muestran como filas compactas con preview CSS y acciones mas claras.
+- El detalle de CV usa un unico selector de plantilla para TEX/PDF.
+- La eliminacion de CVs y cartas exige coincidencia exacta del texto esperado.
+- Se agrego documentacion de rollback visual apoyada en `v0.8.0`.
+
 ## 2026-06-05 - Release cleanup changelog merge
 
 Accion:

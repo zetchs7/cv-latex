@@ -1,30 +1,69 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}CV LaTeX Builder{% endblock %}</title>
+  <script>
+    (() => {
+      const savedTheme = localStorage.getItem("cv-theme");
+      const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const theme = savedTheme || (systemDark ? "dark" : "light");
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
   <link rel="stylesheet" href="{{ url_for('static', path='/css/app.css') }}">
   <script defer src="{{ url_for('static', path='/js/app.js') }}"></script>
 </head>
 <body>
-  <header class="site-header">
-    <div class="container header-content">
-      <a class="brand" href="{{ url_for('dashboard') }}">CV LaTeX Builder</a>
-      <nav class="header-nav" aria-label="Navegacion principal">
-        <a href="{{ url_for('dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('cvs_list') }}">CVs</a>
-        <a href="{{ url_for('cover_letters_list') }}">Cartas</a>
-        <a href="{{ url_for('applications_list') }}">Postulaciones</a>
-        <a href="{{ url_for('ats_index') }}">ATS</a>
-        <a href="{{ url_for('documentation_index') }}">Documentacion</a>
-      </nav>
-      <span class="version">v{{ request.app.version }}</span>
-    </div>
-  </header>
+  <div class="app-shell">
+    <aside class="app-sidebar" aria-label="Navegacion principal">
+      <a class="brand-mark" href="{{ url_for('dashboard') }}">
+        <span class="brand-dot"></span>
+        <span>
+          <strong>CV LaTeX Builder</strong>
+          <small>workspace privado</small>
+        </span>
+      </a>
 
-  <main class="container main-content">
-    {% block content %}{% endblock %}
-  </main>
+      <nav class="sidebar-nav">
+        <a class="sidebar-link" data-nav-path="/" href="{{ url_for('dashboard') }}">Panel de control</a>
+        <a class="sidebar-link" data-nav-path="/cvs" href="{{ url_for('cvs_list') }}">Curriculum Vitae</a>
+        <a class="sidebar-link" data-nav-path="/cover-letters" href="{{ url_for('cover_letters_list') }}">Cartas de presentacion</a>
+        <a class="sidebar-link" data-nav-path="/applications" href="{{ url_for('applications_list') }}">Postulaciones</a>
+        <a class="sidebar-link" data-nav-path="/ats" href="{{ url_for('ats_index') }}">ATS</a>
+        <a class="sidebar-link" data-nav-path="/documentation" href="{{ url_for('documentation_index') }}">Documentacion</a>
+        <span class="sidebar-link sidebar-link-muted" aria-disabled="true">Configuracion local</span>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="version-pill">v{{ request.app.version }}</span>
+        <p>
+          Base estable: <code>v0.8.0</code>
+        </p>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="app-topbar">
+        <div>
+          <p class="topbar-kicker">App privada local</p>
+          <strong class="topbar-title">{% block topbar_title %}CV LaTeX Builder{% endblock %}</strong>
+        </div>
+        <button
+          class="theme-toggle"
+          type="button"
+          data-theme-toggle
+          aria-label="Alternar tema"
+        >
+          <span data-theme-toggle-label>Dark mode</span>
+        </button>
+      </header>
+
+      <main class="main-content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
 </body>
 </html>

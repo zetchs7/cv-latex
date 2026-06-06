@@ -33,9 +33,9 @@ logger = logging.getLogger(__name__)
 @router.get("/", response_class=HTMLResponse, name="cvs_list")
 def list_cvs(request: Request, message: str | None = None) -> HTMLResponse:
     return templates.TemplateResponse(
+        request,
         "cvs/index.html",
         {
-            "request": request,
             "cvs": cv_repository.list_cvs(),
             "message": message,
             "templates": available_cv_templates(),
@@ -114,11 +114,13 @@ def cv_detail(request: Request, cv_id: int, message: str | None = None) -> HTMLR
         raise HTTPException(status_code=404, detail="CV no encontrado.")
 
     return templates.TemplateResponse(
+        request,
         "cvs/detail.html",
         {
-            "request": request,
             "cv": cv,
             "message": message,
+            "templates": available_cv_templates(),
+            "default_template": DEFAULT_TEMPLATE_KEY,
         },
     )
 
@@ -139,9 +141,9 @@ def cv_tex_preview(
         raise HTTPException(status_code=404, detail=str(error)) from error
 
     return templates.TemplateResponse(
+        request,
         "cvs/tex_preview.html",
         {
-            "request": request,
             "cv": cv,
             "generated_document": generated_document,
             "templates": available_cv_templates(),
@@ -286,19 +288,24 @@ def confirm_delete_cv(request: Request, cv_id: int) -> HTMLResponse:
     if cv is None:
         raise HTTPException(status_code=404, detail="CV no encontrado.")
 
-    return templates.TemplateResponse(
-        "cvs/confirm_delete.html",
-        {
-            "request": request,
-            "cv": cv,
-        },
-    )
+    return _render_delete_confirmation(request, cv)
 
 
 @router.post("/{cv_id}/delete", response_class=HTMLResponse, name="cvs_delete")
-def delete_cv(request: Request, cv_id: int, confirm_delete: str = Form("")) -> RedirectResponse:
-    if confirm_delete != "yes":
-        return _redirect_to_detail(request, cv_id, "Eliminacion cancelada.")
+def delete_cv(request: Request, cv_id: int, confirmation_value: str = Form("")):
+    cv = cv_repository.get_cv(cv_id)
+    if cv is None:
+        raise HTTPException(status_code=404, detail="CV no encontrado.")
+
+    expected_title = cv.title.strip()
+    if confirmation_value.strip() != expected_title:
+        return _render_delete_confirmation(
+            request,
+            cv,
+            error="El texto ingresado no coincide exactamente con el titulo del CV.",
+            entered_value=confirmation_value,
+            status_code=422,
+        )
 
     if not cv_repository.soft_delete_cv(cv_id):
         raise HTTPException(status_code=404, detail="CV no encontrado.")
@@ -369,9 +376,9 @@ def _render_form(
     status_code: int = 200,
 ) -> HTMLResponse:
     return templates.TemplateResponse(
+        request,
         "cvs/form.html",
         {
-            "request": request,
             "form_data": form_data,
             "errors": errors,
             "action_url": action_url,
@@ -391,3 +398,24 @@ def _redirect_to_detail(request: Request, cv_id: int, message: str) -> RedirectR
 def _redirect_to_list(request: Request, message: str) -> RedirectResponse:
     url = request.url_for("cvs_list").include_query_params(message=message)
     return RedirectResponse(str(url), status_code=303)
+
+
+def _render_delete_confirmation(
+    request: Request,
+    cv: CV,
+    *,
+    error: str | None = None,
+    entered_value: str = "",
+    status_code: int = 200,
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "cvs/confirm_delete.html",
+        {
+            "cv": cv,
+            "expected_value": cv.title,
+            "entered_value": entered_value,
+            "error": error,
+        },
+        status_code=status_code,
+    )

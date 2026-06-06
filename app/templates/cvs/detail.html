@@ -1,19 +1,19 @@
 {% extends "layout.html" %}
 
 {% block title %}{{ cv.title }} - CV LaTeX Builder{% endblock %}
+{% block topbar_title %}Detalle de CV{% endblock %}
 
 {% block content %}
 <section class="page-header">
   <div>
-    <p class="eyebrow">CV Builder Core</p>
+    <p class="eyebrow">Gestor privado</p>
     <h1>{{ cv.title }}</h1>
     <p class="hero-copy">{{ cv.full_name }}</p>
   </div>
   <div class="action-row">
-    <a class="button" href="{{ url_for('cvs_list') }}">Listado</a>
+    <a class="button" href="{{ url_for('cvs_list') }}">Volver al listado</a>
     <a class="button" href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}">Analizar ATS</a>
-    <a class="button" href="{{ url_for('cvs_tex_preview', cv_id=cv.id) }}">Ver TEX</a>
-    <a class="button" href="{{ url_for('cvs_export_json', cv_id=cv.id) }}">Descargar JSON</a>
+    <a class="button" href="{{ url_for('cvs_tex_preview', cv_id=cv.id) }}?template_key={{ default_template }}">Ver TEX</a>
     <a class="button primary" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar</a>
   </div>
 </section>
@@ -22,9 +22,50 @@
 <div class="flash-message" role="status">{{ message }}</div>
 {% endif %}
 
-<section class="detail-grid">
-  <article class="detail-panel">
-    <h2>Datos personales</h2>
+<section class="detail-workspace">
+  <article class="detail-summary-card">
+    <div class="document-sheet hero-sheet" aria-hidden="true">
+      <span class="document-line short"></span>
+      <span class="document-line"></span>
+      <span class="document-line"></span>
+      <span class="document-line short"></span>
+      <span class="document-line"></span>
+    </div>
+
+    <div class="detail-summary-copy">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Exportacion</p>
+          <h2>Plantilla unica</h2>
+        </div>
+      </div>
+      <p class="section-copy">Selecciona una plantilla una sola vez y dispara TEX o PDF desde la misma accion.</p>
+
+      <form class="unified-export-form" method="get">
+        <label class="grow-field">
+          <span>Plantilla</span>
+          <select name="template_key">
+            {% for template in templates %}
+            <option value="{{ template.key }}" {% if template.key == default_template %}selected{% endif %}>{{ template.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button class="button primary" type="submit" formaction="{{ url_for('cvs_export_pdf', cv_id=cv.id) }}">Generar PDF</button>
+        <button class="button" type="submit" formaction="{{ url_for('cvs_export_tex', cv_id=cv.id) }}">Descargar TEX</button>
+      </form>
+
+      <div class="action-row">
+        <a class="text-link" href="{{ url_for('cvs_export_json', cv_id=cv.id) }}">Descargar JSON</a>
+        <form method="post" action="{{ url_for('cvs_duplicate', cv_id=cv.id) }}">
+          <button class="text-button" type="submit">Duplicar CV</button>
+        </form>
+        <a class="text-link danger-link" href="{{ url_for('cvs_confirm_delete', cv_id=cv.id) }}">Eliminar CV</a>
+      </div>
+    </div>
+  </article>
+
+  <aside class="detail-side-panel">
+    <h2>Ficha rapida</h2>
     <dl>
       <dt>Email</dt>
       <dd>{{ cv.email or "Sin email" }}</dd>
@@ -35,53 +76,10 @@
       <dt>Actualizado</dt>
       <dd>{{ cv.updated_at }}</dd>
     </dl>
-  </article>
-
-  <article class="detail-panel">
-    <h2>Acciones</h2>
-    <div class="stack-actions">
-      <form method="post" action="{{ url_for('cvs_duplicate', cv_id=cv.id) }}">
-        <button class="button" type="submit">Duplicar CV</button>
-      </form>
-      <a class="button danger" href="{{ url_for('cvs_confirm_delete', cv_id=cv.id) }}">Eliminar CV</a>
-    </div>
-  </article>
+  </aside>
 </section>
 
-<section class="export-panel">
-  <div>
-    <h2>Exportaciones</h2>
-    <p>Genera archivos desde los datos guardados. Los resultados se conservan en <code>/data/exports</code>.</p>
-  </div>
-  <div class="export-actions">
-    <form method="get" action="{{ url_for('cvs_export_tex', cv_id=cv.id) }}">
-      <label>
-        <span>Plantilla TEX</span>
-        <select name="template_key">
-          <option value="classic">Classic</option>
-          <option value="modern">Modern</option>
-          <option value="compact">Compact</option>
-          <option value="tech">Tech</option>
-        </select>
-      </label>
-      <button class="button" type="submit">Descargar TEX</button>
-    </form>
-    <form method="get" action="{{ url_for('cvs_export_pdf', cv_id=cv.id) }}">
-      <label>
-        <span>Plantilla PDF</span>
-        <select name="template_key">
-          <option value="classic">Classic</option>
-          <option value="modern">Modern</option>
-          <option value="compact">Compact</option>
-          <option value="tech">Tech</option>
-        </select>
-      </label>
-      <button class="button primary" type="submit">Generar PDF</button>
-    </form>
-  </div>
-</section>
-
-<section class="content-sections">
+<section class="content-sections content-sections-split">
   <article>
     <h2>Perfil profesional</h2>
     <p>{{ cv.professional_summary or "Sin perfil profesional cargado." }}</p>

@@ -1,20 +1,37 @@
 {% extends "layout.html" %}
 
 {% block title %}Eliminar carta - CV LaTeX Builder{% endblock %}
+{% block topbar_title %}Eliminar carta{% endblock %}
 
 {% block content %}
-<section class="confirm-panel">
+<section class="confirm-panel confirm-panel-strong">
   <p class="eyebrow">Confirmacion requerida</p>
   <h1>Eliminar carta</h1>
   <p>
-    Vas a eliminar logicamente la carta para <strong>{{ cover_letter.company }}</strong> - <strong>{{ cover_letter.position }}</strong>.
-    El registro se oculta del listado, pero no se borra fisicamente de SQLite.
+    Esta accion oculta logicamente la carta. Para continuar escribe exactamente:
+    <strong>{{ expected_value }}</strong>
   </p>
 
-  <form class="form-actions" method="post" action="{{ url_for('cover_letters_delete', cover_letter_id=cover_letter.id) }}">
-    <input type="hidden" name="confirm_delete" value="yes">
-    <button class="button danger" type="submit">Confirmar eliminacion</button>
-    <a class="button" href="{{ url_for('cover_letters_detail', cover_letter_id=cover_letter.id) }}">Cancelar</a>
+  {% if error %}
+  <div class="flash-message flash-message-error" role="alert">{{ error }}</div>
+  {% endif %}
+
+  <form class="confirm-form" method="post" action="{{ url_for('cover_letters_delete', cover_letter_id=cover_letter.id) }}">
+    <label>
+      <span>Confirma empresa y puesto</span>
+      <input
+        type="text"
+        name="confirmation_value"
+        value="{{ entered_value }}"
+        autocomplete="off"
+        spellcheck="false"
+        required
+      >
+    </label>
+    <div class="form-actions">
+      <button class="button danger" type="submit">Eliminar carta</button>
+      <a class="button" href="{{ url_for('cover_letters_detail', cover_letter_id=cover_letter.id) }}">Cancelar</a>
+    </div>
   </form>
 </section>
 {% endblock %}
