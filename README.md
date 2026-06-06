@@ -257,6 +257,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 7: Pulido final del MVP. Completada en la rama de trabajo actual.
 - Mini-etapa: Documentation Center. Incluida antes del tag estable `v0.8.0`.
 - Etapa 8.1: rediseno visual privado con sidebar fija, dashboard operativo, dark/light mode y borrado seguro por coincidencia exacta. En curso sobre `feature/ui-private-dashboard`.
+- Correccion urgente UI: restauracion de layout pulido, cache busting de assets y navegacion privada visible dentro de la misma rama `feature/ui-private-dashboard`.
 
 ## Modulos disponibles
 

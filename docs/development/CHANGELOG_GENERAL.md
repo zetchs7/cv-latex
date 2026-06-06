@@ -8,6 +8,7 @@
 - Toggle dark/light con persistencia en `localStorage`.
 - `docs/development/PROJECT_HISTORY_ROLLBACK.md` con referencia al tag `v0.8.0`, commit base `eab9556` y comandos de rollback documentados.
 - Tests de rutas UI para dashboard y confirmaciones de borrado seguro.
+- Versionado de assets CSS/JS con query string para evitar cache visual obsoleta durante el rediseño privado.
 
 ### Cambiado
 
@@ -15,6 +16,7 @@
 - Listados de CVs y cartas redisenados como filas compactas con preview visual CSS, acciones primarias y menu de acciones secundarias.
 - Detalle de CV con selector unificado de plantilla para exportar TEX y PDF.
 - Confirmaciones de eliminacion de CVs y cartas endurecidas para exigir coincidencia exacta del texto esperado.
+- Sidebar y resaltado de modulo activo dejan de depender solo de JS y quedan reforzados desde el render del template base.
 - README, manual web y documentacion tecnica actualizados para reflejar sidebar, tema y rollback visual.
 
 ## 0.8.0 - 2026-06-04

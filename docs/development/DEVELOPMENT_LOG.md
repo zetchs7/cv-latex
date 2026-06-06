@@ -16,6 +16,14 @@
   - Se agrego `PROJECT_HISTORY_ROLLBACK.md` para documentar la base estable `v0.8.0` y los comandos de rollback de referencia.
 - Resultado esperado: base funcional del MVP preservada con una UI privada mas moderna y segura para operar localmente.
 
+### Correccion urgente - restauracion visual
+
+- Diagnostico: el HTML nuevo estaba presente, pero el sintoma reportado era consistente con assets CSS/JS obsoletos o cacheados sin versionado.
+- Se agrego version de assets en `layout.html` usando `request.app.state.asset_version`.
+- Se expuso `APP_ASSET_VERSION` desde `app/main.py`.
+- Se reforzo el estilo base de botones, selects y toggle para evitar apariencia HTML nativa si el navegador reutiliza cache parcial.
+- El estado activo de la sidebar queda marcado tambien desde el render del template, no solo desde JavaScript.
+
 ## Documentation Center
 
 - Fecha: 2026-06-05

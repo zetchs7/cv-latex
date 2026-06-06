@@ -93,6 +93,34 @@ Resultado:
 - La eliminacion de CVs y cartas exige coincidencia exacta del texto esperado.
 - Se agrego documentacion de rollback visual apoyada en `v0.8.0`.
 
+---
+
+Accion:
+Corregir la UI rota de la etapa 8.1.
+
+Motivo:
+La app se estaba viendo como HTML casi sin estilos, con sintomas consistentes con cache de assets y shell visual no aplicado claramente.
+
+Comandos:
+- `git status`
+- `git branch --show-current`
+- `Get-Content` sobre `layout.html`, `app.css`, `app.js`
+- `apply_patch`
+- `python -m compileall app tests`
+- `docker compose build`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose logs app --tail 80`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest` sobre `/static/css/app.css`, `/static/js/app.js`, `/`, `/cvs/`, `/cover-letters/`, `/applications/`, `/ats/`, `/documentation/`
+- `git diff --check`
+
+Resultado:
+- El layout base ahora sirve CSS/JS con cache busting por version de assets.
+- La barra lateral resalta el modulo activo desde el render del template y no solo por JS.
+- Se reforzo el estilo de controles nativos para evitar apariencia de boton o select por defecto.
+- Las validaciones funcionales siguieron en verde despues de recrear el contenedor.
+
 ## 2026-06-05 - Release cleanup changelog merge
 
 Accion:

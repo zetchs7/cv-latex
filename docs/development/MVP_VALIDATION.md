@@ -29,6 +29,7 @@ docker compose exec app python -m pytest
 - Confirmar toggle dark/light arriba a la derecha.
 - Confirmar que el tema persiste al recargar.
 - Confirmar que la version visible coincide con `VERSION` y `/health`.
+- Confirmar que `GET /static/css/app.css` y `GET /static/js/app.js` responden `200`.
 
 ### CVs
 
