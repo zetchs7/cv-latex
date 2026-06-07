@@ -684,6 +684,20 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
 - Pendientes:
   - Validacion visual manual del badge ATS en varias densidades de datos antes del PR.
 
+## Etapa 8.1.2.6 - Cierre visual de ATS integrado en Curriculum Vitae
+
+- Fecha: 2026-06-07
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: cerrar la integracion visual de ATS dentro de `CVs` y reducir scroll del modal sin tocar scoring ni DB.
+- Modulos afectados: `layout`, `cvs`, `ats`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se elimina la entrada lateral separada `ATS directo` y se renombra el acceso principal a `Curriculum Vitae + ATS`.
+  - El badge ATS baja desde la esquina superior al bloque de metadata del CV para quedar alineado con email y fecha.
+  - El modal ATS reduce paddings y altura util en `Estado general`, `Resumen rapido`, checklist y feedbacks.
+  - Las rutas `/ats/` y `/ats/cvs/{id}` siguen accesibles por URL para compatibilidad y validacion directa.
+- Pendientes:
+  - Validacion visual manual del ajuste fino de densidad en el modal ATS antes del PR.
+
 ## Fix ATS - Critical Sections Status Cap
 
 - Fecha: 2026-06-04

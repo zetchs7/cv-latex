@@ -3191,3 +3191,31 @@ Resultado:
 - El badge ATS abre el modal del reporte sin salir del flujo de `CVs`.
 - La sidebar degrada el acceso a `ATS directo`.
 - El reporte ATS queda mas compacto, con checklist y feedbacks menos altos.
+
+---
+
+Accion:
+Cerrar el ajuste visual 8.1.2.6 de ATS integrado en `CVs`.
+
+Motivo:
+Eliminar la entrada lateral separada de ATS, bajar el badge a metadata y reducir aun mas el scroll del modal.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/templates/layout.html`
+- `app/templates/cvs/index.html`
+- `app/static/css/app.css`
+- `app/main.py`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- `Curriculum Vitae + ATS` pasa a ser la entrada principal en sidebar.
+- El badge ATS queda alineado con la metadata del CV.
+- El modal ATS reduce paddings y altura de paneles para mostrar mas contenido sin scroll.

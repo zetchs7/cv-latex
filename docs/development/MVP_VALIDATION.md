@@ -25,7 +25,7 @@ docker compose exec app python -m pytest
 
 - Abrir `http://localhost:8000`.
 - Confirmar que el dashboard carga sin errores.
-- Confirmar sidebar izquierda visible con `Panel de control`, `Curriculum Vitae`, `Cartas de presentacion`, `Postulaciones`, `ATS directo`, `Documentacion` y `Configuracion local`.
+- Confirmar sidebar izquierda visible con `Panel de control`, `Curriculum Vitae + ATS`, `Cartas de presentacion`, `Postulaciones`, `Documentacion` y `Configuracion local`.
 - Confirmar toggle dark/light arriba a la derecha.
 - Confirmar que el tema persiste al recargar.
 - Confirmar que la version visible coincide con `VERSION` y `/health`.
@@ -43,7 +43,7 @@ docker compose exec app python -m pytest
 - Ver el detalle.
 - Confirmar que el listado no muestra `SQLite activo`.
 - Confirmar que cada fila muestra `Actualizado: dd/mm/yyyy HH:mm hs` como metadata secundaria debajo de los datos principales, sin badge flotando arriba.
-- Confirmar que cada fila muestra un badge `ATS` calculado en runtime y que el badge puede abrir el modal del analisis.
+- Confirmar que cada fila muestra un badge `ATS` calculado en runtime dentro de la metadata y que el badge puede abrir el modal del analisis.
 - Confirmar que `Mas acciones` queda a la derecha y se cierra con click externo o `Escape`.
 - Confirmar que `Herramientas avanzadas` se ve como boton secundario y que `Importar JSON` queda dentro.
 - Confirmar que `Exportacion` y `Ficha rapida` usan el mismo acento visual, spacing consistente, labels cortos y fechas `dd/mm/yyyy HH:mm hs`.
@@ -85,7 +85,7 @@ docker compose exec app python -m pytest
 - Ejecutar `Analizar ATS` desde el detalle del CV y confirmar apertura modal.
 - Confirmar que el modal ATS muestra `Abrir vista completa`, `Editar CV` y `Cerrar` arriba.
 - Confirmar que `Estado general` muestra titulo, badge semantico visible, score, longitud, rango real de longitud y referencia vertical de score en estructura clara.
-- Confirmar que el checklist ATS se ve compacto, con menos altura por item y sin tarjetas gigantes.
+- Confirmar que el checklist ATS se ve aun mas compacto, con menos altura por item y sin tarjetas gigantes.
 - Confirmar que desde `Editar CV` en el modal el H1 principal es la persona o titulo del CV y que `Editar CV` queda como contexto.
 - Abrir `Ver TEX` y confirmar que `Export Engine` queda alineado dentro del mismo layout y que el nombre largo del archivo no rompe la cabecera.
 - Ejecutar analisis sobre un CV completo.

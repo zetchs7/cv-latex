@@ -93,6 +93,7 @@ class AtsRoutesTest(unittest.TestCase):
                 self.assertIn("ats-score-card-stacked", response.text)
                 self.assertIn("ats-checklist-panel", response.text)
                 self.assertIn("ats-feedback-panel", response.text)
+                self.assertIn("ats-metric", response.text)
                 self.assertIn("Referencia longitud: rango recomendado de 280 a 4500 caracteres.", response.text)
                 self.assertIn("Referencia de score ATS", response.text)
                 self.assertIn("Insuficiente", response.text)

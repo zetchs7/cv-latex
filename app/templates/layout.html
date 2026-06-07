@@ -29,10 +29,9 @@
 
       <nav class="sidebar-nav">
         <a class="sidebar-link{% if current_path == '/' %} is-active{% endif %}" data-nav-path="/" href="{{ url_for('dashboard') }}">Panel de control</a>
-        <a class="sidebar-link{% if current_path.startswith('/cvs') %} is-active{% endif %}" data-nav-path="/cvs" href="{{ url_for('cvs_list') }}">Curriculum Vitae</a>
+        <a class="sidebar-link sidebar-link-long{% if current_path.startswith('/cvs') %} is-active{% endif %}" data-nav-path="/cvs" href="{{ url_for('cvs_list') }}">Curriculum Vitae + ATS</a>
         <a class="sidebar-link{% if current_path.startswith('/cover-letters') %} is-active{% endif %}" data-nav-path="/cover-letters" href="{{ url_for('cover_letters_list') }}">Cartas de presentacion</a>
         <a class="sidebar-link{% if current_path.startswith('/applications') %} is-active{% endif %}" data-nav-path="/applications" href="{{ url_for('applications_list') }}">Postulaciones</a>
-        <a class="sidebar-link sidebar-link-secondary{% if current_path.startswith('/ats') %} is-active{% endif %}" data-nav-path="/ats" href="{{ url_for('ats_index') }}">ATS directo</a>
         <a class="sidebar-link{% if current_path.startswith('/documentation') %} is-active{% endif %}" data-nav-path="/documentation" href="{{ url_for('documentation_index') }}">Documentacion</a>
         <span class="sidebar-link sidebar-link-muted" aria-disabled="true">Configuracion local</span>
       </nav>

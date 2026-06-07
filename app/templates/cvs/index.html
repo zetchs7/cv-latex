@@ -43,6 +43,10 @@
               <h2><a href="{{ url_for('cvs_detail', cv_id=cv.id) }}">{{ cv.title }}</a></h2>
               <p>{{ cv.full_name }}</p>
             </div>
+          </div>
+
+          <div class="entity-meta entity-meta-stack">
+            <span>{{ cv.email or "Sin email" }}</span>
             <a
               class="ats-inline-badge ats-status ats-status-{{ ats_analysis.status|ats_status_variant(ats_analysis.score, ats_analysis.max_score) }}"
               href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}"
@@ -51,10 +55,6 @@
             >
               ATS {{ ats_analysis.status }}
             </a>
-          </div>
-
-          <div class="entity-meta entity-meta-stack">
-            <span>{{ cv.email or "Sin email" }}</span>
             <span class="entity-meta-date">Actualizado: {{ cv.updated_at|format_datetime_ar }}</span>
           </div>
         </div>

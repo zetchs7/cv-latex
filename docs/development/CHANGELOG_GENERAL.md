@@ -51,6 +51,9 @@
 - ATS queda integrado visualmente al listado de `Curriculum Vitae` con badges calculados en runtime, sin persistencia en DB.
 - La sidebar degrada el acceso de ATS a `ATS directo`, manteniendo rutas y acceso por URL sin competir con el flujo principal de `CVs`.
 - El modal ATS se compacta con checklist mas bajo, feedbacks mas cortos y estado visual `OK`/`Revisar` mas claro.
+- La entrada lateral separada de ATS se elimina y `Curriculum Vitae + ATS` pasa a ser el acceso principal del flujo.
+- El badge ATS baja a la zona de metadata de cada CV para alinearse con email y fecha de actualizacion.
+- El modal ATS reduce aun mas paddings y altura de paneles para disminuir scroll en pantallas normales.
 
 ## 0.8.0 - 2026-06-04
 
