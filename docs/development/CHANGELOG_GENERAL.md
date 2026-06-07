@@ -56,6 +56,7 @@
 - El modal ATS reduce aun mas paddings y altura de paneles para disminuir scroll en pantallas normales.
 - El badge ATS se reubica finalmente junto al titulo del CV para asociarlo mejor al documento antes del nombre, email y fecha.
 - El popup ATS se redisenia como dashboard compacto de dos columnas, con `Estado general` y `Resumen rapido` a la izquierda, `Checklist` a la derecha y feedback inferior en cards compactas.
+- La referencia de score ATS suma puntos de color semanticos y la barra de score agrega glow sutil en la punta para reforzar lectura visual.
 
 ## 0.8.0 - 2026-06-04
 

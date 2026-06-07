@@ -33,6 +33,12 @@
 - `Recomendaciones` y `Advertencias` quedan como cards inferiores compactas.
 - No se modifico scoring ATS, persistencia, rutas de datos ni features futuras.
 
+### Ajuste 8.1.2.10 - indicadores de score
+
+- La referencia de score del modal ATS suma puntos de color semanticos por rango.
+- La barra del score agrega glow sutil en la punta para mejorar lectura visual del progreso.
+- El ajuste queda encapsulado en el partial ATS y en CSS especifico, sin cambiar layout, checklist ni acciones del modal.
+
 ## Documentation Center
 
 - Fecha: 2026-06-05

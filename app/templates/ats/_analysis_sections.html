@@ -19,10 +19,10 @@
       <p class="ats-score-length-reference">Referencia longitud: rango recomendado de {{ ats_length_reference.min }} a {{ ats_length_reference.max }} caracteres.</p>
       {% endif %}
       <ul class="ats-score-reference-list" aria-label="Referencia de score ATS">
-        <li><span>0-49</span><strong>Insuficiente</strong></li>
-        <li><span>50-79</span><strong>Mejorable</strong></li>
-        <li><span>80-99</span><strong>Bueno</strong></li>
-        <li><span>100</span><strong>Excelente</strong></li>
+        <li class="ats-score-reference-item ats-score-reference-danger"><span>0-49</span><strong>Insuficiente <i class="ats-score-reference-dot" aria-hidden="true"></i></strong></li>
+        <li class="ats-score-reference-item ats-score-reference-warning"><span>50-79</span><strong>Mejorable <i class="ats-score-reference-dot" aria-hidden="true"></i></strong></li>
+        <li class="ats-score-reference-item ats-score-reference-good"><span>80-99</span><strong>Bueno <i class="ats-score-reference-dot" aria-hidden="true"></i></strong></li>
+        <li class="ats-score-reference-item ats-score-reference-excellent"><span>100</span><strong>Excelente <i class="ats-score-reference-dot" aria-hidden="true"></i></strong></li>
       </ul>
     </div>
   </article>

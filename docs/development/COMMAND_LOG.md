@@ -3272,3 +3272,28 @@ Resultado:
 - El modal ATS queda organizado en dos columnas: estado/resumen y checklist.
 - `Estado general` suma barra visual de score y mantiene referencias reales de score y longitud.
 - Recomendaciones y advertencias quedan en cards inferiores compactas.
+
+---
+
+Accion:
+Pulir los indicadores visuales del score ATS.
+
+Motivo:
+Cerrar la etapa 8.1.2.10 con puntos de color semanticos en la referencia y glow sutil en la barra del score, sin tocar layout ni logica.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `app/main.py`
+- `tests/test_ats_routes.py`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- La referencia de score muestra puntos rojo, naranja y verde segun el rango.
+- La barra de score suma glow de punta mas visible pero contenido.
+- El modal ATS mantiene intacto el layout ya aprobado.
