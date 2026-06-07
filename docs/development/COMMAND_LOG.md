@@ -3245,3 +3245,30 @@ Resultado:
 - El badge ATS queda junto al titulo del CV con wrap prolijo.
 - El nombre de persona, email y fecha permanecen debajo.
 - El badge sigue abriendo el modal ATS y no invade la zona de botones.
+
+---
+
+Accion:
+Redisenar el popup ATS como dashboard compacto.
+
+Motivo:
+Cerrar la etapa 8.1.2.9 con una lectura modal mas densa, elegante y sin scroll visible en pantallas normales.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/templates/ats/modal.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `app/main.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- El modal ATS queda organizado en dos columnas: estado/resumen y checklist.
+- `Estado general` suma barra visual de score y mantiene referencias reales de score y longitud.
+- Recomendaciones y advertencias quedan en cards inferiores compactas.

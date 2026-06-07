@@ -24,6 +24,15 @@
 - Se reforzo el estilo base de botones, selects y toggle para evitar apariencia HTML nativa si el navegador reutiliza cache parcial.
 - El estado activo de la sidebar queda marcado tambien desde el render del template, no solo desde JavaScript.
 
+### Ajuste 8.1.2.9 - popup ATS compacto
+
+- Se redisenio el popup `Analisis ATS` como dashboard compacto de dos columnas.
+- `Estado general` mantiene score, badge, longitud, referencia real de longitud y suma barra visual de progreso.
+- `Resumen rapido` queda debajo de `Estado general` como mini cards compactas.
+- `Checklist` queda en filas densas con indicador circular y badge `OK`/`Revisar`.
+- `Recomendaciones` y `Advertencias` quedan como cards inferiores compactas.
+- No se modifico scoring ATS, persistencia, rutas de datos ni features futuras.
+
 ## Documentation Center
 
 - Fecha: 2026-06-05

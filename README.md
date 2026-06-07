@@ -396,21 +396,22 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 9. Abrir el detalle del CV y confirmar que `Exportacion` y `Ficha rapida` usan el mismo acento visual, spacing compacto y fechas `dd/mm/yyyy HH:mm hs`.
 10. Probar `Duplicar CV` y confirmar que primero aparece un modal de confirmacion.
 11. Ejecutar `Analizar ATS` desde el detalle, el badge ATS del listado o desde `ATS` y confirmar que abre un modal sin sacar al usuario de la pagina actual.
-12. Revisar que el modal ATS muestra `Estado general` con badge mas visible, score, longitud estimada, referencia vertical de score y rango real de longitud recomendado.
-13. Desde el modal ATS, entrar a `Editar CV` y confirmar que el H1 principal es la persona o titulo del CV, con contexto `Editando CV`.
-14. Abrir `Ver TEX` y confirmar que `Export Engine` queda alineado dentro del mismo layout, con titulo largo del archivo sin romper la pantalla.
-15. Entrar a `ATS` por URL directa y repetir el analisis completo sobre un CV, confirmando que la ruta sigue disponible aunque el flujo principal sea `Curriculum Vitae + ATS`.
-16. Entrar a `Cartas` y crear o reutilizar una carta.
-17. Exportar TEX y PDF de la carta y verificar acciones alineadas a la derecha y fecha `Actualizada: dd/mm/yyyy HH:mm hs` en el listado.
-18. Entrar a `Postulaciones`.
-19. Crear una postulacion y asociarla opcionalmente a un CV y a una carta.
-20. Editar la postulacion y cambiar su estado.
-21. Abrir el detalle y confirmar persistencia en SQLite.
-22. Confirmar que los archivos de export siguen quedando en `./data/exports`.
-23. Exportar un CV a JSON e importarlo de nuevo.
-24. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
-25. Probar eliminacion segura de un CV y una carta con texto incorrecto y correcto.
-26. Entrar a `Documentacion`, leer ambas documentaciones en HTML dentro de la misma web y confirmar que solo quede `Descargar PDF`.
+12. Revisar que el modal ATS se muestra como dashboard compacto: header con acciones arriba, `Estado general` y `Resumen rapido` a la izquierda, `Checklist` a la derecha y `Recomendaciones`/`Advertencias` abajo.
+13. Confirmar que `Estado general` mantiene score, badge, barra visual, longitud estimada, referencia vertical de score y rango real de longitud recomendado.
+14. Desde el modal ATS, entrar a `Editar CV` y confirmar que el H1 principal es la persona o titulo del CV, con contexto `Editando CV`.
+15. Abrir `Ver TEX` y confirmar que `Export Engine` queda alineado dentro del mismo layout, con titulo largo del archivo sin romper la pantalla.
+16. Entrar a `ATS` por URL directa y repetir el analisis completo sobre un CV, confirmando que la ruta sigue disponible aunque el flujo principal sea `Curriculum Vitae + ATS`.
+17. Entrar a `Cartas` y crear o reutilizar una carta.
+18. Exportar TEX y PDF de la carta y verificar acciones alineadas a la derecha y fecha `Actualizada: dd/mm/yyyy HH:mm hs` en el listado.
+19. Entrar a `Postulaciones`.
+20. Crear una postulacion y asociarla opcionalmente a un CV y a una carta.
+21. Editar la postulacion y cambiar su estado.
+22. Abrir el detalle y confirmar persistencia en SQLite.
+23. Confirmar que los archivos de export siguen quedando en `./data/exports`.
+24. Exportar un CV a JSON e importarlo de nuevo.
+25. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
+26. Probar eliminacion segura de un CV y una carta con texto incorrecto y correcto.
+27. Entrar a `Documentacion`, leer ambas documentaciones en HTML dentro de la misma web y confirmar que solo quede `Descargar PDF`.
 
 ## Troubleshooting basico
 

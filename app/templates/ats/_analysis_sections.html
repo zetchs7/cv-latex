@@ -1,11 +1,19 @@
-<section class="ats-summary-grid">
-  <article class="detail-panel">
+{% set passed_checks = analysis.checklist|selectattr("passed")|list|length %}
+{% set total_checks = analysis.checklist|length %}
+{% set all_checks_ok = passed_checks == total_checks %}
+
+<section class="ats-dashboard-grid">
+  <div class="ats-dashboard-left">
+  <article class="detail-panel ats-state-panel">
     <div class="ats-state-head">
       <h2>Estado general</h2>
       <span class="ats-status ats-status-{{ analysis.status|ats_status_variant(analysis.score, analysis.max_score) }}">{{ analysis.status }}</span>
     </div>
     <div class="ats-score-card ats-score-card-stacked">
       <strong class="ats-score">{{ analysis.score }}/{{ analysis.max_score }}</strong>
+      <div class="ats-score-progress" aria-hidden="true">
+        <span style="--ats-progress: {{ analysis.score }}%;"></span>
+      </div>
       <p class="ats-score-note">Longitud estimada: {{ analysis.total_characters }} caracteres.</p>
       {% if ats_length_reference %}
       <p class="ats-score-length-reference">Referencia longitud: rango recomendado de {{ ats_length_reference.min }} a {{ ats_length_reference.max }} caracteres.</p>
@@ -19,46 +27,56 @@
     </div>
   </article>
 
-  <article class="detail-panel">
+  <article class="detail-panel ats-quick-panel">
     <h2>Resumen rapido</h2>
     <div class="ats-metrics">
       <div class="ats-metric">
+        <span class="ats-metric-icon" aria-hidden="true"></span>
         <span>Checklist</span>
         <strong>{{ analysis.checklist|length }}</strong>
         <small>controles</small>
       </div>
       <div class="ats-metric">
+        <span class="ats-metric-icon" aria-hidden="true"></span>
         <span>Secciones vacias</span>
         <strong>{{ analysis.empty_sections|length }}</strong>
         <small>detectadas</small>
       </div>
       <div class="ats-metric">
+        <span class="ats-metric-icon" aria-hidden="true"></span>
         <span>Recomendaciones</span>
         <strong>{{ analysis.recommendations|length }}</strong>
         <small>acciones</small>
       </div>
     </div>
   </article>
-</section>
-
-<section class="detail-panel ats-checklist-panel">
-  <h2>Checklist</h2>
-  <div class="ats-checklist">
-    {% for item in analysis.checklist %}
-    <article class="ats-check-item {{ 'passed' if item.passed else 'failed' }}">
-      <div class="ats-check-head">
-        <strong>{{ item.label }}</strong>
-        <span>{{ "OK" if item.passed else "Revisar" }}</span>
-      </div>
-      <p>{{ item.detail }}</p>
-    </article>
-    {% endfor %}
   </div>
+
+  <section class="detail-panel ats-checklist-panel">
+    <div class="ats-checklist-head">
+      <h2>Checklist ({{ passed_checks }}/{{ total_checks }})</h2>
+      <span class="ats-status ats-status-{{ 'excellent' if all_checks_ok else 'warning' }}">{{ "Todo OK" if all_checks_ok else "Revisar" }}</span>
+    </div>
+    <div class="ats-checklist">
+      {% for item in analysis.checklist %}
+      <article class="ats-check-item {{ 'passed' if item.passed else 'failed' }}">
+        <span class="ats-check-dot" aria-hidden="true"></span>
+        <div>
+          <div class="ats-check-head">
+            <strong>{{ item.label }}</strong>
+            <span>{{ "OK" if item.passed else "Revisar" }}</span>
+          </div>
+          <p>{{ item.detail }}</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
 </section>
 
-<section class="detail-grid">
+<section class="detail-grid ats-feedback-grid">
   <article class="detail-panel ats-feedback-panel">
-    <h2>Recomendaciones</h2>
+    <h2><span aria-hidden="true">+</span> Recomendaciones</h2>
     {% if analysis.recommendations %}
     <ul class="ats-list">
       {% for recommendation in analysis.recommendations %}
@@ -71,7 +89,7 @@
   </article>
 
   <article class="detail-panel ats-feedback-panel">
-    <h2>Advertencias</h2>
+    <h2><span aria-hidden="true">!</span> Advertencias</h2>
     {% if analysis.warnings %}
     <ul class="ats-list">
       {% for warning in analysis.warnings %}

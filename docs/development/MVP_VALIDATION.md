@@ -84,8 +84,10 @@ docker compose exec app python -m pytest
 - Abrir `http://localhost:8000/ats/`.
 - Ejecutar `Analizar ATS` desde el detalle del CV y confirmar apertura modal.
 - Confirmar que el modal ATS muestra `Abrir vista completa`, `Editar CV` y `Cerrar` arriba.
-- Confirmar que `Estado general` muestra titulo, badge semantico visible, score, longitud, rango real de longitud y referencia vertical de score en estructura clara.
-- Confirmar que el checklist ATS se ve aun mas compacto, con menos altura por item y sin tarjetas gigantes.
+- Confirmar que el modal ATS se ve como dashboard compacto, con `Estado general` y `Resumen rapido` a la izquierda, `Checklist` a la derecha y `Recomendaciones`/`Advertencias` abajo.
+- Confirmar que `Estado general` muestra titulo, badge semantico visible, score, barra visual, longitud, rango real de longitud y referencia vertical de score en estructura clara.
+- Confirmar que el checklist ATS se ve compacto, con indicador circular por fila, descripcion breve y badge `OK`/`Revisar` alineado a la derecha.
+- Confirmar que recomendaciones y advertencias quedan en cards inferiores compactas y no generan espacio vacio excesivo.
 - Confirmar que desde `Editar CV` en el modal el H1 principal es la persona o titulo del CV y que `Editar CV` queda como contexto.
 - Abrir `Ver TEX` y confirmar que `Export Engine` queda alineado dentro del mismo layout y que el nombre largo del archivo no rompe la cabecera.
 - Ejecutar analisis sobre un CV completo.

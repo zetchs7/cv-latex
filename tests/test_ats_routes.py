@@ -72,10 +72,16 @@ class AtsRoutesTest(unittest.TestCase):
                         full_name="Persona ATS Modal",
                         email="modal@example.com",
                         phone="+54 11 4000 0001",
-                        professional_summary="Perfil profesional orientado a backend y APIs.",
-                        experience_summary="Experiencia en FastAPI, SQL y despliegues.",
-                        education_summary="Analista de sistemas.",
-                        skills="Python, FastAPI, Docker",
+                        professional_summary=(
+                            "Perfil profesional orientado a backend, APIs y automatizacion de procesos internos, "
+                            "con foco en calidad, documentacion tecnica y entregas mantenibles."
+                        ),
+                        experience_summary=(
+                            "Experiencia en FastAPI, SQL, despliegues con Docker, mantenimiento de servicios "
+                            "internos y soporte a equipos operativos con metricas claras."
+                        ),
+                        education_summary="Analista de sistemas con formacion continua en arquitectura web y bases de datos.",
+                        skills="Python, FastAPI, Docker, SQL, testing, documentacion tecnica",
                     )
                 )
 
@@ -89,11 +95,21 @@ class AtsRoutesTest(unittest.TestCase):
                 self.assertIn("Abrir vista completa", response.text)
                 self.assertIn("Editar CV", response.text)
                 self.assertIn("ats-status-", response.text)
+                self.assertIn("ats-modal-dashboard", response.text)
+                self.assertIn("ats-dashboard-grid", response.text)
+                self.assertIn("ats-dashboard-left", response.text)
                 self.assertIn("ats-state-head", response.text)
                 self.assertIn("ats-score-card-stacked", response.text)
+                self.assertIn("ats-score-progress", response.text)
+                self.assertIn("Checklist (", response.text)
+                self.assertIn("Todo OK", response.text)
                 self.assertIn("ats-checklist-panel", response.text)
+                self.assertIn("ats-checklist-head", response.text)
+                self.assertIn("ats-check-dot", response.text)
+                self.assertIn("ats-feedback-grid", response.text)
                 self.assertIn("ats-feedback-panel", response.text)
                 self.assertIn("ats-metric", response.text)
+                self.assertIn("ats-metric-icon", response.text)
                 self.assertIn("Referencia longitud: rango recomendado de 280 a 4500 caracteres.", response.text)
                 self.assertIn("Referencia de score ATS", response.text)
                 self.assertIn("Insuficiente", response.text)
