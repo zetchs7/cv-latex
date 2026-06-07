@@ -43,7 +43,7 @@ docker compose exec app python -m pytest
 - Ver el detalle.
 - Confirmar que el listado no muestra `SQLite activo`.
 - Confirmar que cada fila muestra `Actualizado: dd/mm/yyyy HH:mm hs` como metadata secundaria debajo de los datos principales, sin badge flotando arriba.
-- Confirmar que cada fila muestra un badge `ATS` calculado en runtime dentro de la metadata y que el badge puede abrir el modal del analisis.
+- Confirmar que cada fila muestra un badge `ATS` calculado en runtime junto al titulo del CV y que el badge puede abrir el modal del analisis.
 - Confirmar que `Mas acciones` queda a la derecha y se cierra con click externo o `Escape`.
 - Confirmar que `Herramientas avanzadas` se ve como boton secundario y que `Importar JSON` queda dentro.
 - Confirmar que `Exportacion` y `Ficha rapida` usan el mismo acento visual, spacing consistente, labels cortos y fechas `dd/mm/yyyy HH:mm hs`.

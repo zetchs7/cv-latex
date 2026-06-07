@@ -40,21 +40,23 @@
         <div class="entity-main">
           <div class="entity-head">
             <div class="entity-head-primary">
-              <h2><a href="{{ url_for('cvs_detail', cv_id=cv.id) }}">{{ cv.title }}</a></h2>
+              <div class="entity-title-row">
+                <h2><a href="{{ url_for('cvs_detail', cv_id=cv.id) }}">{{ cv.title }}</a></h2>
+                <a
+                  class="ats-inline-badge ats-status ats-status-{{ ats_analysis.status|ats_status_variant(ats_analysis.score, ats_analysis.max_score) }}"
+                  href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}"
+                  data-ats-open
+                  data-ats-modal-url="{{ url_for('ats_cv_analysis_modal', cv_id=cv.id) }}"
+                >
+                  ATS {{ ats_analysis.status }}
+                </a>
+              </div>
               <p>{{ cv.full_name }}</p>
             </div>
           </div>
 
           <div class="entity-meta entity-meta-stack">
             <span>{{ cv.email or "Sin email" }}</span>
-            <a
-              class="ats-inline-badge ats-status ats-status-{{ ats_analysis.status|ats_status_variant(ats_analysis.score, ats_analysis.max_score) }}"
-              href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}"
-              data-ats-open
-              data-ats-modal-url="{{ url_for('ats_cv_analysis_modal', cv_id=cv.id) }}"
-            >
-              ATS {{ ats_analysis.status }}
-            </a>
             <span class="entity-meta-date">Actualizado: {{ cv.updated_at|format_datetime_ar }}</span>
           </div>
         </div>

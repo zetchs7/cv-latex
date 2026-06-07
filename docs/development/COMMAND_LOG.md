@@ -3219,3 +3219,29 @@ Resultado:
 - `Curriculum Vitae + ATS` pasa a ser la entrada principal en sidebar.
 - El badge ATS queda alineado con la metadata del CV.
 - El modal ATS reduce paddings y altura de paneles para mostrar mas contenido sin scroll.
+
+---
+
+Accion:
+Corregir la posicion final del badge ATS en el listado de CVs.
+
+Motivo:
+Asociar el badge al titulo del documento en lugar de la metadata inferior, sin tocar el resto del flujo.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/templates/cvs/index.html`
+- `app/static/css/app.css`
+- `app/main.py`
+- `tests/test_ui_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- El badge ATS queda junto al titulo del CV con wrap prolijo.
+- El nombre de persona, email y fecha permanecen debajo.
+- El badge sigue abriendo el modal ATS y no invade la zona de botones.

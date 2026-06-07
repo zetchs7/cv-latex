@@ -71,9 +71,10 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("entity-meta-stack", response.text)
                 self.assertIn("ATS Mejorable", response.text)
                 self.assertIn("ats-inline-badge", response.text)
+                self.assertIn("entity-title-row", response.text)
                 self.assertIn("data-ats-modal-url", response.text)
                 self.assertIn("Analizar ATS", response.text)
-                self.assertRegex(response.text, r'<div class="entity-meta entity-meta-stack">[\s\S]*ATS Mejorable[\s\S]*Actualizado:')
+                self.assertRegex(response.text, r'<div class="entity-title-row">[\s\S]*ATS Mejorable[\s\S]*</div>[\s\S]*<p>Persona Layout</p>[\s\S]*<div class="entity-meta entity-meta-stack">[\s\S]*layout@example\.com')
                 self.assertRegex(response.text, r"Actualizado: \d{2}/\d{2}/\d{4} \d{2}:\d{2} hs")
 
     def test_cv_detail_renders_secondary_actions_as_buttons_and_ats_modal_trigger(self):

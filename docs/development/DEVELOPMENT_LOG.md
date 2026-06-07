@@ -698,6 +698,17 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
 - Pendientes:
   - Validacion visual manual del ajuste fino de densidad en el modal ATS antes del PR.
 
+## Etapa 8.1.2.8 - Ajuste final de posicion del badge ATS
+
+- Fecha: 2026-06-07
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: dejar el badge ATS asociado al titulo del CV sin redisenar el resto del listado.
+- Modulos afectados: `cvs`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - El badge ATS deja la metadata inferior y pasa a la fila del titulo del CV.
+  - Se habilita wrap prolijo entre titulo largo y badge, manteniendo el nombre de persona debajo.
+  - El badge sigue clickeando al modal y `Analizar ATS` se conserva en `Mas acciones`.
+
 ## Fix ATS - Critical Sections Status Cap
 
 - Fecha: 2026-06-04

@@ -54,6 +54,7 @@
 - La entrada lateral separada de ATS se elimina y `Curriculum Vitae + ATS` pasa a ser el acceso principal del flujo.
 - El badge ATS baja a la zona de metadata de cada CV para alinearse con email y fecha de actualizacion.
 - El modal ATS reduce aun mas paddings y altura de paneles para disminuir scroll en pantallas normales.
+- El badge ATS se reubica finalmente junto al titulo del CV para asociarlo mejor al documento antes del nombre, email y fecha.
 
 ## 0.8.0 - 2026-06-04
 

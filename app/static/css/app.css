@@ -984,6 +984,18 @@ html[data-theme="dark"] .document-sheet {
   min-width: 0;
 }
 
+.entity-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.entity-title-row h2 {
+  min-width: 0;
+}
+
 .entity-head h2 {
   font-size: 1.15rem;
 }
@@ -1023,12 +1035,12 @@ html[data-theme="dark"] .document-sheet {
 }
 
 .ats-inline-badge {
-  justify-self: start;
   min-height: 28px;
   padding: 0 12px;
   font-size: 0.76rem;
   text-decoration: none;
   white-space: nowrap;
+  flex: 0 0 auto;
   box-shadow: none;
 }
 
@@ -1950,5 +1962,9 @@ html[data-theme="dark"] .metric-card-secondary {
   .action-menu-panel {
     right: auto;
     left: 0;
+  }
+
+  .entity-title-row {
+    align-items: flex-start;
   }
 }

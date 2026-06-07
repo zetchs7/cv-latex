@@ -265,6 +265,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 8.1.2.4: cierre de gaps visuales en `Exportacion`, vista TEX y referencia vertical del estado ATS, sin tocar logica funcional.
 - Etapa 8.1.2.5: ATS integrado visualmente al listado de CVs con badges en runtime y reporte compacto, manteniendo `/ats/` como acceso secundario.
 - Etapa 8.1.2.6: el acceso lateral separado de ATS deja de competir con CVs, el badge baja a metadata y el modal ATS se compacta aun mas.
+- Etapa 8.1.2.8: el badge ATS queda asociado visualmente al titulo del CV en el listado, sin tocar el resto del flujo.
 
 ## Modulos disponibles
 
