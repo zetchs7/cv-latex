@@ -7,6 +7,7 @@ from app.repositories import cv_repository
 from app.repositories.cv_repository import DuplicateCVError
 from app.models import CV
 from app.schemas import CVFormData
+from app.services.ats_service import analyze_cv_ats
 from app.services.export_service import (
     ExportServiceError,
     build_cv_form_data_from_json,
@@ -32,11 +33,13 @@ logger = logging.getLogger(__name__)
 
 @router.get("/", response_class=HTMLResponse, name="cvs_list")
 def list_cvs(request: Request, message: str | None = None) -> HTMLResponse:
+    cvs = cv_repository.list_cvs()
     return templates.TemplateResponse(
         request,
         "cvs/index.html",
         {
-            "cvs": cv_repository.list_cvs(),
+            "cvs": cvs,
+            "cv_cards": _build_cv_cards(cvs),
             "message": message,
             "templates": available_cv_templates(),
             "default_template": DEFAULT_TEMPLATE_KEY,
@@ -431,3 +434,13 @@ def _render_delete_confirmation(
         },
         status_code=status_code,
     )
+
+
+def _build_cv_cards(cvs: list[CV]) -> list[dict[str, object]]:
+    return [
+        {
+            "cv": cv,
+            "ats_analysis": analyze_cv_ats(cv),
+        }
+        for cv in cvs
+    ]

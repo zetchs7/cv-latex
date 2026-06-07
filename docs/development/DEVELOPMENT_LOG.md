@@ -669,6 +669,21 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
 - Pendientes:
   - Validacion visual manual final del bloque `Ver TEX` y del modal ATS antes de abrir PR.
 
+## Etapa 8.1.2.5 - ATS integrado al flujo principal de Curriculum Vitae
+
+- Fecha: 2026-06-07
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: acercar ATS al modulo `Curriculum Vitae` y reducir scroll del reporte, sin tocar DB ni logica de scoring.
+- Modulos afectados: `cvs`, `ats`, `layout`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - El listado de CVs ahora calcula ATS en runtime para cada fila y muestra un badge semantico reutilizando `ats_service`.
+  - El badge ATS abre el modal del reporte sin salir del flujo de `CVs`, manteniendo tambien `Analizar ATS` dentro de `Mas acciones`.
+  - La sidebar degrada el acceso a ATS como `ATS directo`, dejando `Curriculum Vitae` como flujo principal recomendado.
+  - El reporte ATS se compacta con checklist mas bajo, menos padding y bloques de feedback mas discretos.
+  - Las rutas `/ats/` y `/ats/cvs/{id}` siguen vigentes para acceso directo y compatibilidad.
+- Pendientes:
+  - Validacion visual manual del badge ATS en varias densidades de datos antes del PR.
+
 ## Fix ATS - Critical Sections Status Cap
 
 - Fecha: 2026-06-04

@@ -3160,3 +3160,34 @@ Resultado:
 - `Export Engine` se mantiene dentro del layout de `Ver TEX`.
 - `Estado general` del ATS usa referencia vertical de score y muestra el rango real de longitud.
 - Se versionaron assets con `ui8124fix1` para evitar cache visual obsoleta.
+
+---
+
+Accion:
+Integrar ATS al flujo principal de `Curriculum Vitae`.
+
+Motivo:
+Volver visible el estado ATS por CV sin persistencia, bajar el peso del acceso lateral a ATS y compactar el reporte visual.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/routes/cvs.py`
+- `app/templates/cvs/index.html`
+- `app/templates/layout.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `app/main.py`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- El listado de CVs calcula ATS en runtime y muestra badges semanticos por fila.
+- El badge ATS abre el modal del reporte sin salir del flujo de `CVs`.
+- La sidebar degrada el acceso a `ATS directo`.
+- El reporte ATS queda mas compacto, con checklist y feedbacks menos altos.

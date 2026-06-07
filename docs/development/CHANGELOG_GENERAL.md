@@ -48,6 +48,9 @@
 - El label de `Exportacion` queda explicitamente alineado con el mismo acento visual de `Ficha rapida`.
 - La vista `Ver TEX` se reajusto para mantener `Export Engine` dentro del mismo layout y contener mejor titulos de archivo largos.
 - `Estado general` en ATS ahora muestra referencia vertical de score y el rango real recomendado de longitud (`280` a `4500` caracteres).
+- ATS queda integrado visualmente al listado de `Curriculum Vitae` con badges calculados en runtime, sin persistencia en DB.
+- La sidebar degrada el acceso de ATS a `ATS directo`, manteniendo rutas y acceso por URL sin competir con el flujo principal de `CVs`.
+- El modal ATS se compacta con checklist mas bajo, feedbacks mas cortos y estado visual `OK`/`Revisar` mas claro.
 
 ## 0.8.0 - 2026-06-04
 

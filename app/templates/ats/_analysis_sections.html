@@ -57,7 +57,7 @@
 </section>
 
 <section class="detail-grid">
-  <article class="detail-panel">
+  <article class="detail-panel ats-feedback-panel">
     <h2>Recomendaciones</h2>
     {% if analysis.recommendations %}
     <ul class="ats-list">
@@ -66,11 +66,11 @@
       {% endfor %}
     </ul>
     {% else %}
-    <p>Sin recomendaciones.</p>
+    <p class="ats-empty-copy">Sin recomendaciones.</p>
     {% endif %}
   </article>
 
-  <article class="detail-panel">
+  <article class="detail-panel ats-feedback-panel">
     <h2>Advertencias</h2>
     {% if analysis.warnings %}
     <ul class="ats-list">
@@ -79,7 +79,7 @@
       {% endfor %}
     </ul>
     {% else %}
-    <p>Sin advertencias relevantes.</p>
+    <p class="ats-empty-copy">Sin advertencias.</p>
     {% endif %}
   </article>
 </section>

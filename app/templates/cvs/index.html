@@ -20,9 +20,11 @@
 <div class="flash-message" role="status">{{ message }}</div>
 {% endif %}
 
-{% if cvs %}
+{% if cv_cards %}
 <section class="entity-stack" aria-label="Listado de CVs">
-  {% for cv in cvs %}
+  {% for cv_card in cv_cards %}
+  {% set cv = cv_card.cv %}
+  {% set ats_analysis = cv_card.ats_analysis %}
   <article class="entity-row">
     <a class="entity-preview" href="{{ url_for('cvs_detail', cv_id=cv.id) }}" aria-label="Abrir {{ cv.title }}">
       <span class="document-sheet">
@@ -37,10 +39,18 @@
       <div class="entity-body-layout">
         <div class="entity-main">
           <div class="entity-head">
-            <div>
+            <div class="entity-head-primary">
               <h2><a href="{{ url_for('cvs_detail', cv_id=cv.id) }}">{{ cv.title }}</a></h2>
               <p>{{ cv.full_name }}</p>
             </div>
+            <a
+              class="ats-inline-badge ats-status ats-status-{{ ats_analysis.status|ats_status_variant(ats_analysis.score, ats_analysis.max_score) }}"
+              href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}"
+              data-ats-open
+              data-ats-modal-url="{{ url_for('ats_cv_analysis_modal', cv_id=cv.id) }}"
+            >
+              ATS {{ ats_analysis.status }}
+            </a>
           </div>
 
           <div class="entity-meta entity-meta-stack">

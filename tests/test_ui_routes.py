@@ -30,6 +30,8 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("workspace-inline-summary", response.text)
                 self.assertIn("Abrir CVs", response.text)
                 self.assertIn("Abrir cartas", response.text)
+                self.assertIn("ATS directo", response.text)
+                self.assertIn("sidebar-link-secondary", response.text)
                 self.assertNotIn("Postulacion es", response.text)
                 self.assertNotIn("metric-card", response.text)
                 self.assertNotIn("focus-count", response.text)
@@ -66,6 +68,10 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("Importar o restaurar desde JSON", response.text)
                 self.assertIn("data-confirm-submit", response.text)
                 self.assertIn("entity-meta-stack", response.text)
+                self.assertIn("ATS Mejorable", response.text)
+                self.assertIn("ats-inline-badge", response.text)
+                self.assertIn("data-ats-modal-url", response.text)
+                self.assertIn("Analizar ATS", response.text)
                 self.assertRegex(response.text, r"Actualizado: \d{2}/\d{2}/\d{4} \d{2}:\d{2} hs")
 
     def test_cv_detail_renders_secondary_actions_as_buttons_and_ats_modal_trigger(self):
