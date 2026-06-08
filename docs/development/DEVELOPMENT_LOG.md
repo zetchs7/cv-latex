@@ -1,5 +1,50 @@
 # Development Log
 
+## Etapa 8.1 - UI privada y dashboard operativo
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: redisenar la experiencia visual de la app privada local sin tocar DB, login ni exportaciones profundas.
+- Modulos afectados: `layout`, `dashboard`, `cvs`, `cover_letters`, `static/css`, `static/js`, `docs/development`, `docs/user`, `tests`.
+- Resumen de cambios:
+  - Se reemplazo el header horizontal por una sidebar fija con version visible y acceso a los modulos principales y secundarios.
+  - Se agrego toggle dark/light persistido en `localStorage`.
+  - El dashboard pasa a enfocarse en CVs y cartas con listas recientes y modulos secundarios aparte.
+  - El listado de CVs y el de cartas se redisenaron como filas compactas con preview visual tipo documento.
+  - El detalle de CV unifica la seleccion de plantilla para exportar TEX y PDF.
+  - La confirmacion de borrado de CVs y cartas exige coincidencia exacta del texto esperado.
+  - Se agrego `PROJECT_HISTORY_ROLLBACK.md` para documentar la base estable `v0.8.0` y los comandos de rollback de referencia.
+- Resultado esperado: base funcional del MVP preservada con una UI privada mas moderna y segura para operar localmente.
+
+### Correccion urgente - restauracion visual
+
+- Diagnostico: el HTML nuevo estaba presente, pero el sintoma reportado era consistente con assets CSS/JS obsoletos o cacheados sin versionado.
+- Se agrego version de assets en `layout.html` usando `request.app.state.asset_version`.
+- Se expuso `APP_ASSET_VERSION` desde `app/main.py`.
+- Se reforzo el estilo base de botones, selects y toggle para evitar apariencia HTML nativa si el navegador reutiliza cache parcial.
+- El estado activo de la sidebar queda marcado tambien desde el render del template, no solo desde JavaScript.
+
+### Ajuste 8.1.2.9 - popup ATS compacto
+
+- Se redisenio el popup `Analisis ATS` como dashboard compacto de dos columnas.
+- `Estado general` mantiene score, badge, longitud, referencia real de longitud y suma barra visual de progreso.
+- `Resumen rapido` queda debajo de `Estado general` como mini cards compactas.
+- `Checklist` queda en filas densas con indicador circular y badge `OK`/`Revisar`.
+- `Recomendaciones` y `Advertencias` quedan como cards inferiores compactas.
+- No se modifico scoring ATS, persistencia, rutas de datos ni features futuras.
+
+### Ajuste 8.1.2.10 - indicadores de score
+
+- La referencia de score del modal ATS suma puntos de color semanticos por rango.
+- La barra del score agrega glow sutil en la punta para mejorar lectura visual del progreso.
+- El ajuste queda encapsulado en el partial ATS y en CSS especifico, sin cambiar layout, checklist ni acciones del modal.
+
+### Correccion P1 - confirmaciones seguras
+
+- Se corrigio el modal de confirmacion para no interpolar `data-confirm-title`, `data-confirm-message` ni `data-confirm-label` mediante `innerHTML`.
+- El dialogo se construye con nodos DOM y los textos dinamicos se asignan con `textContent`.
+- Se agregaron tests contra regresiones de XSS usando titulos maliciosos de CV.
+
 ## Documentation Center
 
 - Fecha: 2026-06-05
@@ -464,6 +509,226 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
   - Esperar validacion explicita del usuario antes de cualquier merge.
   - Preparar push de la rama feature y PR hacia `development`.
   - Pedir `@codex review` manual despues del PR.
+
+## Etapa 8.1.1 - Ajustes finos visuales y UX post-review
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: pulir dashboard, listados, acciones secundarias, modal ATS y documentacion web sin tocar DB ni etapas futuras.
+- Modulos afectados: `dashboard`, `cvs`, `cover_letters`, `ats`, `documentation`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se simplifico la card de resumen del dashboard para mostrar metricas claras de curriculums, cartas y postulaciones.
+  - Se quitaron referencias visuales a `SQLite activo` en el listado de CVs.
+  - Se movieron acciones principales de CVs y cartas al extremo derecho de cada fila.
+  - Se agrego cierre de menus `Mas acciones` con click externo y tecla `Escape`.
+  - Se incorporo un modal ATS reutilizando el servicio existente y manteniendo la ruta completa `/ats/cvs/{cv_id}`.
+  - Se reagruparon acciones secundarias del detalle de CV como botones consistentes.
+  - Se removio `Abrir PDF directo` del centro de documentacion.
+  - Se aumento el asset version para evitar cache obsoleta tras el refinamiento.
+- Archivos principales:
+  - `app/routes/dashboard.py`
+  - `app/routes/ats.py`
+  - `app/templates/dashboard.html`
+  - `app/templates/cvs/index.html`
+  - `app/templates/cvs/detail.html`
+  - `app/templates/cover_letters/index.html`
+  - `app/templates/ats/index.html`
+  - `app/templates/ats/cv_analysis.html`
+  - `app/templates/ats/_analysis_sections.html`
+  - `app/templates/ats/modal.html`
+  - `app/templates/documentation/index.html`
+  - `app/templates/documentation/detail.html`
+  - `app/static/css/app.css`
+  - `app/static/js/app.js`
+  - `tests/test_ui_routes.py`
+  - `tests/test_ats_routes.py`
+  - `tests/test_documentation_routes.py`
+- Validaciones ejecutadas:
+  - `python -m compileall app tests`
+  - `docker compose build`
+  - `docker compose up -d --force-recreate`
+  - `docker compose ps`
+  - `docker compose logs app --tail 80`
+  - `docker compose exec app python -m pytest`
+  - Requests HTTP y validacion DOM sobre `/`, `/cvs/`, `/cover-letters/`, `/applications/`, `/ats/`, `/documentation/`, `/documentation/technical`, `/documentation/usage`, `/ats/cvs/43` y `/ats/cvs/43/modal`
+  - `git diff --check`
+- Resultado: refinamiento UX aplicado con runtime estable, tests en verde y compatibilidad ATS/documentacion conservada.
+- Pendientes:
+  - Validacion visual manual del modal ATS y del cierre de menus en un navegador real.
+  - Crear PR hacia `development` cuando el usuario lo pida.
+
+## Etapa 8.1.2 - Pulido fino del dashboard privado, listados y ATS modal
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: terminar el pulido fino visual de dashboard, listados, detalle de CV y modal ATS antes del PR.
+- Modulos afectados: `dashboard`, `cvs`, `ats`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se compactaron las metricas del resumen del workspace y se removio texto sobrante.
+  - Se convirtieron las acciones `Abrir CVs` y `Abrir cartas` en botones visibles dentro de cards con previews CSS.
+  - Se movio `Importar JSON` a una seccion secundaria `Herramientas avanzadas`.
+  - Se integro la fecha del listado de CVs como metadata secundaria mejor alineada.
+  - Se agrego confirmacion modal para `Duplicar CV` tanto en detalle como en listado.
+  - Se ordeno el modal ATS con acciones superiores y score/estado mejor agrupados.
+  - Se documento que las miniaturas reales de PDF quedan como backlog futuro y no se implementan en esta etapa.
+- Archivos principales:
+  - `app/routes/dashboard.py`
+  - `app/templates/dashboard.html`
+  - `app/templates/cvs/index.html`
+  - `app/templates/cvs/detail.html`
+  - `app/templates/ats/modal.html`
+  - `app/templates/ats/_analysis_sections.html`
+  - `app/static/css/app.css`
+  - `app/static/js/app.js`
+  - `tests/test_ui_routes.py`
+  - `tests/test_ats_routes.py`
+- Validaciones ejecutadas:
+  - `python -m compileall app tests`
+  - `docker compose build`
+  - `docker compose up -d --force-recreate`
+  - `docker compose ps`
+  - `docker compose logs app --tail 80`
+  - `docker compose exec app python -m pytest`
+  - Validacion HTTP/DOM sobre dashboard, listado CVs, listado cartas, detalle CV, modal ATS y documentacion
+  - `git diff --check`
+- Resultado: iteracion 8.1.2 estable, sin regresiones de tests y con mejor jerarquia visual para dashboard, CVs y ATS.
+- Pendientes:
+  - Validacion manual real del cierre de menus y del modal de duplicado en navegador interactivo.
+  - PR hacia `development` cuando el usuario lo pida.
+
+## Etapa 8.1.2.1 - Correccion fina visual final antes del PR
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: cerrar el pulido visual fino del dashboard privado, listados, detalle de CV y modal ATS sin avanzar a la etapa 8.2.
+- Modulos afectados: `dashboard`, `cvs`, `cover_letters`, `ats`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se corrigio el resumen del workspace para evitar cortes de palabras, centrar mejor las metricas y bajar el peso visual de `Postulaciones`.
+  - Se mantuvieron las cards principales del dashboard con CTA de boton y se dejaron las miniaturas reales como backlog de la etapa 8.1.3.
+  - Se formatearon fechas visibles de CVs y cartas a `dd/mm/yyyy HH:mm` y se alinearon como metadata secundaria.
+  - Se pulieron `Exportacion` y `Ficha rapida` en el detalle del CV con spacing mas compacto, labels mas cortos y helper comun de templates.
+  - Se refino el modal ATS con badge semantico, resumen rapido mas compacto y mejor alineacion de score, estado y longitud.
+  - Se corrigio la cabecera de `Editar CV` para mostrar contexto del CV y de la persona tambien desde el flujo ATS.
+  - Se documento explicitamente que miniaturas reales y selector de paletas quedan para la etapa 8.1.3, mientras que IA real queda para la etapa 8.3.
+- Archivos principales:
+  - `app/template_utils.py`
+  - `app/main.py`
+  - `app/routes/cvs.py`
+  - `app/routes/cover_letters.py`
+  - `app/routes/ats.py`
+  - `app/routes/dashboard.py`
+  - `app/templates/dashboard.html`
+  - `app/templates/cvs/index.html`
+  - `app/templates/cvs/detail.html`
+  - `app/templates/cvs/form.html`
+  - `app/templates/cover_letters/index.html`
+  - `app/templates/ats/_analysis_sections.html`
+  - `app/static/css/app.css`
+  - `tests/test_ui_routes.py`
+  - `tests/test_ats_routes.py`
+- Validaciones previstas:
+  - `python -m compileall app tests`
+  - `docker compose build`
+  - `docker compose up -d --force-recreate`
+  - `docker compose ps`
+  - `docker compose logs app --tail 80`
+  - `docker compose exec app python -m pytest`
+  - Validacion HTTP/DOM sobre dashboard, listados, detalle de CV y modal ATS
+  - `git diff --check`
+- Pendientes:
+  - Validacion visual manual fina del modal ATS y del cierre real de menus con navegador interactivo.
+  - PR hacia `development` cuando el usuario lo pida.
+
+## Etapa 8.1.2.2 - Cierre visual definitivo antes del PR
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: simplificar los componentes visuales que seguian cargados o desalineados antes de abrir PR.
+- Modulos afectados: `dashboard`, `cvs`, `cover_letters`, `ats`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se reemplazo el resumen del workspace con cuadrados internos por una linea horizontal simple: `CVs`, `Cartas`, `Postulaciones`.
+  - Se eliminaron los numeros grandes de las cards principales `Curriculum Vitae` y `Cartas de presentacion`.
+  - Se elimino la CTA duplicada `Nueva carta` dentro de recientes; las altas quedan en las acciones rapidas superiores.
+  - `Herramientas avanzadas` en CVs paso a verse como boton secundario, manteniendo `Importar JSON` dentro de la seccion colapsable.
+  - Se ajustaron fecha y metadata de CVs/cartas para mantener formato `dd/mm/yyyy HH:mm` sin competir con los botones.
+  - Se separaron las acciones secundarias de `Exportacion` y se mantuvieron labels cortos en `Ficha rapida`.
+  - Se reordeno `Estado general` en el modal ATS con badge semantico arriba, score destacado y longitud estimada debajo.
+  - Se limpio el subtitulo contextual de `Editar CV` desde ATS con formato `titulo - persona`.
+- Pendientes:
+  - Validacion visual manual final antes de PR.
+  - Miniaturas reales de PDF y selector de paletas quedan fuera de esta etapa.
+
+## Etapa 8.1.2.3 - Micro-ajuste final visual antes del PR
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: aplicar ajustes visuales puntuales sin tocar componentes ya aprobados.
+- Modulos afectados: `dashboard`, `cvs`, `cover_letters`, `ats`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se redujo el alto del resumen del workspace manteniendo el formato simple `CVs | Cartas | Postulaciones`.
+  - Se reforzo el contraste de los numeros del resumen en dark mode mediante el color de acento existente.
+  - Se actualizo el formato visible de fechas a `dd/mm/yyyy HH:mm hs`.
+  - Se reubico `Actualizado`/`Actualizada` debajo de los datos principales en los listados de CVs y cartas.
+  - Se mantuvieron los encabezados de `Exportacion` y `Ficha rapida` coherentes y se bajo levemente el bloque de acciones secundarias.
+  - Se agrando el badge de estado ATS y se agrego una referencia breve de score debajo de la longitud estimada.
+  - El formulario de edicion de CV ahora usa la persona o titulo del CV como H1 principal y deja `Editar CV` como contexto.
+- Pendientes:
+  - Validacion visual manual final de estos puntos antes de PR.
+
+## Etapa 8.1.2.4 - Cierre de ultimos detalles visuales antes del PR
+
+- Fecha: 2026-06-06
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: cerrar gaps visuales puntuales sin tocar logica, DB ni backlog ya diferido.
+- Modulos afectados: `cvs`, `ats`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se reforzo el mismo acento visual entre `Exportacion` y `Ficha rapida` en el detalle del CV.
+  - Se corrigio la vista `Ver TEX` para mantener `Export Engine` dentro del mismo layout y mejorar el comportamiento de titulos largos.
+  - `Estado general` del ATS conserva score, badge y longitud, pero ahora muestra una referencia vertical mas legible.
+  - Se agrego la referencia real de longitud ATS usando el rango existente en codigo (`280` a `4500` caracteres).
+  - Se mantuvo intacto `Resumen rapido` y no se tocaron reglas de scoring.
+- Pendientes:
+  - Validacion visual manual final del bloque `Ver TEX` y del modal ATS antes de abrir PR.
+
+## Etapa 8.1.2.5 - ATS integrado al flujo principal de Curriculum Vitae
+
+- Fecha: 2026-06-07
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: acercar ATS al modulo `Curriculum Vitae` y reducir scroll del reporte, sin tocar DB ni logica de scoring.
+- Modulos afectados: `cvs`, `ats`, `layout`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - El listado de CVs ahora calcula ATS en runtime para cada fila y muestra un badge semantico reutilizando `ats_service`.
+  - El badge ATS abre el modal del reporte sin salir del flujo de `CVs`, manteniendo tambien `Analizar ATS` dentro de `Mas acciones`.
+  - La sidebar degrada el acceso a ATS como `ATS directo`, dejando `Curriculum Vitae` como flujo principal recomendado.
+  - El reporte ATS se compacta con checklist mas bajo, menos padding y bloques de feedback mas discretos.
+  - Las rutas `/ats/` y `/ats/cvs/{id}` siguen vigentes para acceso directo y compatibilidad.
+- Pendientes:
+  - Validacion visual manual del badge ATS en varias densidades de datos antes del PR.
+
+## Etapa 8.1.2.6 - Cierre visual de ATS integrado en Curriculum Vitae
+
+- Fecha: 2026-06-07
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: cerrar la integracion visual de ATS dentro de `CVs` y reducir scroll del modal sin tocar scoring ni DB.
+- Modulos afectados: `layout`, `cvs`, `ats`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - Se elimina la entrada lateral separada `ATS directo` y se renombra el acceso principal a `Curriculum Vitae + ATS`.
+  - El badge ATS baja desde la esquina superior al bloque de metadata del CV para quedar alineado con email y fecha.
+  - El modal ATS reduce paddings y altura util en `Estado general`, `Resumen rapido`, checklist y feedbacks.
+  - Las rutas `/ats/` y `/ats/cvs/{id}` siguen accesibles por URL para compatibilidad y validacion directa.
+- Pendientes:
+  - Validacion visual manual del ajuste fino de densidad en el modal ATS antes del PR.
+
+## Etapa 8.1.2.8 - Ajuste final de posicion del badge ATS
+
+- Fecha: 2026-06-07
+- Rama: `feature/ui-private-dashboard`
+- Objetivo: dejar el badge ATS asociado al titulo del CV sin redisenar el resto del listado.
+- Modulos afectados: `cvs`, `static`, `tests`, `docs`.
+- Resumen de cambios:
+  - El badge ATS deja la metadata inferior y pasa a la fila del titulo del CV.
+  - Se habilita wrap prolijo entre titulo largo y badge, manteniendo el nombre de persona debajo.
+  - El badge sigue clickeando al modal y `Analizar ATS` se conserva en `Mas acciones`.
 
 ## Fix ATS - Critical Sections Status Cap
 

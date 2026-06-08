@@ -15,7 +15,7 @@ CV LaTeX Builder es una aplicacion web local para gestionar CVs, cartas de prese
 | Area | Implementacion |
 | --- | --- |
 | Backend | FastAPI con rutas modulares |
-| Render web | Jinja2 con HTML simple y CSS propio |
+| Render web | Jinja2 con sidebar fija, dashboard operativo, HTML server-side y CSS con dark/light mode |
 | Persistencia | SQLite en `/data/app.db` |
 | Exportaciones | Servicios Python para TEX, PDF y JSON |
 | PDF | `pdflatex` dentro del contenedor |
@@ -48,6 +48,14 @@ CV LaTeX Builder es una aplicacion web local para gestionar CVs, cartas de prese
 - Checklist deterministico sobre CVs guardados.
 - Score simple, advertencias y recomendaciones.
 - Penalizacion de secciones criticas faltantes.
+
+### UI privada y dashboard operativo
+
+- Sidebar fija para navegar entre Dashboard, CVs, Cartas, Postulaciones, ATS y Documentacion.
+- Toggle dark/light persistido en `localStorage`.
+- Dashboard enfocado en CVs y cartas como modulos principales.
+- Listados compactos con preview visual CSS de documento y acciones secundarias.
+- Eliminacion segura de CVs y cartas exigiendo coincidencia exacta del texto mostrado.
 
 ## Docker Compose
 
@@ -106,9 +114,12 @@ El servicio ATS analiza presencia de email, telefono, resumen, experiencia, educ
 - Validaciones HTTP y visuales sobre dashboard, modulos y exports
 - Verificacion de extraccion PDF con `pdftotext`
 
-## Estado final v0.8.0
+## Base estable y rama visual actual
 
-El MVP local quedo integrado en `main` y `development` en el commit `5f5efbf docs(release): merge v0.8.0 cleanup notes`, con tests en verde y navegacion consistente entre Dashboard, CVs, Cartas, Postulaciones, ATS y Documentacion.
+- Base estable publicada: `tag v0.8.0`
+- Commit base estable: `eab9556 fix(docs): render documentation as html with pdf downloads`
+- Rama visual actual: `feature/ui-private-dashboard`
+- Objetivo de la rama: redisenar la experiencia privada sin tocar base de datos, IA ni autenticacion.
 
 ## Riesgos conocidos
 
@@ -119,8 +130,13 @@ El MVP local quedo integrado en `main` y `development` en el commit `5f5efbf doc
 
 ## Backlog posterior
 
-- Tag estable `v0.8.0`.
+- PR de la rama visual hacia `development` y `@codex review` manual.
 - Documentacion PDF futura adicional si hiciera falta.
 - Login/auth si el alcance deja de ser local.
 - Migraciones o mayor integridad relacional si la persistencia crece.
 - Mejoras de export ATS y coverage end-to-end.
+
+## Historial y rollback
+
+- Referencia operativa: `docs/development/PROJECT_HISTORY_ROLLBACK.md`
+- El archivo documenta el tag estable `v0.8.0`, el commit base `eab9556` y comandos de inspeccion o rollback temporal con advertencia de no ejecutarlos sin validacion previa.

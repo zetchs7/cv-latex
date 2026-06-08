@@ -5,7 +5,9 @@ Aplicacion web local, pequena y portable para construir CVs, cartas de presentac
 ## Estado actual
 
 - Version: `0.8.0`
-- Etapa: `7 - Pulido final del MVP`
+- Base estable: `tag v0.8.0`
+- Commit base estable: `eab9556 fix(docs): render documentation as html with pdf downloads`
+- Etapa visual en trabajo: `8.1.2.6 - Cierre visual de ATS integrado en Curriculum Vitae`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 - Exportaciones: `/data/exports` dentro del contenedor, visible en `./data/exports` en el host
@@ -14,7 +16,7 @@ Aplicacion web local, pequena y portable para construir CVs, cartas de presentac
 
 - Backend: Python, FastAPI
 - Templates: Jinja2
-- Frontend: HTML, CSS simple, JavaScript minimo
+- Frontend: HTML server-side, CSS propio con dark/light mode y JavaScript minimo para UX local
 - Persistencia: SQLite en `/data/app.db`
 - Contenedores: Docker Compose
 - PDF: TeX Live con `pdflatex` dentro del contenedor
@@ -166,6 +168,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |   |-- file_naming.py
 |   |   |-- latex_service.py
 |   |   `-- pdf_service.py
+|   |-- template_utils.py
 |   |-- latex_templates/
 |   |   |-- cover_letter/
 |   |   |   `-- classic_letter.tex
@@ -219,6 +222,7 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 |   |   |-- PROJECT_TECHNICAL_DOCUMENTATION.md
 |   |   `-- WEB_USAGE_MANUAL.md
 |   |-- development/
+|   |   `-- PROJECT_HISTORY_ROLLBACK.md
 |   `-- adr/
 |-- tests/
 |   |-- test_application_repository.py
@@ -253,6 +257,15 @@ El repositorio solo versiona `data/.gitkeep`; no se versionan bases SQLite reale
 - Etapa 6: ATS Basic Check. Completada.
 - Etapa 7: Pulido final del MVP. Completada en la rama de trabajo actual.
 - Mini-etapa: Documentation Center. Incluida antes del tag estable `v0.8.0`.
+- Etapa 8.1: rediseno visual privado con sidebar fija, dashboard operativo, dark/light mode y borrado seguro por coincidencia exacta. En curso sobre `feature/ui-private-dashboard`.
+- Correccion urgente UI: restauracion de layout pulido, cache busting de assets y navegacion privada visible dentro de la misma rama `feature/ui-private-dashboard`.
+- Etapa 8.1.2.1: correccion fina visual final de dashboard, listados, detalle CV y modal ATS antes de abrir PR. En curso sobre `feature/ui-private-dashboard`.
+- Etapa 8.1.2.2: cierre visual definitivo antes del PR, con resumen workspace simplificado, cards sin numeros grandes, CTA duplicada removida y modal ATS reordenado.
+- Etapa 8.1.2.3: micro-ajuste final visual con resumen workspace compactado, fechas con `hs`, metadata `Actualizado` reubicada y header de edicion contextual.
+- Etapa 8.1.2.4: cierre de gaps visuales en `Exportacion`, vista TEX y referencia vertical del estado ATS, sin tocar logica funcional.
+- Etapa 8.1.2.5: ATS integrado visualmente al listado de CVs con badges en runtime y reporte compacto, manteniendo `/ats/` como acceso secundario.
+- Etapa 8.1.2.6: el acceso lateral separado de ATS deja de competir con CVs, el badge baja a metadata y el modal ATS se compacta aun mas.
+- Etapa 8.1.2.8: el badge ATS queda asociado visualmente al titulo del CV en el listado, sin tocar el resto del flujo.
 
 ## Modulos disponibles
 
@@ -267,8 +280,8 @@ Rutas disponibles:
 - `GET /cvs/{cv_id}/edit`: formulario de edicion.
 - `POST /cvs/{cv_id}/edit`: actualizar CV.
 - `POST /cvs/{cv_id}/duplicate`: duplicar CV.
-- `GET /cvs/{cv_id}/delete`: confirmacion de eliminacion.
-- `POST /cvs/{cv_id}/delete`: eliminacion logica.
+- `GET /cvs/{cv_id}/delete`: confirmacion de eliminacion con texto exacto.
+- `POST /cvs/{cv_id}/delete`: eliminacion logica si coincide el titulo exacto.
 - `GET /cvs/{cv_id}/tex?template_key=classic`: previsualizar contenido `.tex`.
 - `GET /cvs/{cv_id}/export/tex?template_key=classic`: descargar archivo `.tex`.
 - `GET /cvs/{cv_id}/export/pdf?template_key=classic`: generar y descargar PDF.
@@ -285,8 +298,8 @@ Rutas disponibles:
 - `GET /cover-letters/{cover_letter_id}`: detalle.
 - `GET /cover-letters/{cover_letter_id}/edit`: formulario de edicion.
 - `POST /cover-letters/{cover_letter_id}/edit`: actualizar carta.
-- `GET /cover-letters/{cover_letter_id}/delete`: confirmacion de eliminacion.
-- `POST /cover-letters/{cover_letter_id}/delete`: eliminacion logica.
+- `GET /cover-letters/{cover_letter_id}/delete`: confirmacion de eliminacion con texto exacto.
+- `POST /cover-letters/{cover_letter_id}/delete`: eliminacion logica si coincide empresa y puesto exactos.
 - `GET /cover-letters/{cover_letter_id}/export/tex`: descargar TEX.
 - `GET /cover-letters/{cover_letter_id}/export/pdf`: generar y descargar PDF.
 
@@ -317,6 +330,8 @@ El modulo ATS Basic Check solo analiza CVs guardados y muestra:
 - checklist de campos y secciones criticas
 - advertencias
 - recomendaciones
+
+El flujo principal recomendado para ATS pasa a ser `Curriculum Vitae + ATS -> listado de CVs -> badge ATS o Mas acciones -> Analizar ATS`. Las rutas `/ats/` y `/ats/cvs/{cv_id}` siguen existiendo para acceso directo y documentacion, pero ya no compiten como entrada lateral principal.
 
 ### Documentacion
 
@@ -365,24 +380,38 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
   - `app/static/docs/Manual_Uso_Web_CV_LaTeX_Builder.pdf`
 - Generacion reproducible:
   - `docker run --rm -v ${PWD}:/workspace -w /workspace cv-latex-app python -m app.services.documentation_service`
+- Historial y rollback visual:
+  - `docs/development/PROJECT_HISTORY_ROLLBACK.md`
 
 ## Prueba manual rapida
 
 1. Abrir `http://localhost:8000`.
-2. Revisar el dashboard y la navegacion superior.
-3. Entrar a `CVs` y crear o reutilizar un CV.
-4. Abrir el detalle del CV, exportar TEX/PDF/JSON y usar `Analizar ATS`.
-5. Entrar a `ATS` y repetir el analisis sobre un CV completo y uno incompleto.
-6. Entrar a `Cartas` y crear o reutilizar una carta.
-7. Exportar TEX y PDF de la carta.
-8. Entrar a `Postulaciones`.
-9. Crear una postulacion y asociarla opcionalmente a un CV y a una carta.
-10. Editar la postulacion y cambiar su estado.
-11. Abrir el detalle y confirmar persistencia en SQLite.
-12. Confirmar que los archivos de export siguen quedando en `./data/exports`.
-13. Exportar un CV a JSON e importarlo de nuevo.
-14. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
-15. Entrar a `Documentacion` y leer ambas documentaciones en HTML dentro de la misma web.
+2. Revisar el dashboard, la sidebar izquierda y el toggle dark/light.
+3. Confirmar que el resumen del dashboard es una linea simple `CVs`, `Cartas`, `Postulaciones`, sin cuadrados internos ni numeros gigantes.
+4. Revisar que `Abrir CVs` y `Abrir cartas` se muestran como botones y no como links de texto.
+5. Confirmar que las cards principales no muestran badges numericos grandes y que no existe CTA duplicada `Nueva carta` dentro de recientes.
+6. Entrar a `CVs` y crear o reutilizar un CV.
+7. Revisar que cada fila muestra acciones principales a la derecha, fecha `Actualizado: dd/mm/yyyy HH:mm hs` debajo de los datos principales y badge ATS calculado en runtime dentro de la metadata.
+8. Verificar que `Herramientas avanzadas` se ve como boton secundario y que `Importar JSON` queda dentro de esa seccion.
+9. Abrir el detalle del CV y confirmar que `Exportacion` y `Ficha rapida` usan el mismo acento visual, spacing compacto y fechas `dd/mm/yyyy HH:mm hs`.
+10. Probar `Duplicar CV` y confirmar que primero aparece un modal de confirmacion.
+11. Ejecutar `Analizar ATS` desde el detalle, el badge ATS del listado o desde `ATS` y confirmar que abre un modal sin sacar al usuario de la pagina actual.
+12. Revisar que el modal ATS se muestra como dashboard compacto: header con acciones arriba, `Estado general` y `Resumen rapido` a la izquierda, `Checklist` a la derecha y `Recomendaciones`/`Advertencias` abajo.
+13. Confirmar que `Estado general` mantiene score, badge, barra visual, longitud estimada, referencia vertical de score y rango real de longitud recomendado.
+14. Desde el modal ATS, entrar a `Editar CV` y confirmar que el H1 principal es la persona o titulo del CV, con contexto `Editando CV`.
+15. Abrir `Ver TEX` y confirmar que `Export Engine` queda alineado dentro del mismo layout, con titulo largo del archivo sin romper la pantalla.
+16. Entrar a `ATS` por URL directa y repetir el analisis completo sobre un CV, confirmando que la ruta sigue disponible aunque el flujo principal sea `Curriculum Vitae + ATS`.
+17. Entrar a `Cartas` y crear o reutilizar una carta.
+18. Exportar TEX y PDF de la carta y verificar acciones alineadas a la derecha y fecha `Actualizada: dd/mm/yyyy HH:mm hs` en el listado.
+19. Entrar a `Postulaciones`.
+20. Crear una postulacion y asociarla opcionalmente a un CV y a una carta.
+21. Editar la postulacion y cambiar su estado.
+22. Abrir el detalle y confirmar persistencia en SQLite.
+23. Confirmar que los archivos de export siguen quedando en `./data/exports`.
+24. Exportar un CV a JSON e importarlo de nuevo.
+25. Probar un JSON artificialmente grande y verificar el rechazo con mensaje claro.
+26. Probar eliminacion segura de un CV y una carta con texto incorrecto y correcto.
+27. Entrar a `Documentacion`, leer ambas documentaciones en HTML dentro de la misma web y confirmar que solo quede `Descargar PDF`.
 
 ## Troubleshooting basico
 
@@ -395,5 +424,16 @@ La importacion JSON siempre crea un CV nuevo con sufijo `(importado)` en el titu
 ## Alcance de esta version
 
 Incluye dashboard, CV Builder Core, cover letters, application tracker, ATS Basic Check, centro de documentacion con lectura HTML y descarga PDF, plantillas LaTeX propias, sanitizacion, generacion de contenido `.tex`, exportacion TEX/PDF/JSON, importacion JSON con lectura acotada, hardening basico de errores PDF, inicializacion tecnica de SQLite, archivos estaticos, Docker Compose y documentacion minima de operacion local del MVP.
+
+## Backlog visual posterior
+
+- Etapa 8.1.3:
+  - Miniaturas reales de PDF para dashboard y listados usando `pdftoppm` o equivalente.
+  - Cache local de previews y regeneracion cuando cambie el CV o la carta.
+  - Selector de paleta visual local con persistencia en `localStorage`, sin DB al inicio.
+- Etapa 8.2:
+  - Profundizar la evolucion visual privada despues del PR de 8.1.x.
+- Etapa 8.3:
+  - IA real y posibles integraciones con OpenAI API, fuera del alcance actual.
 
 No incluye IA, login, PostgreSQL ni deploy cloud.

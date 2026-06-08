@@ -14,6 +14,7 @@ from app.routes.documentation import router as documentation_router
 
 
 APP_VERSION = os.getenv("APP_VERSION", "0.8.0")
+APP_ASSET_VERSION = os.getenv("APP_ASSET_VERSION", f"{APP_VERSION}-ui81210xss1")
 
 
 @asynccontextmanager
@@ -27,6 +28,7 @@ app = FastAPI(
     version=APP_VERSION,
     lifespan=lifespan,
 )
+app.state.asset_version = APP_ASSET_VERSION
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(dashboard_router)

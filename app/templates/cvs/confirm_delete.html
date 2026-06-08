@@ -1,20 +1,37 @@
 {% extends "layout.html" %}
 
 {% block title %}Eliminar CV - CV LaTeX Builder{% endblock %}
+{% block topbar_title %}Eliminar CV{% endblock %}
 
 {% block content %}
-<section class="confirm-panel">
+<section class="confirm-panel confirm-panel-strong">
   <p class="eyebrow">Confirmacion requerida</p>
   <h1>Eliminar CV</h1>
   <p>
-    Vas a eliminar logicamente el CV <strong>{{ cv.title }}</strong>. El registro se oculta del listado,
-    pero no se borra fisicamente de SQLite.
+    Esta accion oculta logicamente el CV en SQLite. Para continuar escribe exactamente:
+    <strong>{{ expected_value }}</strong>
   </p>
 
-  <form class="form-actions" method="post" action="{{ url_for('cvs_delete', cv_id=cv.id) }}">
-    <input type="hidden" name="confirm_delete" value="yes">
-    <button class="button danger" type="submit">Confirmar eliminacion</button>
-    <a class="button" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Cancelar</a>
+  {% if error %}
+  <div class="flash-message flash-message-error" role="alert">{{ error }}</div>
+  {% endif %}
+
+  <form class="confirm-form" method="post" action="{{ url_for('cvs_delete', cv_id=cv.id) }}">
+    <label>
+      <span>Confirma el titulo exacto</span>
+      <input
+        type="text"
+        name="confirmation_value"
+        value="{{ entered_value }}"
+        autocomplete="off"
+        spellcheck="false"
+        required
+      >
+    </label>
+    <div class="form-actions">
+      <button class="button danger" type="submit">Eliminar CV</button>
+      <a class="button" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Cancelar</a>
+    </div>
   </form>
 </section>
 {% endblock %}

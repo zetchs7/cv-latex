@@ -11,6 +11,13 @@
 - Dashboard principal: `http://localhost:8000`
 - Centro de documentacion: `http://localhost:8000/documentation/`
 
+## Layout privado y tema
+
+1. Al abrir la app aparece una sidebar fija a la izquierda.
+2. Los modulos principales son `Curriculum Vitae` y `Cartas de presentacion`.
+3. El boton arriba a la derecha alterna `Dark mode` y `Light mode`.
+4. La preferencia de tema se mantiene al recargar porque se guarda en `localStorage`.
+
 ## Como crear un CV
 
 1. Entrar a `CVs`.
@@ -23,12 +30,12 @@
 - Desde el listado de `CVs` se puede abrir el detalle.
 - En el detalle se puede editar el formulario.
 - El boton `Duplicar` crea una copia validada del CV.
-- El boton `Eliminar` abre una confirmacion antes de la eliminacion logica.
+- El boton `Eliminar` abre una confirmacion que exige escribir el titulo exacto antes de borrar logicamente.
 
 ## Como exportar TEX, PDF y JSON
 
-- Desde el detalle de un CV se puede descargar TEX.
-- Desde el mismo detalle se puede generar y descargar PDF.
+- Desde el detalle de un CV se elige una unica plantilla: `Classic`, `Modern`, `Compact` o `Tech`.
+- Desde el mismo selector se puede descargar TEX o generar PDF.
 - Tambien existe export JSON del CV guardado.
 
 ## Como importar JSON
@@ -49,6 +56,7 @@
 
 - Desde el detalle de la carta se puede descargar TEX.
 - Desde el mismo detalle se puede generar y descargar PDF.
+- La eliminacion de cartas tambien exige escribir exactamente `Empresa - Puesto` cuando ambos datos existen.
 
 ## Como crear postulaciones
 
@@ -64,7 +72,7 @@
 
 ## Como usar ATS Basic Check
 
-1. Abrir `ATS` desde el header o el dashboard.
+1. Abrir `ATS` desde la sidebar o el dashboard.
 2. Elegir un CV guardado.
 3. Revisar score, checklist, advertencias y recomendaciones.
 4. Si falta una seccion critica, el estado no queda como `Bueno`.
@@ -101,3 +109,8 @@ docker compose up -d
 - Uso local sin login ni autenticacion.
 - Sin integraciones cloud.
 - Sin IA ni servicios externos obligatorios.
+
+## Historial y rollback
+
+- Referencia: `docs/development/PROJECT_HISTORY_ROLLBACK.md`
+- Sirve para inspeccionar el tag `v0.8.0`, revisar el commit base estable y recordar comandos de rollback sin ejecutarlos sin validacion previa.

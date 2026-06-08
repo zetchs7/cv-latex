@@ -3,7 +3,7 @@
 {% block title %}TEX de {{ cv.title }} - CV LaTeX Builder{% endblock %}
 
 {% block content %}
-<section class="page-header">
+<section class="page-header page-header-compact tex-preview-header">
   <div>
     <p class="eyebrow">Plantillas LaTeX</p>
     <h1>{{ generated_document.filename }}</h1>
@@ -30,19 +30,21 @@
   <button class="button primary" type="submit">Generar vista TEX</button>
 </form>
 
-<section class="tex-preview-panel">
-  <div class="module-card-header">
-    <h2>Contenido TEX</h2>
-    <span>Descarga disponible</span>
-  </div>
-  <pre class="tex-preview"><code>{{ generated_document.content }}</code></pre>
-</section>
+<section class="tex-preview-layout">
+  <section class="tex-preview-panel">
+    <div class="module-card-header">
+      <h2>Contenido TEX</h2>
+      <span>Descarga disponible</span>
+    </div>
+    <pre class="tex-preview"><code>{{ generated_document.content }}</code></pre>
+  </section>
 
-<section class="notice">
-  <h2>Export Engine</h2>
-  <p>
-    Esta vista permite descargar el .tex y generar PDF desde una plantilla propia.
-    Los archivos exportados se guardan en /data/exports.
-  </p>
+  <section class="notice tex-engine-note">
+    <h2>Export Engine</h2>
+    <p>
+      Esta vista permite descargar el .tex y generar PDF desde una plantilla propia.
+      Los archivos exportados se guardan en /data/exports.
+    </p>
+  </section>
 </section>
 {% endblock %}

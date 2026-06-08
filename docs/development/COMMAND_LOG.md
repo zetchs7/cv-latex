@@ -59,6 +59,68 @@ Resultado:
 - Los botones `Descargar PDF` siguen apuntando a los assets bajo `app/static/docs/`.
 - La imagen Docker ahora copia `docs/` para que el runtime pueda leer las fuentes Markdown y renderizar `/documentation/technical` y `/documentation/usage`.
 
+---
+
+Accion:
+Redisenar la app privada con sidebar fija, dashboard operativo, dark/light mode y borrado seguro.
+
+Motivo:
+Mejorar la experiencia visual del workspace local sin tocar modelo de datos, base de datos ni logica de exportacion principal.
+
+Comandos:
+- `git status`
+- `git branch --show-current`
+- `git log --oneline --decorate -7`
+- `git fetch origin`
+- `git checkout development`
+- `git checkout -b feature/ui-private-dashboard`
+- `Get-Content` sobre layout, dashboard, listados, detalle de CV, CSS, JS, README y docs
+- `apply_patch`
+- `python -m compileall app tests`
+- `docker compose build`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose logs app --tail 80`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest` sobre `/`, `/cvs/`, `/cover-letters/`, `/applications/`, `/ats/`, `/documentation/`
+- validacion visual con navegador local disponible
+- `git diff --check`
+
+Resultado:
+- La app pasa a usar sidebar fija, topbar con toggle de tema y dashboard centrado en CVs y cartas.
+- Los listados de CVs y cartas se muestran como filas compactas con preview CSS y acciones mas claras.
+- El detalle de CV usa un unico selector de plantilla para TEX/PDF.
+- La eliminacion de CVs y cartas exige coincidencia exacta del texto esperado.
+- Se agrego documentacion de rollback visual apoyada en `v0.8.0`.
+
+---
+
+Accion:
+Corregir la UI rota de la etapa 8.1.
+
+Motivo:
+La app se estaba viendo como HTML casi sin estilos, con sintomas consistentes con cache de assets y shell visual no aplicado claramente.
+
+Comandos:
+- `git status`
+- `git branch --show-current`
+- `Get-Content` sobre `layout.html`, `app.css`, `app.js`
+- `apply_patch`
+- `python -m compileall app tests`
+- `docker compose build`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose logs app --tail 80`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest` sobre `/static/css/app.css`, `/static/js/app.js`, `/`, `/cvs/`, `/cover-letters/`, `/applications/`, `/ats/`, `/documentation/`
+- `git diff --check`
+
+Resultado:
+- El layout base ahora sirve CSS/JS con cache busting por version de assets.
+- La barra lateral resalta el modulo activo desde el render del template y no solo por JS.
+- Se reforzo el estilo de controles nativos para evitar apariencia de boton o select por defecto.
+- Las validaciones funcionales siguieron en verde despues de recrear el contenedor.
+
 ## 2026-06-05 - Release cleanup changelog merge
 
 Accion:
@@ -2839,3 +2901,422 @@ Resultado:
 - ATS completo (`cv_id=41`) responde `Bueno`.
 - ATS incompleto (`cv_id=42`) responde `Insuficiente`.
 - `/data/exports` contiene archivos persistidos de CV y carta del flujo de validacion.
+
+---
+
+Accion:
+Aplicar ajustes finos de UX/UI en el dashboard privado y modulos asociados.
+
+Motivo:
+Corregir detalles visuales reportados por el usuario sin avanzar a una etapa nueva ni tocar base de datos.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/routes/dashboard.py`
+- `app/routes/ats.py`
+- `app/templates/dashboard.html`
+- `app/templates/cvs/index.html`
+- `app/templates/cvs/detail.html`
+- `app/templates/cover_letters/index.html`
+- `app/templates/ats/index.html`
+- `app/templates/ats/cv_analysis.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/templates/ats/modal.html`
+- `app/templates/documentation/index.html`
+- `app/templates/documentation/detail.html`
+- `app/templates/layout.html`
+- `app/static/css/app.css`
+- `app/static/js/app.js`
+- `app/main.py`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `tests/test_documentation_routes.py`
+
+Resultado:
+- Dashboard con resumen mas claro.
+- Listados de CVs/cartas con acciones a la derecha y menus secundarios mas controlados.
+- ATS disponible en modal sin romper la ruta completa.
+- Documentacion HTML sin el enlace redundante `Abrir PDF directo`.
+
+---
+
+Accion:
+Validar compilacion, runtime, tests y DOM del refinamiento 8.1.1.
+
+Motivo:
+Confirmar que el ajuste fino mantiene el MVP estable en Docker Compose.
+
+Comandos:
+- `python -m compileall app tests`
+- `docker compose build`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose logs app --tail 80`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest -UseBasicParsing` sobre `/`, `/cvs/`, `/cover-letters/`, `/applications/`, `/ats/`, `/documentation/`
+- `Invoke-WebRequest -UseBasicParsing` sobre `/documentation/technical` y `/documentation/usage`
+- `Invoke-WebRequest -UseBasicParsing` sobre `/ats/cvs/43` y `/ats/cvs/43/modal`
+- `git diff --check`
+
+Resultado:
+- `pytest`: `45 passed in 1.10s`.
+- Contenedor `cv_latex_app` healthy en `127.0.0.1:8000`.
+- Rutas principales responden `200`.
+- El DOM confirma ausencia de `SQLite activo` y de `Abrir PDF directo`.
+- El DOM confirma `data-ats-modal-url`, `secondary-actions` y modal ATS con score, checklist, advertencias y recomendaciones.
+- La validacion visual real del menu y del modal queda pendiente manual por falta de browser automatizado confiable en este host.
+
+---
+
+Accion:
+Pulir detalles visuales finales del dashboard privado y del flujo CV/ATS.
+
+Motivo:
+Corregir alineaciones concretas reportadas por el usuario antes de abrir PR, sin avanzar a la etapa 8.2.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/routes/dashboard.py`
+- `app/templates/dashboard.html`
+- `app/templates/cvs/index.html`
+- `app/templates/cvs/detail.html`
+- `app/templates/ats/modal.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `app/static/js/app.js`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+
+Resultado:
+- Resumen del dashboard compactado.
+- Botones principales del dashboard convertidos a CTA visuales.
+- Import JSON movido a `Herramientas avanzadas`.
+- Confirmacion modal para `Duplicar CV`.
+- Modal ATS con acciones superiores, score mejor alineado y cards mas estables.
+
+---
+
+Accion:
+Validar la iteracion 8.1.2 en runtime y DOM.
+
+Motivo:
+Confirmar que el pulido visual no rompe la UI privada, el modal ATS ni el flujo de duplicado.
+
+Comandos:
+- `python -m compileall app tests`
+- `docker compose build`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose logs app --tail 80`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest -UseBasicParsing` sobre `/`, `/cvs/`, `/cover-letters/`, `/documentation/`, `/ats/cvs/46`, `/ats/cvs/46/modal`
+- `git diff --check`
+
+Resultado:
+- `pytest`: `45 passed in 1.02s`.
+- Dashboard `200`, con resumen compacto, previews CSS y botones visibles para `Abrir CVs` y `Abrir cartas`.
+- Listado de CVs `200`, sin `SQLite activo`, con `Herramientas avanzadas`, `entity-meta-date` y `data-confirm-submit`.
+- Modal ATS `200`, con acciones superiores `Abrir vista completa`, `Editar CV`, `Cerrar` y sin evidencia DOM de cortes tipo `Recomendaci ones`.
+- La interaccion real de modal/menu queda pendiente de validacion manual por falta de browser automatizado confiable.
+
+---
+
+Accion:
+Aplicar la correccion fina visual final 8.1.2.1 antes del PR.
+
+Motivo:
+Cerrar los ultimos desalineados visuales de dashboard, listados, detalle de CV y modal ATS sin implementar previews reales, selector de paletas ni IA.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/template_utils.py`
+- `app/main.py`
+- `app/routes/dashboard.py`
+- `app/routes/cvs.py`
+- `app/routes/cover_letters.py`
+- `app/routes/ats.py`
+- `app/templates/dashboard.html`
+- `app/templates/cvs/index.html`
+- `app/templates/cvs/detail.html`
+- `app/templates/cvs/form.html`
+- `app/templates/cover_letters/index.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+- `docs/development/PROJECT_HISTORY_ROLLBACK.md`
+
+Resultado:
+- Se agrego un helper comun de templates para formatear fechas `dd/mm/yyyy HH:mm` y mapear variantes visuales del estado ATS.
+- El resumen del workspace quedo mas compacto, con `Postulaciones` menos protagonista y sin riesgo de cortes evidentes.
+- Los listados de CVs y cartas ahora muestran la fecha como metadata secundaria alineada.
+- El detalle de CV muestra `Titulo`, `Nombre`, fechas formateadas y una cabecera contextual en `Editar CV`.
+- El modal ATS adopta badge semantico y resumen rapido mas compacto.
+- Se documento backlog explicito para 8.1.3 (previews reales y selector de paletas) y 8.3 (IA real).
+
+---
+
+Accion:
+Simplificar el cierre visual definitivo 8.1.2.2.
+
+Motivo:
+Eliminar elementos que seguian generando ruido visual antes de abrir PR, sin agregar funcionalidades nuevas.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/main.py`
+- `app/templates/dashboard.html`
+- `app/templates/cvs/index.html`
+- `app/templates/cvs/form.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- Resumen del workspace reducido a una linea horizontal sin cards internas.
+- Cards principales sin badges numericos grandes.
+- CTA duplicada `Nueva carta` removida de recientes.
+- `Herramientas avanzadas` ahora se ve como boton secundario.
+- Acciones secundarias de `Exportacion` separadas del selector.
+- `Estado general` del modal ATS reorganizado con badge, score y longitud en estructura clara.
+- Contexto visual de edicion desde ATS reforzado con subtitulo `titulo - persona`.
+
+---
+
+Accion:
+Aplicar micro-ajuste visual final 8.1.2.3.
+
+Motivo:
+Resolver solo los puntos visuales finales marcados por el usuario antes del PR.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/template_utils.py`
+- `app/main.py`
+- `app/templates/dashboard.html`
+- `app/templates/cvs/index.html`
+- `app/templates/cover_letters/index.html`
+- `app/templates/cvs/form.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- Resumen workspace compactado sin cuadrados internos ni texto nuevo.
+- Fechas visibles con sufijo `hs`.
+- Metadata `Actualizado`/`Actualizada` reubicada debajo de datos principales.
+- Acciones secundarias de `Exportacion` mejor separadas.
+- Badge ATS mas visible y referencia de score agregada.
+- Header de edicion de CV corregido para usar persona/titulo como H1.
+
+---
+
+Accion:
+Cerrar micro-fix visual 8.1.2.4 antes del PR.
+
+Motivo:
+Corregir solo gaps visuales finales en detalle CV, vista TEX y `Estado general` del ATS sin tocar logica funcional.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/routes/ats.py`
+- `app/templates/ats/_analysis_sections.html`
+- `app/templates/cvs/tex_preview.html`
+- `app/main.py`
+- `app/static/css/app.css`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- `Exportacion` queda alineada visualmente con `Ficha rapida`.
+- `Export Engine` se mantiene dentro del layout de `Ver TEX`.
+- `Estado general` del ATS usa referencia vertical de score y muestra el rango real de longitud.
+- Se versionaron assets con `ui8124fix1` para evitar cache visual obsoleta.
+
+---
+
+Accion:
+Integrar ATS al flujo principal de `Curriculum Vitae`.
+
+Motivo:
+Volver visible el estado ATS por CV sin persistencia, bajar el peso del acceso lateral a ATS y compactar el reporte visual.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/routes/cvs.py`
+- `app/templates/cvs/index.html`
+- `app/templates/layout.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `app/main.py`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- El listado de CVs calcula ATS en runtime y muestra badges semanticos por fila.
+- El badge ATS abre el modal del reporte sin salir del flujo de `CVs`.
+- La sidebar degrada el acceso a `ATS directo`.
+- El reporte ATS queda mas compacto, con checklist y feedbacks menos altos.
+
+---
+
+Accion:
+Cerrar el ajuste visual 8.1.2.6 de ATS integrado en `CVs`.
+
+Motivo:
+Eliminar la entrada lateral separada de ATS, bajar el badge a metadata y reducir aun mas el scroll del modal.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/templates/layout.html`
+- `app/templates/cvs/index.html`
+- `app/static/css/app.css`
+- `app/main.py`
+- `tests/test_ui_routes.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- `Curriculum Vitae + ATS` pasa a ser la entrada principal en sidebar.
+- El badge ATS queda alineado con la metadata del CV.
+- El modal ATS reduce paddings y altura de paneles para mostrar mas contenido sin scroll.
+
+---
+
+Accion:
+Corregir la posicion final del badge ATS en el listado de CVs.
+
+Motivo:
+Asociar el badge al titulo del documento en lugar de la metadata inferior, sin tocar el resto del flujo.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/templates/cvs/index.html`
+- `app/static/css/app.css`
+- `app/main.py`
+- `tests/test_ui_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- El badge ATS queda junto al titulo del CV con wrap prolijo.
+- El nombre de persona, email y fecha permanecen debajo.
+- El badge sigue abriendo el modal ATS y no invade la zona de botones.
+
+---
+
+Accion:
+Redisenar el popup ATS como dashboard compacto.
+
+Motivo:
+Cerrar la etapa 8.1.2.9 con una lectura modal mas densa, elegante y sin scroll visible en pantallas normales.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/templates/ats/modal.html`
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `app/main.py`
+- `tests/test_ats_routes.py`
+- `README.md`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- El modal ATS queda organizado en dos columnas: estado/resumen y checklist.
+- `Estado general` suma barra visual de score y mantiene referencias reales de score y longitud.
+- Recomendaciones y advertencias quedan en cards inferiores compactas.
+
+---
+
+Accion:
+Pulir los indicadores visuales del score ATS.
+
+Motivo:
+Cerrar la etapa 8.1.2.10 con puntos de color semanticos en la referencia y glow sutil en la barra del score, sin tocar layout ni logica.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/templates/ats/_analysis_sections.html`
+- `app/static/css/app.css`
+- `app/main.py`
+- `tests/test_ats_routes.py`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/MODULE_INDEX.md`
+- `docs/development/MVP_VALIDATION.md`
+
+Resultado:
+- La referencia de score muestra puntos rojo, naranja y verde segun el rango.
+- La barra de score suma glow de punta mas visible pero contenido.
+- El modal ATS mantiene intacto el layout ya aprobado.
+
+---
+
+Accion:
+Corregir renderizado seguro del modal de confirmacion.
+
+Motivo:
+Resolver el hallazgo P1 de Codex Review evitando que textos dinamicos de `data-*` se inserten con `innerHTML`.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/static/js/app.js`
+- `app/main.py`
+- `tests/test_confirmation_modal_security.py`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/COMMAND_LOG.md`
+
+Resultado:
+- `openConfirmModal` construye el dialogo con nodos DOM y asigna textos dinamicos con `textContent`.
+- Se agrego cobertura para evitar regresiones con `innerHTML` y titulos maliciosos en confirmaciones.
+- No se modifico UX aprobada, ATS, DB ni rutas de negocio.

@@ -1,13 +1,17 @@
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from app.repositories import cv_repository
-from app.services.ats_service import analyze_cv_ats
+from app.services.ats_service import (
+    MAX_RECOMMENDED_CV_LENGTH,
+    MIN_RECOMMENDED_CV_LENGTH,
+    analyze_cv_ats,
+)
+from app.template_utils import create_templates
 
 
 router = APIRouter(prefix="/ats", tags=["ATS"])
-templates = Jinja2Templates(directory="app/templates")
+templates = create_templates()
 
 
 @router.get("/", response_class=HTMLResponse, name="ats_index")
@@ -23,11 +27,7 @@ def ats_index(request: Request) -> HTMLResponse:
 
 @router.get("/cvs/{cv_id}", response_class=HTMLResponse, name="ats_cv_analysis")
 def ats_cv_analysis(request: Request, cv_id: int) -> HTMLResponse:
-    cv = cv_repository.get_cv(cv_id)
-    if cv is None:
-        raise HTTPException(status_code=404, detail="CV no encontrado.")
-
-    analysis = analyze_cv_ats(cv)
+    cv, analysis = _get_cv_analysis(cv_id)
 
     return templates.TemplateResponse(
         request,
@@ -35,5 +35,35 @@ def ats_cv_analysis(request: Request, cv_id: int) -> HTMLResponse:
         {
             "cv": cv,
             "analysis": analysis,
+            "ats_length_reference": {
+                "min": MIN_RECOMMENDED_CV_LENGTH,
+                "max": MAX_RECOMMENDED_CV_LENGTH,
+            },
         },
     )
+
+
+@router.get("/cvs/{cv_id}/modal", response_class=HTMLResponse, name="ats_cv_analysis_modal")
+def ats_cv_analysis_modal(request: Request, cv_id: int) -> HTMLResponse:
+    cv, analysis = _get_cv_analysis(cv_id)
+
+    return templates.TemplateResponse(
+        request,
+        "ats/modal.html",
+        {
+            "cv": cv,
+            "analysis": analysis,
+            "ats_length_reference": {
+                "min": MIN_RECOMMENDED_CV_LENGTH,
+                "max": MAX_RECOMMENDED_CV_LENGTH,
+            },
+        },
+    )
+
+
+def _get_cv_analysis(cv_id: int):
+    cv = cv_repository.get_cv(cv_id)
+    if cv is None:
+        raise HTTPException(status_code=404, detail="CV no encontrado.")
+
+    return cv, analyze_cv_ats(cv)

@@ -1,5 +1,64 @@
 # Changelog General
 
+## En desarrollo - 2026-06-06
+
+### Agregado
+
+- Sidebar fija para navegacion privada entre Dashboard, CVs, Cartas, Postulaciones, ATS, Documentacion y placeholder de configuracion local.
+- Toggle dark/light con persistencia en `localStorage`.
+- `docs/development/PROJECT_HISTORY_ROLLBACK.md` con referencia al tag `v0.8.0`, commit base `eab9556` y comandos de rollback documentados.
+- Tests de rutas UI para dashboard y confirmaciones de borrado seguro.
+- Versionado de assets CSS/JS con query string para evitar cache visual obsoleta durante el rediseño privado.
+
+### Cambiado
+
+- Dashboard redisenado con foco principal en CVs y cartas, modulos secundarios mas compactos y menos texto explicativo largo.
+- Listados de CVs y cartas redisenados como filas compactas con preview visual CSS, acciones primarias y menu de acciones secundarias.
+- Detalle de CV con selector unificado de plantilla para exportar TEX y PDF.
+- Dashboard refinado con metricas claras de `Curriculums`, `Cartas` y `Postulaciones`, sin copy tecnico redundante.
+- Listados de CVs y cartas ajustados para alinear acciones a la derecha, quitar `SQLite activo` y cerrar `Mas acciones` con click externo o `Escape`.
+- ATS ahora puede abrirse como modal desde la UI privada, manteniendo la ruta completa `/ats/cvs/{cv_id}` para compatibilidad.
+- Centro de documentacion simplificado para dejar solo `Leer en la web` y `Descargar PDF`.
+- Dashboard pulido con previews visuales CSS, botones en cards principales y card compacta de resumen sin texto sobrante.
+- `Importar JSON` movido a `Herramientas avanzadas` para bajar su peso visual en la pantalla principal de CVs.
+- El detalle de CV ahora muestra confirmacion modal antes de duplicar y una ficha rapida mas completa.
+- Miniaturas reales de PDF quedan registradas como pendiente futuro, fuera del alcance de esta etapa.
+- Confirmaciones de eliminacion de CVs y cartas endurecidas para exigir coincidencia exacta del texto esperado.
+- Sidebar y resaltado de modulo activo dejan de depender solo de JS y quedan reforzados desde el render del template base.
+- README, manual web y documentacion tecnica actualizados para reflejar sidebar, tema y rollback visual.
+- Resumen del workspace corregido para evitar cortes de palabras, bajar el peso visual de `Postulaciones` y centrar mejor las metricas.
+- Fechas de CVs y cartas visibles en formato `dd/mm/yyyy HH:mm`, integradas como metadata secundaria mejor alineada.
+- Detalle de CV ajustado para compactar `Exportacion`, acortar labels de `Ficha rapida` y unificar spacing entre ambos bloques.
+- Modal ATS pulido con badge semantico, cards mas compactas y mejor alineacion de score, estado y longitud.
+- Pantalla `Editar CV` ajustada para mostrar contexto del CV y de la persona tambien cuando se llega desde el modal ATS.
+- Miniaturas reales de PDF, selector de paletas visuales e IA real documentados como backlog de etapas futuras en lugar de implementarlos ahora.
+- Resumen del workspace simplificado a una linea horizontal sin cuadrados internos ni numeros gigantes.
+- Cards principales del dashboard simplificadas sin badges numericos grandes.
+- CTA duplicada `Nueva carta` removida de la seccion de recientes; quedan las acciones rapidas superiores como unica entrada de creacion.
+- `Herramientas avanzadas` en CVs convertido a boton secundario.
+- `Exportacion` y `Ficha rapida` ajustadas con separacion final de acciones secundarias y encabezados consistentes.
+- Estado general del modal ATS reordenado con titulo, badge semantico, score y longitud en estructura vertical clara.
+- Contexto visual de `Editar CV` desde ATS reforzado con subtitulo `titulo - persona`.
+- Resumen del workspace compactado para reducir el alto de la card sin cambiar el formato `CVs | Cartas | Postulaciones`.
+- Fechas visibles de dashboard, CVs, cartas y detalle de CV actualizadas a `dd/mm/yyyy HH:mm hs`.
+- Metadata `Actualizado`/`Actualizada` reubicada debajo de los datos principales en listados.
+- Encabezados internos de `Exportacion` y `Ficha rapida` mantenidos coherentes, con acciones secundarias de exportacion mejor espaciadas.
+- Badge de `Estado general` en el modal ATS agrandado y complementado con referencia discreta de score.
+- Header de edicion de CV corregido para usar persona o titulo de CV como H1 principal y dejar `Editar CV` como contexto.
+- El label de `Exportacion` queda explicitamente alineado con el mismo acento visual de `Ficha rapida`.
+- La vista `Ver TEX` se reajusto para mantener `Export Engine` dentro del mismo layout y contener mejor titulos de archivo largos.
+- `Estado general` en ATS ahora muestra referencia vertical de score y el rango real recomendado de longitud (`280` a `4500` caracteres).
+- ATS queda integrado visualmente al listado de `Curriculum Vitae` con badges calculados en runtime, sin persistencia en DB.
+- La sidebar degrada el acceso de ATS a `ATS directo`, manteniendo rutas y acceso por URL sin competir con el flujo principal de `CVs`.
+- El modal ATS se compacta con checklist mas bajo, feedbacks mas cortos y estado visual `OK`/`Revisar` mas claro.
+- La entrada lateral separada de ATS se elimina y `Curriculum Vitae + ATS` pasa a ser el acceso principal del flujo.
+- El badge ATS baja a la zona de metadata de cada CV para alinearse con email y fecha de actualizacion.
+- El modal ATS reduce aun mas paddings y altura de paneles para disminuir scroll en pantallas normales.
+- El badge ATS se reubica finalmente junto al titulo del CV para asociarlo mejor al documento antes del nombre, email y fecha.
+- El popup ATS se redisenia como dashboard compacto de dos columnas, con `Estado general` y `Resumen rapido` a la izquierda, `Checklist` a la derecha y feedback inferior en cards compactas.
+- La referencia de score ATS suma puntos de color semanticos y la barra de score agrega glow sutil en la punta para reforzar lectura visual.
+- El modal de confirmacion deja de interpolar textos dinamicos con `innerHTML` y renderiza valores de `data-*` con `textContent` para evitar XSS.
+
 ## 0.8.0 - 2026-06-04
 
 ### Agregado

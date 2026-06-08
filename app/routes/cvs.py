@@ -2,12 +2,12 @@ import logging
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 
 from app.repositories import cv_repository
 from app.repositories.cv_repository import DuplicateCVError
 from app.models import CV
 from app.schemas import CVFormData
+from app.services.ats_service import analyze_cv_ats
 from app.services.export_service import (
     ExportServiceError,
     build_cv_form_data_from_json,
@@ -22,21 +22,24 @@ from app.services.latex_service import (
     generate_cv_tex_document,
 )
 from app.services.pdf_service import PdfCompilationError, generate_cv_pdf_export
+from app.template_utils import create_templates
 from app.validations.cv_validations import build_cv_form_data, validate_cv_form
 
 
 router = APIRouter(prefix="/cvs", tags=["CVs"])
-templates = Jinja2Templates(directory="app/templates")
+templates = create_templates()
 logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_class=HTMLResponse, name="cvs_list")
 def list_cvs(request: Request, message: str | None = None) -> HTMLResponse:
+    cvs = cv_repository.list_cvs()
     return templates.TemplateResponse(
+        request,
         "cvs/index.html",
         {
-            "request": request,
-            "cvs": cv_repository.list_cvs(),
+            "cvs": cvs,
+            "cv_cards": _build_cv_cards(cvs),
             "message": message,
             "templates": available_cv_templates(),
             "default_template": DEFAULT_TEMPLATE_KEY,
@@ -114,11 +117,13 @@ def cv_detail(request: Request, cv_id: int, message: str | None = None) -> HTMLR
         raise HTTPException(status_code=404, detail="CV no encontrado.")
 
     return templates.TemplateResponse(
+        request,
         "cvs/detail.html",
         {
-            "request": request,
             "cv": cv,
             "message": message,
+            "templates": available_cv_templates(),
+            "default_template": DEFAULT_TEMPLATE_KEY,
         },
     )
 
@@ -139,9 +144,9 @@ def cv_tex_preview(
         raise HTTPException(status_code=404, detail=str(error)) from error
 
     return templates.TemplateResponse(
+        request,
         "cvs/tex_preview.html",
         {
-            "request": request,
             "cv": cv,
             "generated_document": generated_document,
             "templates": available_cv_templates(),
@@ -221,6 +226,8 @@ def edit_cv(request: Request, cv_id: int) -> HTMLResponse:
         page_title="Editar CV",
         submit_label="Guardar cambios",
         cv_id=cv.id,
+        context_title=cv.title,
+        context_full_name=cv.full_name,
     )
 
 
@@ -250,6 +257,10 @@ def update_cv(
     errors = validate_cv_form(form_data)
 
     if errors:
+        current_cv = cv_repository.get_cv(cv_id)
+        if current_cv is None:
+            raise HTTPException(status_code=404, detail="CV no encontrado.")
+
         return _render_form(
             request=request,
             form_data=form_data,
@@ -258,6 +269,8 @@ def update_cv(
             page_title="Editar CV",
             submit_label="Guardar cambios",
             cv_id=cv_id,
+            context_title=form_data.title or current_cv.title,
+            context_full_name=form_data.full_name or current_cv.full_name,
             status_code=422,
         )
 
@@ -286,19 +299,24 @@ def confirm_delete_cv(request: Request, cv_id: int) -> HTMLResponse:
     if cv is None:
         raise HTTPException(status_code=404, detail="CV no encontrado.")
 
-    return templates.TemplateResponse(
-        "cvs/confirm_delete.html",
-        {
-            "request": request,
-            "cv": cv,
-        },
-    )
+    return _render_delete_confirmation(request, cv)
 
 
 @router.post("/{cv_id}/delete", response_class=HTMLResponse, name="cvs_delete")
-def delete_cv(request: Request, cv_id: int, confirm_delete: str = Form("")) -> RedirectResponse:
-    if confirm_delete != "yes":
-        return _redirect_to_detail(request, cv_id, "Eliminacion cancelada.")
+def delete_cv(request: Request, cv_id: int, confirmation_value: str = Form("")):
+    cv = cv_repository.get_cv(cv_id)
+    if cv is None:
+        raise HTTPException(status_code=404, detail="CV no encontrado.")
+
+    expected_title = cv.title.strip()
+    if confirmation_value.strip() != expected_title:
+        return _render_delete_confirmation(
+            request,
+            cv,
+            error="El texto ingresado no coincide exactamente con el titulo del CV.",
+            entered_value=confirmation_value,
+            status_code=422,
+        )
 
     if not cv_repository.soft_delete_cv(cv_id):
         raise HTTPException(status_code=404, detail="CV no encontrado.")
@@ -366,18 +384,22 @@ def _render_form(
     page_title: str,
     submit_label: str,
     cv_id: int | None = None,
+    context_title: str | None = None,
+    context_full_name: str | None = None,
     status_code: int = 200,
 ) -> HTMLResponse:
     return templates.TemplateResponse(
+        request,
         "cvs/form.html",
         {
-            "request": request,
             "form_data": form_data,
             "errors": errors,
             "action_url": action_url,
             "page_title": page_title,
             "submit_label": submit_label,
             "cv_id": cv_id,
+            "context_title": context_title,
+            "context_full_name": context_full_name,
         },
         status_code=status_code,
     )
@@ -391,3 +413,34 @@ def _redirect_to_detail(request: Request, cv_id: int, message: str) -> RedirectR
 def _redirect_to_list(request: Request, message: str) -> RedirectResponse:
     url = request.url_for("cvs_list").include_query_params(message=message)
     return RedirectResponse(str(url), status_code=303)
+
+
+def _render_delete_confirmation(
+    request: Request,
+    cv: CV,
+    *,
+    error: str | None = None,
+    entered_value: str = "",
+    status_code: int = 200,
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "cvs/confirm_delete.html",
+        {
+            "cv": cv,
+            "expected_value": cv.title,
+            "entered_value": entered_value,
+            "error": error,
+        },
+        status_code=status_code,
+    )
+
+
+def _build_cv_cards(cvs: list[CV]) -> list[dict[str, object]]:
+    return [
+        {
+            "cv": cv,
+            "ats_analysis": analyze_cv_ats(cv),
+        }
+        for cv in cvs
+    ]
