@@ -39,6 +39,12 @@
 - La barra del score agrega glow sutil en la punta para mejorar lectura visual del progreso.
 - El ajuste queda encapsulado en el partial ATS y en CSS especifico, sin cambiar layout, checklist ni acciones del modal.
 
+### Correccion P1 - confirmaciones seguras
+
+- Se corrigio el modal de confirmacion para no interpolar `data-confirm-title`, `data-confirm-message` ni `data-confirm-label` mediante `innerHTML`.
+- El dialogo se construye con nodos DOM y los textos dinamicos se asignan con `textContent`.
+- Se agregaron tests contra regresiones de XSS usando titulos maliciosos de CV.
+
 ## Documentation Center
 
 - Fecha: 2026-06-05

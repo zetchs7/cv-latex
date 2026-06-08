@@ -103,34 +103,73 @@ function openConfirmModal({ title, message, confirmLabel, onConfirm }) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   overlay.dataset.confirmOverlay = "true";
-  overlay.innerHTML = `
-    <div class="modal-backdrop" data-confirm-close></div>
-    <div class="modal-frame">
-      <div class="confirm-dialog-card" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" tabindex="-1">
-        <div class="confirm-dialog-head">
-          <div>
-            <p class="eyebrow">Confirmacion</p>
-            <h2 id="confirm-dialog-title">${title}</h2>
-          </div>
-          <button class="button small" type="button" data-confirm-close>Cerrar</button>
-        </div>
-        <p class="section-copy">${message}</p>
-        <div class="confirm-dialog-actions">
-          <button class="button" type="button" data-confirm-close>Cancelar</button>
-          <button class="button primary" type="button" data-confirm-accept>${confirmLabel}</button>
-        </div>
-      </div>
-    </div>
-  `;
+
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.dataset.confirmClose = "true";
+
+  const frame = document.createElement("div");
+  frame.className = "modal-frame";
+
+  const dialog = document.createElement("div");
+  dialog.className = "confirm-dialog-card";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.setAttribute("aria-labelledby", "confirm-dialog-title");
+  dialog.setAttribute("tabindex", "-1");
+
+  const dialogHead = document.createElement("div");
+  dialogHead.className = "confirm-dialog-head";
+
+  const titleGroup = document.createElement("div");
+
+  const eyebrow = document.createElement("p");
+  eyebrow.className = "eyebrow";
+  eyebrow.textContent = "Confirmacion";
+
+  const titleElement = document.createElement("h2");
+  titleElement.id = "confirm-dialog-title";
+  titleElement.textContent = title;
+
+  titleGroup.append(eyebrow, titleElement);
+
+  const closeButton = document.createElement("button");
+  closeButton.className = "button small";
+  closeButton.type = "button";
+  closeButton.dataset.confirmClose = "true";
+  closeButton.textContent = "Cerrar";
+
+  dialogHead.append(titleGroup, closeButton);
+
+  const messageElement = document.createElement("p");
+  messageElement.className = "section-copy";
+  messageElement.textContent = message;
+
+  const actions = document.createElement("div");
+  actions.className = "confirm-dialog-actions";
+
+  const cancelButton = document.createElement("button");
+  cancelButton.className = "button";
+  cancelButton.type = "button";
+  cancelButton.dataset.confirmClose = "true";
+  cancelButton.textContent = "Cancelar";
+
+  const acceptButton = document.createElement("button");
+  acceptButton.className = "button primary";
+  acceptButton.type = "button";
+  acceptButton.dataset.confirmAccept = "true";
+  acceptButton.textContent = confirmLabel;
+
+  actions.append(cancelButton, acceptButton);
+  dialog.append(dialogHead, messageElement, actions);
+  frame.appendChild(dialog);
+  overlay.append(backdrop, frame);
 
   const root = document.getElementById("app-modal-root") || document.body;
   root.appendChild(overlay);
   document.body.classList.add("modal-open");
 
-  const dialog = overlay.querySelector(".confirm-dialog-card");
-  if (dialog) {
-    dialog.focus();
-  }
+  dialog.focus();
 
   overlay.querySelector("[data-confirm-accept]")?.addEventListener("click", () => {
     closeConfirmModal();

@@ -14,7 +14,7 @@ from app.routes.documentation import router as documentation_router
 
 
 APP_VERSION = os.getenv("APP_VERSION", "0.8.0")
-APP_ASSET_VERSION = os.getenv("APP_ASSET_VERSION", f"{APP_VERSION}-ui81210fix1")
+APP_ASSET_VERSION = os.getenv("APP_ASSET_VERSION", f"{APP_VERSION}-ui81210xss1")
 
 
 @asynccontextmanager

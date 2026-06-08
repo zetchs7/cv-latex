@@ -3297,3 +3297,26 @@ Resultado:
 - La referencia de score muestra puntos rojo, naranja y verde segun el rango.
 - La barra de score suma glow de punta mas visible pero contenido.
 - El modal ATS mantiene intacto el layout ya aprobado.
+
+---
+
+Accion:
+Corregir renderizado seguro del modal de confirmacion.
+
+Motivo:
+Resolver el hallazgo P1 de Codex Review evitando que textos dinamicos de `data-*` se inserten con `innerHTML`.
+
+Comando: `apply_patch`
+
+Argumentos:
+- `app/static/js/app.js`
+- `app/main.py`
+- `tests/test_confirmation_modal_security.py`
+- `docs/development/CHANGELOG_GENERAL.md`
+- `docs/development/DEVELOPMENT_LOG.md`
+- `docs/development/COMMAND_LOG.md`
+
+Resultado:
+- `openConfirmModal` construye el dialogo con nodos DOM y asigna textos dinamicos con `textContent`.
+- Se agrego cobertura para evitar regresiones con `innerHTML` y titulos maliciosos en confirmaciones.
+- No se modifico UX aprobada, ATS, DB ni rutas de negocio.
