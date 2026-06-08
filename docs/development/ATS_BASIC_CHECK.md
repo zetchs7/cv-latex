@@ -2,7 +2,7 @@
 
 ## Version
 
-- Version del modulo: `0.8.0`
+- Version del modulo: `0.9.0`
 - Etapa: `7 - Pulido final del MVP`
 
 ## Objetivo

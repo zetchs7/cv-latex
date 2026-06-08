@@ -5,7 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     APP_ENV=local \
     APP_DATA_DIR=/data \
     APP_DB_FILENAME=app.db \
-    APP_VERSION=0.8.0
+    APP_VERSION=0.9.0
 
 WORKDIR /app
 

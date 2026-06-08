@@ -1,6 +1,6 @@
 # Changelog General
 
-## En desarrollo - 2026-06-06
+## 0.9.0 - 2026-06-08
 
 ### Agregado
 
@@ -11,6 +11,9 @@
 - Versionado de assets CSS/JS con query string para evitar cache visual obsoleta durante el rediseño privado.
 
 ### Cambiado
+
+- Version vigente del proyecto, runtime, Docker y configuracion local alineadas a `0.9.0`.
+- README, module index, MVP validation y versioning actualizados para reflejar el release `v0.9.0`.
 
 - Dashboard redisenado con foco principal en CVs y cartas, modulos secundarios mas compactos y menos texto explicativo largo.
 - Listados de CVs y cartas redisenados como filas compactas con preview visual CSS, acciones primarias y menu de acciones secundarias.

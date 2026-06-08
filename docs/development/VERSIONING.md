@@ -16,11 +16,12 @@ No se crean tags sin validacion explicita del usuario.
 
 ## Version actual
 
-- Version vigente en la rama de trabajo del MVP: `0.8.0`
+- Version vigente en la rama de trabajo del MVP: `0.9.0`
 - Criterio aplicado:
   - `0.1.0`: base tecnica inicial.
   - `0.2.0` a `0.7.0`: nuevas capacidades funcionales por etapa.
-  - `0.8.0`: pulido final del MVP local, sin modulos nuevos grandes.
+  - `0.8.0`: cierre del MVP local previo a la UI privada integrada.
+  - `0.9.0`: release de UI privada, ATS integrado y endurecimiento final del flujo local.
 
 ## Mapa rapido por etapa
 
@@ -36,3 +37,4 @@ No se crean tags sin validacion explicita del usuario.
 | `0.6.0` | 5 | Application Tracker. |
 | `0.7.0` | 6 | ATS Basic Check. |
 | `0.8.0` | 7 | Pulido final del MVP local. |
+| `0.9.0` | 8.1 / 8.2 | UI privada, ATS integrado y release cleanup posterior. |

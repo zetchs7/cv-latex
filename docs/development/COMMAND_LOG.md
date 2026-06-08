@@ -1,5 +1,38 @@
 # Command Log
 
+## 2026-06-08 - Release cleanup v0.9.0
+
+Accion:
+Preparar el release `v0.9.0` despues de integrar la UI privada y el flujo ATS.
+
+Motivo:
+Alinear version visible, runtime, Docker y documentacion vigente sin agregar features nuevas ni crear tag.
+
+Comandos:
+- `git status --short --branch`
+- `git branch -vv`
+- `git log --oneline --decorate -7`
+- `rg -n "0\\.8\\.0|v0\\.8\\.0|0\\.9\\.0|v0\\.9\\.0" VERSION Dockerfile docker-compose.yml .env.example app README.md docs`
+- `git switch development`
+- `git switch -c feature/release-v0.9.0`
+- `apply_patch` sobre archivos de versionado y documentacion
+- `python -m compileall app tests`
+- `git diff --check`
+- `docker compose build`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose logs app --tail 80`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest` sobre `/`, `/cvs/`, `/cover-letters/`, `/applications/`, `/documentation/`, `/ats/cvs/{cv_id}/modal` y `/health`
+
+Resultado:
+- La version vigente queda alineada a `0.9.0` en runtime, Docker y configuracion local.
+- La UI y `/health` reflejan `0.9.0`.
+- Se mantienen las referencias historicas a `v0.8.0` solo donde corresponde.
+- Queda pendiente PR hacia `development` y `@codex review`.
+
+---
+
 ## 2026-06-05 - Documentation Center
 
 Accion:

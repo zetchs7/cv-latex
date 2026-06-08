@@ -1,5 +1,18 @@
 # Development Log
 
+## Release v0.9.0
+
+- Fecha: 2026-06-08
+- Rama: `feature/release-v0.9.0`
+- Objetivo: alinear version, changelog, docs operativas y validaciones despues de integrar la UI privada y el flujo ATS dentro de `Curriculum Vitae`.
+- Modulos afectados: `versioning`, `docker`, `runtime`, `docs/development`, `README`.
+- Resumen de cambios:
+  - Se actualizo la version vigente de `0.8.0` a `0.9.0` en `VERSION`, `Dockerfile`, `docker-compose.yml`, `.env.example` y `app/main.py`.
+  - Se mantuvieron intactas las referencias historicas al tag `v0.8.0` dentro de rollback, changelog y documentacion de referencia.
+  - Se documento que `v0.9.0` incluye dashboard privado redisenado, sidebar persistente, dark/light mode, flujo `Curriculum Vitae + ATS`, badge ATS en listados, modal ATS compacto, exportacion unificada, confirmaciones seguras, fix XSS y versionado de assets.
+  - Se actualizaron `README.md`, `CHANGELOG_GENERAL.md`, `VERSIONING.md`, `MODULE_INDEX.md` y `MVP_VALIDATION.md` para reflejar la nueva version vigente.
+- Resultado esperado: release `v0.9.0` preparado y validado, sin tag todavia y listo para PR hacia `development`.
+
 ## Etapa 8.1 - UI privada y dashboard operativo
 
 - Fecha: 2026-06-06

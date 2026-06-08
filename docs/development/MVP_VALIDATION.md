@@ -4,6 +4,8 @@
 
 Checklist manual minima para validar el MVP local antes de mergear una rama de cierre o preparar una release local.
 
+Version objetivo actual: `0.9.0`
+
 ## Precondiciones
 
 - Docker Desktop o daemon Docker activo.
