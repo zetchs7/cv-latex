@@ -1,5 +1,30 @@
 # Command Log
 
+## 2026-06-10 - Fix PR #9 Codex Review P1 sobre PDF tecnico descargable
+
+Accion:
+Regenerar el PDF tecnico bundleado para que el archivo descargable coincida con la fuente Markdown vigente de `v0.9.0`.
+
+Motivo:
+Codex Review detecto que `/documentation/technical` ya estaba alineado con `v0.9.0`, pero `app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf` seguia sin regenerarse respecto del commit padre.
+
+Comandos:
+- `git status --short --branch`
+- `git branch --show-current`
+- `git log --oneline --decorate -7`
+- `git hash-object app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf`
+- `docker compose build`
+- `docker run --rm -u 0 -v "${PWD}:/workspace" -w /workspace cv-latex-app python -c "...DOCUMENTATION_ASSET_BY_KEY['technical']..."`
+- `docker run --rm -v "${PWD}:/workspace" -w /workspace cv-latex-app python -c "...pdftotext..."`
+
+Resultado:
+- Hash anterior del PDF tecnico: `9725c5180bdfb1d29b57d512abac00a0e0706d5a`.
+- Hash nuevo del PDF tecnico: `0726772249a27d6e90304164d6972f07684bdf20`.
+- El PDF regenerado contiene `v0.9.0`, `Dashboard privado disponible`, `Curriculum Vitae + ATS` y `PR #8`.
+- El PDF regenerado no contiene `feature/ui-private-dashboard`, `Rama visual actual` ni referencias a abrir/integrar el PR visual como pendiente.
+
+---
+
 ## 2026-06-10 - Fix PR #9 Codex Review P1 sobre documentacion servida
 
 Accion:

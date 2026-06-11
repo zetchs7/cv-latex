@@ -106,6 +106,7 @@ docker compose exec app python -m pytest
 - Confirmar lectura HTML dentro de la web para ambas paginas.
 - Confirmar boton visible de descarga PDF en ambas paginas y ausencia de `Abrir PDF directo`.
 - Confirmar que `/documentation/technical` refleja `v0.9.0` como version preparada y no muestra `feature/ui-private-dashboard` como rama actual ni la UI privada como backlog pendiente.
+- Descargar el PDF tecnico y confirmar con `pdftotext` que contiene `v0.9.0`, `Dashboard privado disponible`, `Curriculum Vitae + ATS` y `PR #8`, sin referencias al PR visual como pendiente.
 
 ### Persistencia y artefactos
 

@@ -1,5 +1,20 @@
 # Development Log
 
+## Fix PR #9 - bundled technical PDF before v0.9.0 release
+
+- Fecha: 2026-06-10
+- Rama: `feature/release-v0.9.0`
+- Objetivo: corregir el P1 de Codex Review para que el PDF descargable de `/documentation/technical` coincida con la documentacion tecnica vigente de `v0.9.0`.
+- Modulos afectados: `app/static/docs`, `docs/development`.
+- Resumen de cambios:
+  - Se regenero `app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf` desde `docs/user/PROJECT_TECHNICAL_DOCUMENTATION.md`.
+  - Se uso el pipeline existente de `app.services.documentation_service` con `pdflatex` dentro de la imagen Docker `cv-latex-app`.
+  - Se valido con `pdftotext` que el PDF contiene `v0.9.0`, `Dashboard privado disponible`, `Curriculum Vitae + ATS` y `PR #8`.
+  - Se confirmo que el PDF ya no contiene `feature/ui-private-dashboard`, `Rama visual actual` ni referencias al PR visual como pendiente.
+- Hash anterior del PDF tecnico: `9725c5180bdfb1d29b57d512abac00a0e0706d5a`.
+- Hash nuevo del PDF tecnico: `0726772249a27d6e90304164d6972f07684bdf20`.
+- Resultado esperado: artefacto PDF descargable alineado al release `v0.9.0`, sin cambios funcionales nuevos.
+
 ## Fix PR #9 - shipped docs before v0.9.0 release
 
 - Fecha: 2026-06-10

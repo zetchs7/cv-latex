@@ -15,6 +15,7 @@
 - Version vigente del proyecto, runtime, Docker y configuracion local alineadas a `0.9.0`.
 - README, module index, MVP validation y versioning actualizados para reflejar el release `v0.9.0`.
 - Documentacion tecnica servida en `/documentation/technical` alineada con el estado real de `v0.9.0`, removiendo referencias obsoletas a la rama visual previa como si siguiera pendiente.
+- PDF tecnico descargable regenerado desde la fuente Markdown vigente para alinear el artefacto bundleado con `/documentation/technical` en `v0.9.0`.
 
 - Dashboard redisenado con foco principal en CVs y cartas, modulos secundarios mas compactos y menos texto explicativo largo.
 - Listados de CVs y cartas redisenados como filas compactas con preview visual CSS, acciones primarias y menu de acciones secundarias.
