@@ -1,5 +1,18 @@
 # Development Log
 
+## Fix PR #9 - shipped docs before v0.9.0 release
+
+- Fecha: 2026-06-10
+- Rama: `feature/release-v0.9.0`
+- Objetivo: corregir el P1 de Codex Review para que `/documentation/technical` refleje el estado integrado real antes del merge a `development`.
+- Modulos afectados: `docs/user`, `docs/development`, `tests`.
+- Resumen de cambios:
+  - Se actualizo `PROJECT_TECHNICAL_DOCUMENTATION.md` para reflejar `v0.9.0` como version preparada.
+  - Se removio el estado obsoleto que seguia tratando `feature/ui-private-dashboard` como rama actual o la UI privada como pendiente.
+  - Se documento explicitamente que el PR `#8` ya fue mergeado y que dashboard privado, sidebar persistente, dark/light, `Curriculum Vitae + ATS`, badge ATS, modal ATS compacto y fix XSS ya forman parte del release preparado.
+  - Se agrego una prueba de regresion para evitar que `/documentation/technical` vuelva a publicar ese estado obsoleto.
+- Resultado esperado: documentacion servida alineada al release `v0.9.0`, sin cambios funcionales nuevos.
+
 ## Release v0.9.0
 
 - Fecha: 2026-06-08

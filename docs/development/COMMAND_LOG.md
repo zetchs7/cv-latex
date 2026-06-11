@@ -1,5 +1,35 @@
 # Command Log
 
+## 2026-06-10 - Fix PR #9 Codex Review P1 sobre documentacion servida
+
+Accion:
+Alinear la documentacion HTML servida por la app con el estado real preparado para `v0.9.0`.
+
+Motivo:
+`/documentation/technical` seguia mostrando estado previo a la integracion del PR `#8` y trataba la UI privada como trabajo pendiente, lo que bloqueaba el release.
+
+Comandos:
+- `git status --short --branch`
+- `git branch --show-current`
+- `git log --oneline --decorate -7`
+- `rg -n "feature/ui-private-dashboard|visual PR|backlog|0\\.8\\.0|v0\\.8\\.0|0\\.9\\.0|v0\\.9\\.0" docs/user docs/development`
+- `apply_patch` sobre `docs/user/PROJECT_TECHNICAL_DOCUMENTATION.md`, `docs/development/COMMAND_LOG.md`, `docs/development/DEVELOPMENT_LOG.md`, `docs/development/CHANGELOG_GENERAL.md`, `docs/development/MVP_VALIDATION.md` y `tests/test_documentation_routes.py`
+- `python -m compileall app tests`
+- `git diff --check`
+- `docker compose build`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose logs app --tail 80`
+- `docker compose exec app python -m pytest`
+- Validacion HTTP/DOM sobre `/documentation/`, `/documentation/technical` y `/health`
+
+Resultado:
+- La documentacion tecnica servida ya refleja `v0.9.0` como version preparada.
+- La UI privada y el flujo ATS quedan documentados como integrados, no como backlog pendiente.
+- Las referencias a `v0.8.0` se mantienen solo como historial y rollback.
+
+---
+
 ## 2026-06-08 - Release cleanup v0.9.0
 
 Accion:

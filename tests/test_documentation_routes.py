@@ -27,8 +27,14 @@ class DocumentationRoutesTest(unittest.TestCase):
         self.assertIn("Indice", response.text)
         self.assertIn("Arquitectura general", response.text)
         self.assertIn("Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf", response.text)
+        self.assertIn("Version actual preparada", response.text)
+        self.assertIn("v0.9.0", response.text)
+        self.assertIn("PR <code>#8</code>", response.text)
+        self.assertIn("Dashboard privado disponible", response.text)
         self.assertNotIn("Abrir PDF directo", response.text)
         self.assertNotIn("iframe", response.text)
+        self.assertNotIn("Rama visual actual", response.text)
+        self.assertNotIn("feature/ui-private-dashboard", response.text)
 
     def test_renders_usage_document_as_html(self):
         with TestClient(app) as client:
