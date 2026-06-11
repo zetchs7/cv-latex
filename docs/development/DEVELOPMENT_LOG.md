@@ -1,5 +1,20 @@
 # Development Log
 
+## Etapa 8.3 - trazabilidad y documentacion visual
+
+- Fecha: 2026-06-11
+- Rama: `feature/traceability-docs-v0.9.0`
+- Objetivo: mejorar trazabilidad persistente del repo y elevar la documentacion HTML/PDF a un formato mas profesional, escaneable y consistente.
+- Modulos afectados: `AGENTS.md`, `documentation`, `static/docs`, `docs/user`, `docs/development`, `tests`.
+- Resumen de cambios:
+  - Se crea `AGENTS.md` del repo con reglas especificas de stack, Git Flow, validaciones, documentacion, PDF, seguridad, Code Review y Prompt IDs externos a Codex.
+  - Se documenta que los Prompt IDs son externos a Codex y no deben incluirse dentro de prompts ejecutables.
+  - Se actualizan reglas de timestamps: `COMMAND_LOG.md` para comandos nuevos, `DEVELOPMENT_LOG.md` para hitos, `MVP_VALIDATION.md` para validaciones fuertes, `CHANGELOG_GENERAL.md` por release, `MODULE_INDEX.md` como mapa y `VERSIONING.md` para fechas de release/tag.
+  - Se mejora el renderer de documentacion para soportar callouts en HTML/PDF y generar PDFs con portada, version, fecha, estado, tabla de contenidos, footer, tablas con filas alternadas y bloques visuales.
+  - Se actualiza `PROJECT_HISTORY_ROLLBACK.md` para reflejar `v0.9.0` como release estable actual y `v0.8.0` como release anterior.
+  - Se cambia el copy menor del sidebar de `Base estable: v0.8.0` a `Release anterior: v0.8.0`.
+- Resultado esperado: documentacion mas clara y auditable, sin cambios funcionales nuevos ni cambios de DB.
+
 ## Fix PR #9 - bundled technical PDF before v0.9.0 release
 
 - Fecha: 2026-06-10

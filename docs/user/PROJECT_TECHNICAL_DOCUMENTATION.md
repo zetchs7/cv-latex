@@ -4,6 +4,9 @@
 
 CV LaTeX Builder es una aplicacion web local para gestionar CVs, cartas de presentacion, postulaciones laborales y un chequeo ATS basico sin servicios externos. El MVP fue construido para ejecutarse con Docker Compose, persistir datos en SQLite y generar artefactos TEX, PDF y JSON de forma controlada.
 
+> [!OBJETIVO] Objetivo operativo
+> Mantener una base local estable, portable y auditable para usar datos reales de busqueda laboral sin depender de cloud, IA ni servicios externos.
+
 ## Objetivo del MVP
 
 - Centralizar la gestion documental de una busqueda laboral en una sola web local.
@@ -20,6 +23,9 @@ CV LaTeX Builder es una aplicacion web local para gestionar CVs, cartas de prese
 | Exportaciones | Servicios Python para TEX, PDF y JSON |
 | PDF | `pdflatex` dentro del contenedor |
 | Assets estaticos | `app/static` servido por FastAPI |
+
+> [!VALIDACION] Validacion fuerte
+> El estado estable `v0.9.0` fue validado con Docker Compose, healthcheck HTTP, rutas de documentacion, descarga real de PDFs, extraccion `pdftotext` y suite pytest completa.
 
 ## Modulos implementados
 
@@ -53,7 +59,7 @@ CV LaTeX Builder es una aplicacion web local para gestionar CVs, cartas de prese
 
 - Sidebar fija para navegar entre Dashboard, CVs, Cartas, Postulaciones, ATS y Documentacion.
 - Toggle dark/light persistido en `localStorage`.
-- Dashboard privado ya integrado en la linea preparada para `v0.9.0`.
+- Dashboard privado ya integrado en la linea publicada como `v0.9.0`.
 - Dashboard enfocado en CVs y cartas como modulos principales, con `Curriculum Vitae + ATS` como flujo principal.
 - Listados compactos con preview visual CSS de documento, badge ATS por CV y acciones secundarias.
 - Modal ATS compacto disponible desde el listado de CVs y desde el detalle completo.
@@ -101,12 +107,24 @@ El servicio ATS analiza presencia de email, telefono, resumen, experiencia, educ
 3. `feature/*` por etapa o mini-etapa.
 4. Merge fast-forward solo despues de validacion explicita.
 
+## Trazabilidad de prompts y comandos
+
+- Los Prompt IDs son externos a Codex y sirven solo para trazabilidad entre Franco y ChatGPT.
+- Los Prompt IDs no deben incluirse dentro del texto ejecutable que Codex recibe como orden.
+- `COMMAND_LOG.md` registra comandos nuevos con timestamp local, etapa, ID secuencial, accion, motivo, comando, argumentos, resultado, error completo y reintento si aplica.
+- Los documentos de desarrollo separan responsabilidades: `DEVELOPMENT_LOG.md` para hitos, `MVP_VALIDATION.md` para validaciones fuertes, `CHANGELOG_GENERAL.md` para releases y `MODULE_INDEX.md` para mapa de modulos.
+- Si un dato historico no puede reconstruirse con certeza, se debe documentar `timestamp exacto no reconstruido con certeza`.
+
+> [!COMANDO] Regla de bitacora
+> Cada comando nuevo relevante debe poder leerse despues sin depender del historial de chat: que se hizo, por que, con que comando exacto y que resultado tuvo.
+
 ## PRs y Codex Review
 
 - Cada etapa integrada paso por rama feature dedicada.
 - Se abrieron PRs hacia `development` para revision manual.
 - Codex Review se uso como control de calidad antes de mergear.
 - El PR `#8` ya fue mergeado previamente en `development` y dejo integrada la UI privada con ATS.
+- El PR `#9` fue mergeado por squash hacia `development`, luego `main` fue sincronizada por fast-forward y el tag `v0.9.0` quedo publicado sobre `cbd10fa`.
 
 ## Validaciones realizadas
 
@@ -120,11 +138,11 @@ El servicio ATS analiza presencia de email, telefono, resumen, experiencia, educ
 
 ## Estado release v0.9.0
 
-- Base estable publicada: `tag v0.8.0`
-- Commit base estable: `eab9556 fix(docs): render documentation as html with pdf downloads`
-- Version actual preparada: `v0.9.0`
-- Rama de release actual: `feature/release-v0.9.0`
-- Base integrada actual: `development` con PR `#8` ya mergeado.
+- Release actual publicado: `tag v0.9.0`
+- Commit estable actual: `cbd10fa chore(release): prepare v0.9.0 (#9)`
+- Release anterior: `tag v0.8.0`
+- Commit de referencia anterior: `eab9556 fix(docs): render documentation as html with pdf downloads`
+- Base integrada actual: `main` y `development` sincronizadas en `cbd10fa`.
 - Dashboard privado disponible.
 - Sidebar persistente disponible.
 - Dark/light disponible.
@@ -153,7 +171,10 @@ El servicio ATS analiza presencia de email, telefono, resumen, experiencia, educ
 - Miniaturas reales de PDF.
 - Paletas visuales.
 
+> [!PENDIENTE] Fuera del alcance actual
+> Editor estructurado, drag and drop, IA, miniaturas reales y paletas funcionales siguen como backlog. No forman parte de `v0.9.0`.
+
 ## Historial y rollback
 
 - Referencia operativa: `docs/development/PROJECT_HISTORY_ROLLBACK.md`
-- El archivo documenta el tag estable `v0.8.0`, el commit base `eab9556` y comandos de inspeccion o rollback temporal con advertencia de no ejecutarlos sin validacion previa.
+- El archivo documenta el tag estable actual `v0.9.0`, el release anterior `v0.8.0` y comandos de inspeccion o rollback temporal con advertencia de no ejecutarlos sin validacion previa.

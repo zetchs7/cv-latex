@@ -2110,6 +2110,42 @@ textarea {
   margin: 0;
 }
 
+.documentation-callout {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--border-strong);
+  border-left: 5px solid var(--accent);
+  border-radius: 18px;
+  background: var(--surface-soft);
+  color: var(--text-soft);
+}
+
+.documentation-callout strong {
+  color: var(--accent-strong);
+}
+
+.documentation-callout p {
+  color: var(--text-soft);
+}
+
+.documentation-callout-validacion,
+.documentation-callout-resultado {
+  border-left-color: var(--success-text);
+  background: var(--success-bg);
+}
+
+.documentation-callout-riesgo,
+.documentation-callout-pendiente {
+  border-left-color: var(--danger);
+  background: var(--warning-bg);
+}
+
+.documentation-callout-comando {
+  border-left-color: var(--accent-strong);
+  background: color-mix(in srgb, var(--surface-soft) 78%, var(--accent-soft) 22%);
+}
+
 .documentation-list {
   display: grid;
   gap: 10px;

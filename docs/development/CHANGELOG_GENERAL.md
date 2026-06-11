@@ -1,5 +1,27 @@
 # Changelog General
 
+## Unreleased - Etapa 8.3
+
+### Agregado
+
+- `AGENTS.md` especifico del repo con stack, Git Flow, comandos reales, validaciones, reglas de Prompt IDs externos a Codex, timestamps y flujo de documentacion/PDF.
+- Callouts visuales en documentacion HTML/PDF para objetivo, validacion, comandos, riesgos, pendientes y resultados.
+- Trazabilidad de release `v0.9.0` en documentacion tecnica, versioning, rollback y module index.
+
+### Cambiado
+
+- PDFs de documentacion pasan a generarse con portada, version, fecha, estado, tabla de contenidos, footer, jerarquia visual, tablas con filas alternadas y bloques destacados.
+- `PROJECT_HISTORY_ROLLBACK.md` deja de describir la rama visual como estado actual y pasa a documentar `v0.9.0` como release estable.
+- Copy menor de sidebar: `Base estable: v0.8.0` pasa a `Release anterior: v0.8.0`.
+- Manual web y documentacion tecnica explican que los Prompt IDs son externos a Codex y no forman parte de prompts ejecutables.
+
+### No incluido
+
+- Features funcionales nuevas.
+- Cambios de DB o migraciones.
+- Cambios de scoring ATS.
+- Editor estructurado, IA, thumbnails reales, paletas funcionales o drag/drop.
+
 ## 0.9.0 - 2026-06-08
 
 ### Agregado
