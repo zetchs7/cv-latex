@@ -1,5 +1,93 @@
 # Command Log
 
+## 2026-06-10 - Fix PR #9 Codex Review P1 sobre PDF tecnico descargable
+
+Accion:
+Regenerar el PDF tecnico bundleado para que el archivo descargable coincida con la fuente Markdown vigente de `v0.9.0`.
+
+Motivo:
+Codex Review detecto que `/documentation/technical` ya estaba alineado con `v0.9.0`, pero `app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf` seguia sin regenerarse respecto del commit padre.
+
+Comandos:
+- `git status --short --branch`
+- `git branch --show-current`
+- `git log --oneline --decorate -7`
+- `git hash-object app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf`
+- `docker compose build`
+- `docker run --rm -u 0 -v "${PWD}:/workspace" -w /workspace cv-latex-app python -c "...DOCUMENTATION_ASSET_BY_KEY['technical']..."`
+- `docker run --rm -v "${PWD}:/workspace" -w /workspace cv-latex-app python -c "...pdftotext..."`
+
+Resultado:
+- Hash anterior del PDF tecnico: `9725c5180bdfb1d29b57d512abac00a0e0706d5a`.
+- Hash nuevo del PDF tecnico: `0726772249a27d6e90304164d6972f07684bdf20`.
+- El PDF regenerado contiene `v0.9.0`, `Dashboard privado disponible`, `Curriculum Vitae + ATS` y `PR #8`.
+- El PDF regenerado no contiene `feature/ui-private-dashboard`, `Rama visual actual` ni referencias a abrir/integrar el PR visual como pendiente.
+
+---
+
+## 2026-06-10 - Fix PR #9 Codex Review P1 sobre documentacion servida
+
+Accion:
+Alinear la documentacion HTML servida por la app con el estado real preparado para `v0.9.0`.
+
+Motivo:
+`/documentation/technical` seguia mostrando estado previo a la integracion del PR `#8` y trataba la UI privada como trabajo pendiente, lo que bloqueaba el release.
+
+Comandos:
+- `git status --short --branch`
+- `git branch --show-current`
+- `git log --oneline --decorate -7`
+- `rg -n "feature/ui-private-dashboard|visual PR|backlog|0\\.8\\.0|v0\\.8\\.0|0\\.9\\.0|v0\\.9\\.0" docs/user docs/development`
+- `apply_patch` sobre `docs/user/PROJECT_TECHNICAL_DOCUMENTATION.md`, `docs/development/COMMAND_LOG.md`, `docs/development/DEVELOPMENT_LOG.md`, `docs/development/CHANGELOG_GENERAL.md`, `docs/development/MVP_VALIDATION.md` y `tests/test_documentation_routes.py`
+- `python -m compileall app tests`
+- `git diff --check`
+- `docker compose build`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose logs app --tail 80`
+- `docker compose exec app python -m pytest`
+- Validacion HTTP/DOM sobre `/documentation/`, `/documentation/technical` y `/health`
+
+Resultado:
+- La documentacion tecnica servida ya refleja `v0.9.0` como version preparada.
+- La UI privada y el flujo ATS quedan documentados como integrados, no como backlog pendiente.
+- Las referencias a `v0.8.0` se mantienen solo como historial y rollback.
+
+---
+
+## 2026-06-08 - Release cleanup v0.9.0
+
+Accion:
+Preparar el release `v0.9.0` despues de integrar la UI privada y el flujo ATS.
+
+Motivo:
+Alinear version visible, runtime, Docker y documentacion vigente sin agregar features nuevas ni crear tag.
+
+Comandos:
+- `git status --short --branch`
+- `git branch -vv`
+- `git log --oneline --decorate -7`
+- `rg -n "0\\.8\\.0|v0\\.8\\.0|0\\.9\\.0|v0\\.9\\.0" VERSION Dockerfile docker-compose.yml .env.example app README.md docs`
+- `git switch development`
+- `git switch -c feature/release-v0.9.0`
+- `apply_patch` sobre archivos de versionado y documentacion
+- `python -m compileall app tests`
+- `git diff --check`
+- `docker compose build`
+- `docker compose up -d --force-recreate`
+- `docker compose ps`
+- `docker compose logs app --tail 80`
+- `docker compose exec app python -m pytest`
+- `Invoke-WebRequest` sobre `/`, `/cvs/`, `/cover-letters/`, `/applications/`, `/documentation/`, `/ats/cvs/{cv_id}/modal` y `/health`
+
+Resultado:
+- La version vigente queda alineada a `0.9.0` en runtime, Docker y configuracion local.
+- La UI y `/health` reflejan `0.9.0`.
+- Se mantienen las referencias historicas a `v0.8.0` solo donde corresponde.
+- Queda pendiente PR hacia `development` y `@codex review`.
+
+---
+
 ## 2026-06-05 - Documentation Center
 
 Accion:

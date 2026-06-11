@@ -53,9 +53,12 @@ CV LaTeX Builder es una aplicacion web local para gestionar CVs, cartas de prese
 
 - Sidebar fija para navegar entre Dashboard, CVs, Cartas, Postulaciones, ATS y Documentacion.
 - Toggle dark/light persistido en `localStorage`.
-- Dashboard enfocado en CVs y cartas como modulos principales.
-- Listados compactos con preview visual CSS de documento y acciones secundarias.
+- Dashboard privado ya integrado en la linea preparada para `v0.9.0`.
+- Dashboard enfocado en CVs y cartas como modulos principales, con `Curriculum Vitae + ATS` como flujo principal.
+- Listados compactos con preview visual CSS de documento, badge ATS por CV y acciones secundarias.
+- Modal ATS compacto disponible desde el listado de CVs y desde el detalle completo.
 - Eliminacion segura de CVs y cartas exigiendo coincidencia exacta del texto mostrado.
+- Correccion aplicada para evitar XSS en confirmaciones, renderizando textos dinamicos sin `innerHTML`.
 
 ## Docker Compose
 
@@ -103,6 +106,7 @@ El servicio ATS analiza presencia de email, telefono, resumen, experiencia, educ
 - Cada etapa integrada paso por rama feature dedicada.
 - Se abrieron PRs hacia `development` para revision manual.
 - Codex Review se uso como control de calidad antes de mergear.
+- El PR `#8` ya fue mergeado previamente en `development` y dejo integrada la UI privada con ATS.
 
 ## Validaciones realizadas
 
@@ -114,12 +118,21 @@ El servicio ATS analiza presencia de email, telefono, resumen, experiencia, educ
 - Validaciones HTTP y visuales sobre dashboard, modulos y exports
 - Verificacion de extraccion PDF con `pdftotext`
 
-## Base estable y rama visual actual
+## Estado release v0.9.0
 
 - Base estable publicada: `tag v0.8.0`
 - Commit base estable: `eab9556 fix(docs): render documentation as html with pdf downloads`
-- Rama visual actual: `feature/ui-private-dashboard`
-- Objetivo de la rama: redisenar la experiencia privada sin tocar base de datos, IA ni autenticacion.
+- Version actual preparada: `v0.9.0`
+- Rama de release actual: `feature/release-v0.9.0`
+- Base integrada actual: `development` con PR `#8` ya mergeado.
+- Dashboard privado disponible.
+- Sidebar persistente disponible.
+- Dark/light disponible.
+- Flujo `Curriculum Vitae + ATS` disponible.
+- Badge ATS en listado de CVs disponible.
+- Modal ATS compacto disponible.
+- Fix XSS de confirmacion aplicado.
+- Documentacion interna alineada al release.
 
 ## Riesgos conocidos
 
@@ -130,11 +143,15 @@ El servicio ATS analiza presencia de email, telefono, resumen, experiencia, educ
 
 ## Backlog posterior
 
-- PR de la rama visual hacia `development` y `@codex review` manual.
 - Documentacion PDF futura adicional si hiciera falta.
 - Login/auth si el alcance deja de ser local.
 - Migraciones o mayor integridad relacional si la persistencia crece.
 - Mejoras de export ATS y coverage end-to-end.
+- Editor estructurado.
+- Drag and drop.
+- IA asistida.
+- Miniaturas reales de PDF.
+- Paletas visuales.
 
 ## Historial y rollback
 

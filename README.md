@@ -1,16 +1,29 @@
 # CV LaTeX Builder
 
-Aplicacion web local, pequena y portable para construir CVs, cartas de presentacion, seguimiento de postulaciones y chequeos ATS basicos con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabajo por etapas auditables; esta version corresponde al pulido final del MVP local.
+Aplicacion web local, pequena y portable para construir CVs, cartas de presentacion, seguimiento de postulaciones y chequeos ATS basicos con formularios web, plantillas LaTeX propias y exportaciones TEX/PDF/JSON. El proyecto se trabajo por etapas auditables; esta version corresponde al cierre del release `v0.9.0` posterior a la integracion de la UI privada y el flujo ATS dentro de Curriculum Vitae.
 
 ## Estado actual
 
-- Version: `0.8.0`
-- Base estable: `tag v0.8.0`
+- Version: `0.9.0`
+- Ultimo tag estable publicado: `v0.8.0`
 - Commit base estable: `eab9556 fix(docs): render documentation as html with pdf downloads`
-- Etapa visual en trabajo: `8.1.2.6 - Cierre visual de ATS integrado en Curriculum Vitae`
+- Release en preparacion: `8.2 - Release cleanup v0.9.0`
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 - Exportaciones: `/data/exports` dentro del contenedor, visible en `./data/exports` en el host
+
+## Incluye en v0.9.0
+
+- Dashboard privado redisenado.
+- Sidebar persistente.
+- Dark/light mode con persistencia local.
+- Flujo `Curriculum Vitae + ATS`.
+- Badge ATS automatico en el listado de CVs.
+- Modal ATS compacto.
+- Exportacion unificada desde el detalle del CV.
+- Confirmaciones seguras para duplicar y eliminar.
+- Fix XSS del modal de confirmacion.
+- Versionado de assets CSS/JS para evitar cache obsoleto.
 
 ## Stack
 

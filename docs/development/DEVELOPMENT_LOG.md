@@ -1,5 +1,46 @@
 # Development Log
 
+## Fix PR #9 - bundled technical PDF before v0.9.0 release
+
+- Fecha: 2026-06-10
+- Rama: `feature/release-v0.9.0`
+- Objetivo: corregir el P1 de Codex Review para que el PDF descargable de `/documentation/technical` coincida con la documentacion tecnica vigente de `v0.9.0`.
+- Modulos afectados: `app/static/docs`, `docs/development`.
+- Resumen de cambios:
+  - Se regenero `app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf` desde `docs/user/PROJECT_TECHNICAL_DOCUMENTATION.md`.
+  - Se uso el pipeline existente de `app.services.documentation_service` con `pdflatex` dentro de la imagen Docker `cv-latex-app`.
+  - Se valido con `pdftotext` que el PDF contiene `v0.9.0`, `Dashboard privado disponible`, `Curriculum Vitae + ATS` y `PR #8`.
+  - Se confirmo que el PDF ya no contiene `feature/ui-private-dashboard`, `Rama visual actual` ni referencias al PR visual como pendiente.
+- Hash anterior del PDF tecnico: `9725c5180bdfb1d29b57d512abac00a0e0706d5a`.
+- Hash nuevo del PDF tecnico: `0726772249a27d6e90304164d6972f07684bdf20`.
+- Resultado esperado: artefacto PDF descargable alineado al release `v0.9.0`, sin cambios funcionales nuevos.
+
+## Fix PR #9 - shipped docs before v0.9.0 release
+
+- Fecha: 2026-06-10
+- Rama: `feature/release-v0.9.0`
+- Objetivo: corregir el P1 de Codex Review para que `/documentation/technical` refleje el estado integrado real antes del merge a `development`.
+- Modulos afectados: `docs/user`, `docs/development`, `tests`.
+- Resumen de cambios:
+  - Se actualizo `PROJECT_TECHNICAL_DOCUMENTATION.md` para reflejar `v0.9.0` como version preparada.
+  - Se removio el estado obsoleto que seguia tratando `feature/ui-private-dashboard` como rama actual o la UI privada como pendiente.
+  - Se documento explicitamente que el PR `#8` ya fue mergeado y que dashboard privado, sidebar persistente, dark/light, `Curriculum Vitae + ATS`, badge ATS, modal ATS compacto y fix XSS ya forman parte del release preparado.
+  - Se agrego una prueba de regresion para evitar que `/documentation/technical` vuelva a publicar ese estado obsoleto.
+- Resultado esperado: documentacion servida alineada al release `v0.9.0`, sin cambios funcionales nuevos.
+
+## Release v0.9.0
+
+- Fecha: 2026-06-08
+- Rama: `feature/release-v0.9.0`
+- Objetivo: alinear version, changelog, docs operativas y validaciones despues de integrar la UI privada y el flujo ATS dentro de `Curriculum Vitae`.
+- Modulos afectados: `versioning`, `docker`, `runtime`, `docs/development`, `README`.
+- Resumen de cambios:
+  - Se actualizo la version vigente de `0.8.0` a `0.9.0` en `VERSION`, `Dockerfile`, `docker-compose.yml`, `.env.example` y `app/main.py`.
+  - Se mantuvieron intactas las referencias historicas al tag `v0.8.0` dentro de rollback, changelog y documentacion de referencia.
+  - Se documento que `v0.9.0` incluye dashboard privado redisenado, sidebar persistente, dark/light mode, flujo `Curriculum Vitae + ATS`, badge ATS en listados, modal ATS compacto, exportacion unificada, confirmaciones seguras, fix XSS y versionado de assets.
+  - Se actualizaron `README.md`, `CHANGELOG_GENERAL.md`, `VERSIONING.md`, `MODULE_INDEX.md` y `MVP_VALIDATION.md` para reflejar la nueva version vigente.
+- Resultado esperado: release `v0.9.0` preparado y validado, sin tag todavia y listo para PR hacia `development`.
+
 ## Etapa 8.1 - UI privada y dashboard operativo
 
 - Fecha: 2026-06-06
