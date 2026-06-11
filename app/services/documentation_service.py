@@ -210,6 +210,7 @@ def _render_markdown_document(title: str, markdown_content: str) -> str:
 \definecolor{{DocMuted}}{{HTML}}{{6b5f54}}
 \definecolor{{DocRow}}{{HTML}}{{f4ede2}}
 \definecolor{{DocCalloutBg}}{{HTML}}{{fff7ed}}
+\definecolor{{DocCalloutTitle}}{{HTML}}{{fff7ef}}
 \pagecolor{{DocPaper}}
 \color{{black}}
 \pagestyle{{fancy}}
@@ -233,8 +234,9 @@ def _render_markdown_document(title: str, markdown_content: str) -> str:
     enhanced,
     breakable,
     colback=DocCalloutBg,
+    colbacktitle=DocAccent,
     colframe=DocAccent,
-    coltitle=DocAccentDark,
+    coltitle=DocCalloutTitle,
     fonttitle=\bfseries,
     title=#1,
     boxrule=0.7pt,
