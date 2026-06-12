@@ -124,6 +124,7 @@ def generate_all_documentation_pdfs() -> list[Path]:
 
 def _compile_latex_to_pdf(latex_content: str, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    DOCUMENTATION_BUILD_DIR.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="docs-pdf-", dir=DOCUMENTATION_BUILD_DIR) as temp_directory_name:
         temp_directory = Path(temp_directory_name)
@@ -138,25 +139,26 @@ def _compile_latex_to_pdf(latex_content: str, output_path: Path) -> None:
             tex_path.name,
         ]
 
-        try:
-            result = subprocess.run(
-                command,
-                cwd=temp_directory,
-                capture_output=True,
-                text=True,
-                timeout=PDFLATEX_TIMEOUT_SECONDS,
-                check=False,
-            )
-        except FileNotFoundError as error:
-            raise DocumentationGenerationError("pdflatex no esta disponible para generar los PDFs de documentacion.") from error
-        except subprocess.TimeoutExpired as error:
-            raise DocumentationGenerationError("La generacion de PDFs de documentacion excedio el tiempo maximo permitido.") from error
+        for _ in range(2):
+            try:
+                result = subprocess.run(
+                    command,
+                    cwd=temp_directory,
+                    capture_output=True,
+                    text=True,
+                    timeout=PDFLATEX_TIMEOUT_SECONDS,
+                    check=False,
+                )
+            except FileNotFoundError as error:
+                raise DocumentationGenerationError("pdflatex no esta disponible para generar los PDFs de documentacion.") from error
+            except subprocess.TimeoutExpired as error:
+                raise DocumentationGenerationError("La generacion de PDFs de documentacion excedio el tiempo maximo permitido.") from error
 
-        if result.returncode != 0:
-            error_excerpt = _build_latex_error_excerpt(result.stdout, result.stderr, temp_directory / "documentation.log")
-            raise DocumentationGenerationError(
-                "No se pudo compilar uno de los PDFs de documentacion.\n" + error_excerpt
-            )
+            if result.returncode != 0:
+                error_excerpt = _build_latex_error_excerpt(result.stdout, result.stderr, temp_directory / "documentation.log")
+                raise DocumentationGenerationError(
+                    "No se pudo compilar uno de los PDFs de documentacion.\n" + error_excerpt
+                )
 
         compiled_pdf = temp_directory / "documentation.pdf"
         if not compiled_pdf.exists():
@@ -197,6 +199,7 @@ def _render_markdown_document(title: str, markdown_content: str) -> str:
 \usepackage{{fancyvrb}}
 \usepackage{{fancyhdr}}
 \usepackage{{titlesec}}
+\usepackage{{needspace}}
 \usepackage[most]{{tcolorbox}}
 \geometry{{margin=2.05cm, top=2.2cm, bottom=2.35cm}}
 \setlength{{\parindent}}{{0pt}}
@@ -479,6 +482,7 @@ def _markdown_to_latex(markdown_content: str) -> str:
             while index < len(lines) and not lines[index].strip().startswith("```"):
                 code_lines.append(lines[index])
                 index += 1
+            output.append(r"\Needspace{6\baselineskip}")
             output.append(r"\begin{DocCode}")
             output.extend(code_lines if code_lines else [""])
             output.append(r"\end{DocCode}")
@@ -489,6 +493,7 @@ def _markdown_to_latex(markdown_content: str) -> str:
         if stripped.startswith(">"):
             flush_paragraph()
             callout, next_index = _consume_callout(lines, index)
+            output.append(r"\Needspace{6\baselineskip}")
             output.append(r"\begin{DocCallout}{" + _format_inline(str(callout["title"])) + "}")
             body = [item for item in callout["body"] if str(item).strip()]
             output.append(_format_inline(" ".join(str(item) for item in body)) if body else "")
@@ -500,6 +505,7 @@ def _markdown_to_latex(markdown_content: str) -> str:
         if _is_table_header(lines, index):
             flush_paragraph()
             table_rows, next_index = _consume_table(lines, index)
+            output.append(r"\Needspace{7\baselineskip}")
             output.extend(_render_table(table_rows))
             output.append("")
             index = next_index
@@ -512,14 +518,22 @@ def _markdown_to_latex(markdown_content: str) -> str:
 
         if stripped.startswith("## "):
             flush_paragraph()
-            output.append(r"\subsection*{" + _format_inline(stripped[3:].strip()) + "}")
+            heading = _format_inline(stripped[3:].strip())
+            output.append(r"\Needspace{7\baselineskip}")
+            output.append(r"\phantomsection")
+            output.append(r"\addcontentsline{toc}{subsection}{" + heading + "}")
+            output.append(r"\subsection*{" + heading + "}")
             output.append("")
             index += 1
             continue
 
         if stripped.startswith("### "):
             flush_paragraph()
-            output.append(r"\subsubsection*{" + _format_inline(stripped[4:].strip()) + "}")
+            heading = _format_inline(stripped[4:].strip())
+            output.append(r"\Needspace{5\baselineskip}")
+            output.append(r"\phantomsection")
+            output.append(r"\addcontentsline{toc}{subsubsection}{" + heading + "}")
+            output.append(r"\subsubsection*{" + heading + "}")
             output.append("")
             index += 1
             continue

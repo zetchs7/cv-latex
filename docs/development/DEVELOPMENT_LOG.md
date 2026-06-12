@@ -1,5 +1,18 @@
 # Development Log
 
+## Etapa 8.3 - fix TOC y paginacion PDF
+
+- Fecha: 2026-06-12
+- Rama: `feature/traceability-docs-v0.9.0`
+- Objetivo: corregir el indice vacio de PDFs generados, mejorar cortes visuales de secciones y dejar reglas permanentes para documentacion PDF actual y futura.
+- Modulos afectados: `app/services/documentation_service.py`, `app/static/docs`, `AGENTS.md`, `docs/development`, `tests`.
+- Resumen de cambios:
+  - El renderer PDF mantiene `\tableofcontents`, pero ahora agrega entradas reales para headings no numerados y compila con dos pasadas de `pdflatex`.
+  - Se agregan reservas de espacio antes de secciones, subsecciones, callouts, tablas y bloques de codigo para reducir titulos huerfanos y cortes visuales pobres.
+  - Se documenta que no se publican PDFs con indice vacio, que los PDFs deben regenerarse cuando cambian fuentes o renderer, y que la validacion incluye `pdftotext`, PNG de portada/indice/pagina interna, hashes y descarga real desde `/static/docs/`.
+  - Se refuerza que no se deben inventar timestamps historicos y que los Prompt IDs son externos a Codex.
+- Resultado esperado: PDFs de documentacion `v0.9.0` con indice funcional, mejor lectura visual y reglas de validacion persistentes antes de mergear PR #10.
+
 ## Etapa 8.3 - trazabilidad y documentacion visual
 
 - Fecha: 2026-06-11

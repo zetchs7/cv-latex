@@ -14,7 +14,9 @@ Version objetivo actual: `0.9.0`
 - Confirmar que `/health` mantiene `version: 0.9.0`.
 - Confirmar que los PDFs descargables fueron regenerados desde `docs/user/` y que el hash nuevo difiere del hash anterior cuando cambia el contenido o el layout.
 - Confirmar con `pdftotext` que los PDFs contienen `v0.9.0` y no contienen referencias obsoletas a `feature/ui-private-dashboard`, `Rama visual actual` ni abrir/integrar el PR visual como pendiente.
-- Confirmar con render PNG que la primera pagina y una pagina interna de cada PDF son legibles y no tienen texto cortado, solapado, tablas rotas ni bloques ilegibles.
+- Confirmar que ningun PDF publicado tenga una pagina de indice/TOC vacia. Si hay indice, debe contener entradas reales; si no puede poblarse de forma limpia, debe eliminarse.
+- Confirmar con render PNG que portada, indice si existe y una pagina interna de cada PDF son legibles y no tienen texto cortado, titulos huerfanos, cortes pobres, espacios vacios excesivos, solapamientos, tablas rotas ni bloques ilegibles.
+- Confirmar hash anterior/nuevo y descarga real desde `/static/docs/` para cada PDF regenerado.
 
 ## Precondiciones
 
@@ -118,7 +120,8 @@ docker compose exec app python -m pytest
 - Confirmar que `/documentation/technical` refleja `v0.9.0` como version preparada y no muestra `feature/ui-private-dashboard` como rama actual ni la UI privada como backlog pendiente.
 - Descargar el PDF tecnico y confirmar con `pdftotext` que contiene `v0.9.0`, `Dashboard privado disponible`, `Curriculum Vitae + ATS` y `PR #8`, sin referencias al PR visual como pendiente.
 - Descargar el manual de uso PDF y confirmar con `pdftotext` que contiene `v0.9.0` y la regla de Prompt IDs externos a Codex.
-- Confirmar que los PDFs tienen portada, version, fecha, estado, pie de pagina, jerarquia visual, callouts, tablas legibles y bloques de comando diferenciados.
+- Confirmar que los PDFs tienen portada, version, fecha, estado, pie de pagina, indice poblado si existe, jerarquia visual, callouts, tablas legibles y bloques de comando diferenciados.
+- Confirmar visualmente portada, indice si existe y pagina interna relevante renderizadas a PNG con `pdftoppm`, evitando titulos huerfanos, cortes pobres y espacios vacios excesivos.
 
 ### Persistencia y artefactos
 
