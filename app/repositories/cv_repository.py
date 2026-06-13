@@ -1,6 +1,11 @@
 from app.database import get_connection
 from app.models import CV
 from app.schemas import CVFormData
+from app.services.structured_cv_service import (
+    STRUCTURED_PAYLOAD_STATUS_VALID,
+    build_legacy_structured_columns,
+    resolve_structured_cv_state,
+)
 from app.validations.cv_validations import build_cv_form_data, build_duplicate_title, validate_cv_form
 
 
@@ -37,7 +42,12 @@ def get_cv(cv_id: int) -> CV | None:
 
 
 def create_cv(form_data: CVFormData) -> int:
+    return _insert_cv(form_data, structured_columns=build_legacy_structured_columns())
+
+
+def _insert_cv(form_data: CVFormData, *, structured_columns: dict[str, object]) -> int:
     values = form_data.as_database_values()
+    values.update(structured_columns)
 
     with get_connection() as connection:
         cursor = connection.execute(
@@ -50,7 +60,10 @@ def create_cv(form_data: CVFormData) -> int:
                 professional_summary,
                 experience_summary,
                 education_summary,
-                skills
+                skills,
+                structured_schema_version,
+                structured_payload,
+                structured_payload_status
             )
             VALUES (
                 :title,
@@ -60,7 +73,10 @@ def create_cv(form_data: CVFormData) -> int:
                 :professional_summary,
                 :experience_summary,
                 :education_summary,
-                :skills
+                :skills,
+                :structured_schema_version,
+                :structured_payload,
+                :structured_payload_status
             )
             """,
             values,
@@ -72,6 +88,7 @@ def create_cv(form_data: CVFormData) -> int:
 
 def update_cv(cv_id: int, form_data: CVFormData) -> bool:
     values = form_data.as_database_values()
+    values.update(build_legacy_structured_columns())
     values["id"] = str(cv_id)
 
     with get_connection() as connection:
@@ -87,6 +104,9 @@ def update_cv(cv_id: int, form_data: CVFormData) -> bool:
                 experience_summary = :experience_summary,
                 education_summary = :education_summary,
                 skills = :skills,
+                structured_schema_version = :structured_schema_version,
+                structured_payload = :structured_payload,
+                structured_payload_status = :structured_payload_status,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = :id AND deleted_at IS NULL
             """,
@@ -120,7 +140,15 @@ def duplicate_cv(cv_id: int) -> int | None:
         joined_errors = "; ".join(f"{field}: {message}" for field, message in errors.items())
         raise DuplicateCVError(f"No se pudo duplicar el CV: {joined_errors}")
 
-    return create_cv(duplicate_data)
+    structured_columns = build_legacy_structured_columns()
+    if resolve_structured_cv_state(source_cv).is_structured:
+        structured_columns = {
+            "structured_schema_version": source_cv.structured_schema_version,
+            "structured_payload": source_cv.structured_payload,
+            "structured_payload_status": STRUCTURED_PAYLOAD_STATUS_VALID,
+        }
+
+    return _insert_cv(duplicate_data, structured_columns=structured_columns)
 
 
 def soft_delete_cv(cv_id: int) -> bool:
@@ -153,4 +181,13 @@ def _row_to_cv(row) -> CV:
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         deleted_at=row["deleted_at"],
+        structured_schema_version=_row_value(row, "structured_schema_version"),
+        structured_payload=_row_value(row, "structured_payload"),
+        structured_payload_status=_row_value(row, "structured_payload_status") or "legacy",
     )
+
+
+def _row_value(row, column_name: str):
+    if column_name not in row.keys():
+        return None
+    return row[column_name]

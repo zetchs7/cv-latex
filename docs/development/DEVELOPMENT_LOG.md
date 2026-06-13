@@ -1,5 +1,25 @@
 # Development Log
 
+## Etapa 9.1 - modelo de datos y migracion segura para CV estructurado
+
+- Fecha: 2026-06-13
+- Rama: `feature/structured-cv-data-migration`
+- Objetivo: agregar la base de persistencia compatible para CV estructurado sin cambiar UI, render LaTeX/PDF, export JSON visible ni ATS scoring.
+- Estado previo confirmado: `main`, `development`, `origin/main` y `origin/development` sincronizados en `41daa8a` despues del cierre de PR #12.
+- Modulos afectados: `app/database.py`, `app/models.py`, `app/repositories/cv_repository.py`, `app/services/structured_cv_service.py`, tests de migracion/repositorio/servicio y documentacion de desarrollo.
+- Alcance ejecutado:
+  - Se agregan columnas idempotentes en `cvs`: `structured_schema_version`, `structured_payload` y `structured_payload_status`.
+  - La migracion usa `PRAGMA table_info(cvs)` y `ALTER TABLE ADD COLUMN` condicionado para preservar bases existentes.
+  - Los CVs legacy quedan en modo canonico legacy cuando no hay payload valido.
+  - El update por flujo legacy limpia payload estructurado para evitar stale data.
+  - El duplicado preserva payload estructurado valido cuando el contenido copiado sigue consistente.
+  - Se agrega servicio minimo para resolver modo legacy vs estructurado preparado sin conectar aun PDF/JSON/ATS al payload.
+- Criterio de aceptacion:
+  - DB nueva y DB legacy reciben columnas nuevas.
+  - La migracion repetida es segura.
+  - CVs legacy siguen creando, leyendo, actualizando, duplicando y exportando por los flujos existentes.
+  - No se modifica UI, PDFs servidos, renderer LaTeX/PDF, ATS scoring ni export JSON visible.
+
 ## Etapa 9.0 - diseno tecnico del editor estructurado de CV
 
 - Fecha: 2026-06-13

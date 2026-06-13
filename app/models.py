@@ -15,6 +15,9 @@ class CV:
     created_at: str
     updated_at: str
     deleted_at: str | None
+    structured_schema_version: int | None = None
+    structured_payload: str | None = None
+    structured_payload_status: str = "legacy"
 
 
 @dataclass(frozen=True)

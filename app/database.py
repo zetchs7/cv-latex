@@ -6,6 +6,12 @@ import sqlite3
 
 DEFAULT_DATA_DIR = "/data"
 DEFAULT_DB_FILENAME = "app.db"
+CURRENT_SCHEMA_VERSION = "2"
+STRUCTURED_CV_COLUMNS = {
+    "structured_schema_version": "INTEGER",
+    "structured_payload": "TEXT",
+    "structured_payload_status": "TEXT NOT NULL DEFAULT 'legacy'",
+}
 
 
 @dataclass(frozen=True)
@@ -13,6 +19,13 @@ class DatabaseStatus:
     path: str
     exists: bool
     directory_exists: bool
+
+
+class ClosingConnection(sqlite3.Connection):
+    def __exit__(self, exc_type, exc_value, traceback) -> bool:
+        super().__exit__(exc_type, exc_value, traceback)
+        self.close()
+        return False
 
 
 def get_data_dir() -> Path:
@@ -24,9 +37,26 @@ def get_database_path() -> Path:
 
 
 def get_connection() -> sqlite3.Connection:
-    connection = sqlite3.connect(get_database_path())
+    connection = sqlite3.connect(get_database_path(), factory=ClosingConnection)
     connection.row_factory = sqlite3.Row
     return connection
+
+
+def get_table_columns(connection: sqlite3.Connection, table_name: str) -> set[str]:
+    if not table_name.isidentifier():
+        raise ValueError("Nombre de tabla invalido para inspeccion de schema.")
+
+    rows = connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return {str(row[1]) for row in rows}
+
+
+def migrate_cvs_table(connection: sqlite3.Connection) -> None:
+    existing_columns = get_table_columns(connection, "cvs")
+
+    for column_name, column_definition in STRUCTURED_CV_COLUMNS.items():
+        if column_name not in existing_columns:
+            connection.execute(f"ALTER TABLE cvs ADD COLUMN {column_name} {column_definition}")
+            existing_columns.add(column_name)
 
 
 def initialize_database() -> DatabaseStatus:
@@ -35,7 +65,7 @@ def initialize_database() -> DatabaseStatus:
 
     database_path = get_database_path()
 
-    with sqlite3.connect(database_path) as connection:
+    with sqlite3.connect(database_path, factory=ClosingConnection) as connection:
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS app_metadata (
@@ -48,11 +78,12 @@ def initialize_database() -> DatabaseStatus:
         connection.execute(
             """
             INSERT INTO app_metadata (metadata_key, metadata_value)
-            VALUES ('schema_version', '1')
+            VALUES ('schema_version', :schema_version)
             ON CONFLICT(metadata_key) DO UPDATE SET
                 metadata_value = excluded.metadata_value,
                 updated_at = CURRENT_TIMESTAMP
-            """
+            """,
+            {"schema_version": CURRENT_SCHEMA_VERSION},
         )
         connection.execute(
             """
@@ -66,12 +97,16 @@ def initialize_database() -> DatabaseStatus:
                 experience_summary TEXT NOT NULL DEFAULT '',
                 education_summary TEXT NOT NULL DEFAULT '',
                 skills TEXT NOT NULL DEFAULT '',
+                structured_schema_version INTEGER,
+                structured_payload TEXT,
+                structured_payload_status TEXT NOT NULL DEFAULT 'legacy',
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 deleted_at TEXT
             )
             """
         )
+        migrate_cvs_table(connection)
         connection.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_cvs_deleted_at_updated_at

@@ -37,7 +37,7 @@ La Etapa 9.0 solo define arquitectura. No cambia DB, codigo funcional, rutas, te
 Adoptar un enfoque hibrido progresivo:
 
 1. Mantener la tabla `cvs` y los campos planos actuales como fuente compatible durante la transicion.
-2. Agregar en una etapa posterior un payload JSON estructurado versionado dentro de `cvs`, por ejemplo `structured_payload TEXT` y `structured_schema_version INTEGER`.
+2. Agregar en una etapa posterior un payload JSON estructurado versionado dentro de `cvs`, por ejemplo `structured_payload TEXT`, `structured_schema_version INTEGER` y un estado explicito `structured_payload_status TEXT` para distinguir payload legacy, valido, invalido o stale sin inferencias ambiguas.
 3. Centralizar la conversion entre payload estructurado y `CV` plano en un servicio nuevo, sin mezclar esa logica en rutas ni templates.
 4. Mantener export/import JSON backward compatible:
    - schema `1`: formato plano actual.
@@ -316,6 +316,7 @@ El payload futuro deberia ser un objeto versionado:
 - Agregar columnas en una migracion o inicializacion controlada:
   - `structured_schema_version INTEGER`
   - `structured_payload TEXT`
+  - `structured_payload_status TEXT NOT NULL DEFAULT 'legacy'`
 - No parsear automaticamente texto libre en multiples items sin confirmacion del usuario.
 - Para CVs legacy, generar una vista estructurada con un item textual por seccion cuando se abre el editor nuevo.
 
@@ -328,8 +329,9 @@ La futura migracion no debe depender solo de `CREATE TABLE IF NOT EXISTS`, porqu
 3. Consultar columnas actuales con `PRAGMA table_info(cvs)`.
 4. Ejecutar `ALTER TABLE cvs ADD COLUMN structured_schema_version INTEGER` solo si falta.
 5. Ejecutar `ALTER TABLE cvs ADD COLUMN structured_payload TEXT` solo si falta.
-6. Registrar la version de schema/migracion en `app_metadata` o equivalente.
-7. Confirmar que correr la migracion dos veces no falla ni duplica columnas.
+6. Ejecutar `ALTER TABLE cvs ADD COLUMN structured_payload_status TEXT NOT NULL DEFAULT 'legacy'` solo si falta.
+7. Registrar la version de schema/migracion en `app_metadata` o equivalente.
+8. Confirmar que correr la migracion dos veces no falla ni duplica columnas.
 
 Criterios de aceptacion de migracion:
 

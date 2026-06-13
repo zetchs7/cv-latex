@@ -15,6 +15,72 @@ Error completo:
 Reintento/correccion:
 ```
 
+## 2026-06-13 - Etapa 9.1 modelo de datos y migracion segura para CV estructurado
+
+2026-06-13 14:59:42 ART | Etapa 9.1 | CMD-001
+Accion:
+Leer pedido, instrucciones persistentes, arquitectura aprobada y codigo actual de DB/CV.
+Motivo:
+Confirmar alcance de migracion SQLite idempotente, compatibilidad legacy y restricciones de no tocar UI/PDF/ATS antes de modificar.
+Comando:
+`Get-Content`; `rg`; `git status --short --branch`; `git branch --show-current`; `git log --oneline --decorate -7`; `git fetch origin`
+Argumentos:
+Prompt adjunto Etapa 9.1, `~/.codex/AGENTS.md`, `~/.codex/config.toml`, `AGENTS.md`, `docs/adr/ADR-0003-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `PROJECT_PLAYBOOK.md`, `LESSONS_LEARNED.md`, `MVP_VALIDATION.md`, `app/database.py`, `app/models.py`, `app/schemas.py`, `app/repositories/cv_repository.py`, `app/services/export_service.py`, `app/services/latex_service.py`, `app/services/ats_service.py`, `tests`.
+Resultado:
+Se confirmo que `main`, `development`, `origin/main` y `origin/development` estaban sincronizados en `41daa8a`; la etapa actual permite tocar DB/migracion y tests, pero no UI/PDF/ATS/export JSON visible.
+Error completo:
+`git switch development` y `git switch -c feature/structured-cv-data-migration` fallaron inicialmente por permisos transitorios de lock en `.git`.
+Reintento/correccion:
+Se verifico que no quedara `index.lock` stale y se reintentaron los cambios de rama fuera del sandbox. La rama `feature/structured-cv-data-migration` se creo desde `development`.
+
+2026-06-13 14:59:42 ART | Etapa 9.1 | CMD-002
+Accion:
+Implementar migracion SQLite idempotente y compatibilidad minima de payload estructurado.
+Motivo:
+Agregar base de datos preparada para CV estructurado sin romper CVs legacy ni activar consumidores nuevos.
+Comando:
+`apply_patch`
+Argumentos:
+`app/database.py`, `app/models.py`, `app/repositories/cv_repository.py`, `app/services/structured_cv_service.py`.
+Resultado:
+Se agregaron columnas `structured_schema_version`, `structured_payload` y `structured_payload_status`; la migracion usa `PRAGMA table_info(cvs)` y `ALTER TABLE ADD COLUMN` condicionado; `CV` expone campos opcionales; updates legacy limpian payload para evitar stale data; duplicados preservan payload valido cuando corresponde; el servicio nuevo resuelve modo legacy vs estructurado preparado.
+Error completo:
+No aplica; la aplicacion de parches finalizo correctamente.
+Reintento/correccion:
+No aplica.
+
+2026-06-13 14:59:42 ART | Etapa 9.1 | CMD-003
+Accion:
+Agregar pruebas de migracion, repositorio y servicio estructurado.
+Motivo:
+Cubrir DB nueva, DB legacy, idempotencia, payload ausente/schema 1/schema 2/invalido/stale y compatibilidad de update/duplicate.
+Comando:
+`apply_patch`; `python -m compileall app tests`; `python -m pytest`; `python -m unittest`
+Argumentos:
+`tests/test_database_migrations.py`, `tests/test_structured_cv_service.py`, `tests/test_cv_repository.py`.
+Resultado:
+`compileall` finalizo correctamente. `python -m unittest tests.test_database_migrations tests.test_structured_cv_service tests.test_cv_repository` paso con `Ran 11 tests in 0.107s OK`.
+Error completo:
+`python -m pytest tests/test_database_migrations.py tests/test_structured_cv_service.py tests/test_cv_repository.py` fallo en host con `No module named pytest`. Un primer intento de `unittest` fallo en Windows porque conexiones SQLite no cerradas bloqueaban `TemporaryDirectory` al borrar `app.db`.
+Reintento/correccion:
+Se centralizo cierre de conexiones en `get_connection()` con `ClosingConnection`, se ajusto `initialize_database()` para usar la misma conexion cerrable y se cerro explicitamente el helper de DB legacy en tests. Luego `unittest` paso correctamente.
+
+2026-06-13 15:04:11 ART | Etapa 9.1 | CMD-004
+Accion:
+Validar build, runtime, tests completos, healthcheck y migracion DB real en Docker.
+Motivo:
+Confirmar que la base de migracion estructurada funciona en el entorno oficial, preserva `/data/app.db` y no modifica UI/PDF/ATS fuera de alcance.
+Comando:
+`Copy-Item`; `docker compose build`; `docker compose up -d --force-recreate`; `docker compose ps`; `docker compose logs app --tail 100`; `docker compose exec app python -m pytest`; `Invoke-WebRequest`; `docker compose exec app python -c`; `git status --short app/static/docs`; `git tag --points-at HEAD`
+Argumentos:
+Backup `data/app.db.stage9.1-pre-migration.bak`; `/health`; inspeccion de columnas `structured_*` en `cvs`; lectura de `app_metadata.schema_version`; validacion de ausencia de cambios en `app/static/docs`.
+Resultado:
+Se creo backup local ignorado de `data/app.db`. `docker compose build` finalizo correctamente. `docker compose up -d --force-recreate` dejo `cv_latex_app` `healthy`. `/health` respondio `{"status":"ok","version":"0.9.0","database":{"path":"/data/app.db","exists":true,"directory_exists":true}}`. Pytest en contenedor: `63 passed in 1.20s`. La DB mostro `['structured_payload', 'structured_payload_status', 'structured_schema_version']` y schema metadata `2`. `app/static/docs` no tuvo cambios. No hay tag nuevo apuntando a HEAD.
+Error completo:
+Un primer `docker compose exec app python -c` fallo por quoting incorrecto del SQL inline con `SyntaxError: unterminated string literal`. Un primer `docker compose up -d --force-recreate` corrio en paralelo con `docker compose build`, por lo que el contenedor inicial no incluia los tests nuevos y pytest reporto `53 passed`; se detecto inspeccionando `/app/tests`.
+Reintento/correccion:
+Se recreo el contenedor despues de terminado el build, se confirmo que `/app/tests` incluia `test_database_migrations.py` y `test_structured_cv_service.py`, se repitio la suite completa y luego el check DB con parametros SQL. Resultado final: `63 passed in 1.20s` y columnas estructuradas presentes.
+
 ## 2026-06-13 - Etapa 9.0 diseno tecnico del editor estructurado de CV
 
 timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-001
