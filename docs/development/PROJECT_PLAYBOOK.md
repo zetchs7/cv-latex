@@ -189,3 +189,11 @@ main <- development <- feature/*
 - Definir stack, comandos, Docker, DB, tests, docs y Git Flow desde el inicio.
 - Separar de entrada logs de comandos, hitos, changelog y validaciones.
 - No esperar al cierre para documentar reglas que ya se demostraron necesarias.
+
+## 17. Reglas para diseno previo a features grandes
+
+- Crear ADR antes de tocar DB, migraciones, import/export, LaTeX/PDF, ATS o UI amplia.
+- Documentar alternativas con ventajas, riesgos, impacto en tests y rollback.
+- Elegir una arquitectura que preserve compatibilidad con datos existentes.
+- Dividir implementacion en subetapas chicas con criterios de aceptacion.
+- Para el editor estructurado de CV, leer `docs/adr/ADR-0003-structured-cv-editor.md` y `docs/development/STRUCTURED_CV_EDITOR_PLAN.md` antes de implementar.

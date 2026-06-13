@@ -15,6 +15,124 @@ Error completo:
 Reintento/correccion:
 ```
 
+## 2026-06-13 - Etapa 9.0 diseno tecnico del editor estructurado de CV
+
+timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-001
+Accion:
+Leer pedido, instrucciones persistentes, playbook, lessons learned y documentacion base.
+Motivo:
+Confirmar que la etapa es solo diseno arquitectonico y que no debe tocar codigo funcional, DB, rutas, renderer LaTeX/PDF, import/export JSON ni ATS.
+Comando:
+`Get-Content`; `rg`; `git status --short --branch`; `git branch --show-current`; `git log --oneline --decorate -7`
+Argumentos:
+Archivo adjunto de Etapa 9.0, `~/.codex/AGENTS.md`, `~/.codex/config.toml`, `AGENTS.md`, `PROJECT_PLAYBOOK.md`, `LESSONS_LEARNED.md`, `MODULE_INDEX.md`, `MVP_VALIDATION.md`, `VERSIONING.md`, `CHANGELOG_GENERAL.md`.
+Resultado:
+Se confirmo que `main`, `development`, `origin/main` y `origin/development` estaban sincronizados en `e5752b6`; no existe `.codex/config.toml` del repo ni subagents locales/globales.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-002
+Accion:
+Relevar codigo actual del modulo CV y consumidores.
+Motivo:
+Basar la ADR y el plan en la arquitectura real del repo.
+Comando:
+`Get-Content`; `Get-ChildItem`; `rg`
+Argumentos:
+`app/models.py`, `app/schemas.py`, `app/database.py`, `app/repositories/cv_repository.py`, `app/routes/cvs.py`, `app/validations/cv_validations.py`, `app/services/export_service.py`, `app/services/latex_service.py`, `app/services/pdf_service.py`, `app/services/ats_service.py`, `app/templates/cvs/`, `tests/`.
+Resultado:
+Se identifico que el CV actual usa tabla `cvs` con campos planos, JSON schema `1`, LaTeX/PDF y ATS consumiendo campos legacy, duplicado por copia de campos y soft delete por `deleted_at`.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-003
+Accion:
+Crear rama de diseno desde `development` y aplicar cambios documentales.
+Motivo:
+Respetar Git Flow y aislar la etapa 9.0 en una rama feature sin tocar codigo funcional.
+Comando:
+`git fetch origin`; `git switch development`; `git switch -c feature/structured-cv-editor-design`; `apply_patch`
+Argumentos:
+Rama `feature/structured-cv-editor-design`; documentos `docs/adr/ADR-0003-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `AGENTS.md`, `MODULE_INDEX.md`, `DEVELOPMENT_LOG.md`, `MVP_VALIDATION.md`, `PROJECT_PLAYBOOK.md`, `COMMAND_LOG.md`.
+Resultado:
+Se creo la rama de diseno desde `development` actualizado y se agrego documentacion arquitectonica/operativa sin modificar `app/`, `tests/`, DB, templates productivos, renderer LaTeX/PDF, import/export JSON ni ATS.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-004
+Accion:
+Validar alcance documental, compilacion, diff y runtime/tests.
+Motivo:
+Confirmar que la etapa 9.0 no implemento codigo funcional y que los documentos nuevos cubren compatibilidad legacy, export/import JSON, LaTeX/PDF, ATS, migracion/rollback, tests, riesgos, subetapas y no implementacion.
+Comando:
+`git status --short --branch`; `git diff --name-only`; `rg`; `python -m compileall app tests`; `git diff --check`; `docker compose ps`; `docker compose exec app python -m pytest`
+Argumentos:
+`docs/adr/ADR-0003-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `app`, `tests`.
+Resultado:
+El diff quedo limitado a documentacion e instrucciones del repo. `compileall` finalizo correctamente. `git diff --check` no reporto errores de whitespace, solo advertencias CRLF del working copy. `docker compose ps` mostro `cv_latex_app` `healthy`. Pytest en contenedor: `53 passed in 1.10s`.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-005
+Accion:
+Corregir hallazgos de Codex Review en PR #12.
+Motivo:
+Resolver bloqueantes de diseno sobre fuente canonica legacy/estructurada, migracion idempotente para DB existente y numeracion unica de ADR sin implementar codigo funcional.
+Comando:
+`apply_patch`; `rg`; `git status --short --branch`; `git diff --name-status`
+Argumentos:
+`docs/adr/ADR-0003-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `AGENTS.md`, `MODULE_INDEX.md`, `DEVELOPMENT_LOG.md`, `MVP_VALIDATION.md`, `PROJECT_PLAYBOOK.md`, `COMMAND_LOG.md`.
+Resultado:
+Se renombro la ADR a `ADR-0003-structured-cv-editor.md`, se actualizaron referencias, se definio `structured_payload` valido con `structured_schema_version >= 2` como fuente canonica, se documento regeneracion desde flujo legacy para evitar payload stale y se especifico migracion idempotente con `PRAGMA table_info(cvs)` y `ALTER TABLE ADD COLUMN` condicionado.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-006
+Accion:
+Validar correcciones documentales de review.
+Motivo:
+Confirmar que no quedan referencias a la ADR duplicada, que estan documentadas fuente canonica e idempotencia, y que la suite sigue estable sin cambios funcionales.
+Comando:
+`git status --short --branch`; `git diff --name-status`; `rg`; `python -m compileall app tests`; `git diff --check`; `docker compose ps`; `docker compose exec app python -m pytest`
+Argumentos:
+Busquedas del nombre ADR anterior/nuevo y de `source of truth|fuente canonica|structured_payload|stale|PRAGMA table_info|ALTER TABLE|idempotent|idempotente|schema_version`.
+Resultado:
+No quedan referencias al nombre ADR anterior. Las reglas de `ADR-0003`, fuente canonica, payload stale y migracion idempotente aparecen en docs. `compileall` ok. `git diff --check` sin errores de whitespace, solo advertencias CRLF del working copy. `docker compose ps` mostro `cv_latex_app` `healthy`. Pytest en contenedor: `53 passed in 1.10s`.
+Error completo:
+No aplica; el comando finalizo correctamente.
+Reintento/correccion:
+No aplica.
+Validacion posterior:
+`rg` confirmo que no quedaban referencias a la ADR anterior y `docker compose exec app python -m pytest` mantuvo la suite en `53 passed in 1.10s`.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-007
+Accion:
+Corregir segundo re-review de Codex en PR #12.
+Motivo:
+Resolver colision real de numeracion ADR y aclarar que duplicate/copy, update legacy e import schema `1` no pueden dejar `structured_payload` obsoleto.
+Comando:
+`Get-ChildItem`; `rg`; `apply_patch`
+Argumentos:
+`docs/adr/`, `docs/adr/ADR-0003-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `AGENTS.md`, `MODULE_INDEX.md`, `DEVELOPMENT_LOG.md`, `MVP_VALIDATION.md`, `PROJECT_PLAYBOOK.md`, `COMMAND_LOG.md`.
+Resultado:
+Se verifico que `ADR-0003` era el proximo numero libre real. Se renombro la ADR estructurada a `ADR-0003` y se agregaron reglas explicitas para duplicate/copy, update legacy e import schema `1`, con regeneracion recomendada del payload o fallback a modo legacy canonico si falla la sincronizacion.
+Error completo:
+No aplica; el comando finalizo correctamente.
+Reintento/correccion:
+No aplica.
+Validacion posterior:
+Validacion exacta posterior no reconstruida con certeza en este bloque; se conserva evidencia de verificacion documental y de suite estable en `CMD-006`.
+
 ## 2026-06-13 - Etapa 8.4 lessons learned y playbook
 
 timestamp exacto no reconstruido con certeza | Etapa 8.4 | CMD-011
