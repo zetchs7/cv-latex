@@ -71,9 +71,12 @@ GET /documentation/usage
 - `docs/development/COMMAND_LOG.md`: bitacora de comandos ejecutados. Cada bloque nuevo debe usar timestamp local con zona horaria, etapa e ID secuencial `CMD-###`.
 - `docs/development/DEVELOPMENT_LOG.md`: hitos por etapa, no cada comando.
 - `docs/development/MVP_VALIDATION.md`: validaciones fuertes y checklist manual.
+- `docs/development/LESSONS_LEARNED.md`: errores reales, causa raiz, correccion aplicada y reglas futuras reutilizables.
+- `docs/development/PROJECT_PLAYBOOK.md`: playbook operativo para iniciar, validar, revisar y cerrar etapas con Codex/ChatGPT.
 - `docs/development/CHANGELOG_GENERAL.md`: cambios por version/release, no timestamp por comando.
 - `docs/development/MODULE_INDEX.md`: mapa de modulos, no bitacora temporal.
 - `docs/development/VERSIONING.md`: fechas de release/tag y criterio SemVer.
+- Antes de una etapa nueva o de cambios sensibles en release, Docker, seguridad, documentacion servida, PDFs o PRs, leer `LESSONS_LEARNED.md` y `PROJECT_PLAYBOOK.md` ademas de este `AGENTS.md`.
 - Si un timestamp historico no puede reconstruirse con certeza, escribir `timestamp exacto no reconstruido con certeza`; no inventarlo.
 
 Formato obligatorio para nuevos bloques en `COMMAND_LOG.md`:

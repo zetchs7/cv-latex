@@ -1,5 +1,21 @@
 # Development Log
 
+## Etapa 8.4 - lessons learned y playbook operativo
+
+- Fecha: 2026-06-13
+- Rama: `feature/lessons-learned-playbook-v0.9.0`
+- Objetivo: consolidar aprendizajes reales del proyecto y dejar un playbook reusable para futuras etapas y proyectos con Codex/ChatGPT, sin tocar runtime, PDFs, DB ni features.
+- Estado previo confirmado: `main`, `development` y el cierre de PR #10 quedaron sincronizados en `71f1215`.
+- Modulos afectados: `AGENTS.md`, `docs/development/`.
+- Alcance ejecutado:
+  - Se crea `LESSONS_LEARNED.md` con errores reales, causa raiz, correccion, validacion, regla futura e instruccion sugerida para prompts futuros.
+  - Se crea `PROJECT_PLAYBOOK.md` con flujo operativo reusable para iniciar etapas, elegir configuracion, preparar prompts, validar cambios, pedir review y cerrar PRs/releases.
+  - Se actualizan `AGENTS.md`, `MODULE_INDEX.md`, `MVP_VALIDATION.md` y `COMMAND_LOG.md` para enlazar la nueva gobernanza documental.
+- Criterio de aceptacion:
+  - La etapa deja documentados al menos los 18 aprendizajes reales requeridos.
+  - El playbook cubre inicio de etapa, Git Flow, PR, merge, tag, review y validaciones minimas por tipo de cambio.
+  - No se tocan PDFs, assets estaticos funcionales, DB ni features fuera de alcance.
+
 ## Etapa 8.3 - fix titulos huerfanos y listas PDF
 
 - Fecha: 2026-06-12
