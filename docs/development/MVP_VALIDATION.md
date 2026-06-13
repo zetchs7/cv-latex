@@ -6,6 +6,19 @@ Checklist manual minima para validar el MVP local antes de mergear una rama de c
 
 Version objetivo actual: `0.9.0`
 
+## Validaciones fuertes Etapa 9.1
+
+- Confirmar que `cvs` tiene `structured_schema_version`, `structured_payload` y `structured_payload_status` tanto en DB nueva como en DB legacy migrada.
+- Confirmar que la migracion consulta `PRAGMA table_info(cvs)` y usa `ALTER TABLE ADD COLUMN` solo cuando falta la columna.
+- Confirmar que ejecutar la inicializacion/migracion dos veces no falla ni duplica columnas.
+- Confirmar que un CV legacy existente sigue pudiendo crearse, leerse, actualizarse, duplicarse y exportarse por los flujos actuales.
+- Confirmar que `structured_schema_version` ausente, vacio o `1` mantiene modo legacy canonico.
+- Confirmar que `structured_schema_version >= 2` con `structured_payload` valido y `structured_payload_status = valid` queda clasificado como estructurado preparado.
+- Confirmar que payload invalido, stale o no marcado como valido vuelve a modo legacy seguro.
+- Confirmar que editar por flujo legacy limpia o invalida el payload estructurado para evitar stale data.
+- Confirmar que duplicar un CV estructurado puede preservar payload valido cuando el contenido copiado sigue consistente.
+- Confirmar que no se modificaron templates productivos, UI, ATS scoring, render LaTeX/PDF, export JSON visible ni `app/static/docs/`.
+
 ## Validaciones fuertes Etapa 9.0
 
 - Confirmar que `docs/adr/ADR-0003-structured-cv-editor.md` existe y es una decision de arquitectura, no una implementacion.

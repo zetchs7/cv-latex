@@ -13,6 +13,14 @@ Planificar la implementacion futura del editor estructurado de CV sin tocar codi
 - No toca rutas funcionales, templates productivos, renderer LaTeX/PDF, import/export JSON ni ATS scoring.
 - Documento arquitectonico asociado: `docs/adr/ADR-0003-structured-cv-editor.md`.
 
+## Estado de Etapa 9.1
+
+- Estado: fundacion de persistencia y compatibilidad minima.
+- Agrega columnas idempotentes en `cvs`: `structured_schema_version`, `structured_payload` y `structured_payload_status`.
+- La migracion preserva `/data/app.db` y no depende solo de `CREATE TABLE IF NOT EXISTS`; tambien usa `PRAGMA table_info(cvs)` y `ALTER TABLE ADD COLUMN` condicionado.
+- No cambia UI, templates productivos, render LaTeX/PDF, export JSON visible ni ATS scoring.
+- Los consumidores actuales siguen usando campos legacy hasta una etapa posterior de representacion normalizada.
+
 ## Mapa actual del modulo CV
 
 ### Estructura de datos actual
@@ -118,49 +126,64 @@ Regla para import schema `1`:
 
 ## Subetapas
 
-## Etapa 9.1 - Modelo estructurado en memoria
+## Etapa 9.1 - Fundacion de migracion y compatibilidad minima
 
 Alcance:
 
-- Crear dataclasses o tipos para CV estructurado sin persistirlos todavia.
-- Crear servicio de conversion legacy -> estructura y estructura -> legacy.
-- Crear validaciones puras del payload estructurado.
+- Agregar columnas compatibles en `cvs` para payload estructurado versionado.
+- Mantener campos planos obligatorios como compatibilidad.
+- Crear servicio minimo para resolver modo legacy vs estructurado preparado.
+- Evitar payload stale en updates legacy limpiando o invalidando el payload.
+- Preservar payload valido en duplicate/copy cuando el contenido copiado sigue consistente.
 
 Archivos probables:
 
+- `app/database.py`
 - `app/models.py`
-- `app/schemas.py`
+- `app/repositories/cv_repository.py`
 - `app/services/structured_cv_service.py`
-- `app/validations/structured_cv_validations.py`
+- `tests/test_database_migrations.py`
+- `tests/test_cv_repository.py`
 - `tests/test_structured_cv_service.py`
+- documentacion de migracion/rollback
 
 Validaciones:
 
 - `python -m compileall app tests`
 - `git diff --check`
+- DB nueva crea columnas nuevas;
+- DB existente sin columnas se migra sin perder CVs;
+- migracion repetida corre dos veces sin fallar;
+- CVs legacy siguen creando, leyendo, actualizando, duplicando y exportando por flujos existentes;
 - `docker compose exec app python -m pytest`
 
 Criterios de aceptacion:
 
-- Un `CV` plano puede convertirse a payload estructurado minimo.
-- Un payload estructurado puede derivar campos planos compatibles.
-- No cambia DB ni rutas.
+- DB nueva funciona con columnas estructuradas.
+- DB existente schema `1` recibe columnas nuevas sin perdida.
+- Ejecutar migracion dos veces no falla.
+- Payload ausente o schema `1` queda en legacy canonico.
+- Schema `2` con payload valido y estado `valid` queda preparado como estructurado.
+- Payload invalido, stale o no marcado como valido vuelve a legacy seguro.
+- Update legacy limpia o invalida payload previo para evitar stale data.
+- Duplicate/copy preserva payload valido cuando el contenido copiado sigue consistente.
+- No cambia UI, rutas visibles, PDF/TEX, export JSON visible ni ATS.
 
 No hacer:
 
 - No tocar templates productivos.
 - No cambiar export/import.
-- No migrar datos.
+- No parsear ni backfillear masivamente datos reales.
 
 ## Etapa 9.2 - Persistencia compatible
 
 Alcance:
 
-- Agregar columnas compatibles en `cvs` para payload estructurado versionado.
+- Expandir la persistencia ya creada en 9.1 hacia escritura estructurada real desde servicios futuros.
 - Mantener campos planos obligatorios.
-- Leer/escribir payload sin romper CVs legacy.
-- Definir fuente canonica por registro y evitar payload stale tras ediciones legacy.
-- Definir consistencia explicita para duplicate/copy frente a update/import legacy.
+- Leer/escribir payload desde flujos estructurados sin romper CVs legacy.
+- Definir conversion estructurado -> legacy cuando exista editor o import schema `2`.
+- Mantener consistencia explicita para duplicate/copy frente a update/import legacy.
 
 Archivos probables:
 
