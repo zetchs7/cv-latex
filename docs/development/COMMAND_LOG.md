@@ -107,7 +107,7 @@ Comando:
 Argumentos:
 `app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf`; `app/static/docs/Manual_Uso_Web_CV_LaTeX_Builder.pdf`
 Resultado:
-PDF tecnico SHA256 anterior `FA7103D2E6C32D60A88A0D90050CA18AB8E4ED8C197CA6DCACEB318350C810B0`, nuevo `52B0B930EF64DFBB8949BB95D0C535A6B7383ACBFEF3909F8DB50496004D73D7`. Manual SHA256 anterior `D19160BCFD2084F6B205C4E5EB1B74A192F7FBBA9050810448671EB9AC00E336`, nuevo `0936AF2B26BA434A9E8251160A945F8120650C0B1F5E9BD59BBB9BD2F39259E9`.
+PDF tecnico SHA256 anterior `FA7103D2E6C32D60A88A0D90050CA18AB8E4ED8C197CA6DCACEB318350C810B0`, nuevo intermedio `52B0B930EF64DFBB8949BB95D0C535A6B7383ACBFEF3909F8DB50496004D73D7`. Manual SHA256 anterior `D19160BCFD2084F6B205C4E5EB1B74A192F7FBBA9050810448671EB9AC00E336`, nuevo intermedio `0936AF2B26BA434A9E8251160A945F8120650C0B1F5E9BD59BBB9BD2F39259E9`.
 Error completo:
 No aplica.
 Reintento/correccion:
@@ -155,11 +155,29 @@ Comando:
 Argumentos:
 `/health`, `/documentation/`, `/documentation/technical`, `/documentation/usage`, PDFs bajo `/static/docs/`.
 Resultado:
-`/health` responde `version: 0.9.0`. La documentacion HTML muestra callouts, Prompt IDs y `Release actual publicado`; no muestra `feature/ui-private-dashboard` ni `Rama visual actual`. Las descargas reales de PDF coinciden con los hashes finales.
+`/health` responde `version: 0.9.0`. La documentacion HTML muestra callouts, Prompt IDs y `Release actual publicado`; no muestra `feature/ui-private-dashboard` ni `Rama visual actual`. Las descargas reales de PDF coinciden con los hashes vigentes de esa iteracion.
 Error completo:
 No aplica.
 Reintento/correccion:
 El Browser plugin no pudo iniciar por bloqueo de permisos de Windows (`CreateProcessAsUserW failed: 5`); se dejo registrado y se mantuvo validacion HTTP/DOM y visual por PNG.
+
+## 2026-06-13 - Etapa 8.3 trazabilidad final de hashes PDF
+
+2026-06-13 01:40:33 ART | Etapa 8.3 | CMD-010
+Accion:
+Corregir la trazabilidad documental de hashes PDF finales en PR #10.
+Motivo:
+Codex Review detecto que `COMMAND_LOG.md` seguia dejando visibles hashes intermedios como si fueran finales actuales del commit.
+Comando:
+`Get-FileHash`; `apply_patch`
+Argumentos:
+`app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf`; `app/static/docs/Manual_Uso_Web_CV_LaTeX_Builder.pdf`; `docs/development/COMMAND_LOG.md`
+Resultado:
+Hash final actual del PDF tecnico: `CDB771519D6470316F56A0CEDA2A07CF9FAE4835E27DA09D00CCD5330BC9EDFB`. Hash final actual del manual: `8DE2FA47FCDD7AB38106F77F46F0A9E643FBB6B59DAB653B2CD94552B624E932`.
+Error completo:
+No aplica.
+Reintento/correccion:
+Los hashes `52B0B930EF64DFBB8949BB95D0C535A6B7383ACBFEF3909F8DB50496004D73D7` y `0936AF2B26BA434A9E8251160A945F8120650C0B1F5E9BD59BBB9BD2F39259E9` se mantienen solo como evidencia intermedia de una regeneracion anterior, no como hashes finales vigentes.
 
 ## 2026-06-10 - Fix PR #9 Codex Review P1 sobre PDF tecnico descargable
 
