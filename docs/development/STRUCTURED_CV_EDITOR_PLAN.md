@@ -11,7 +11,7 @@ Planificar la implementacion futura del editor estructurado de CV sin tocar codi
 - No cambia DB.
 - No crea migraciones.
 - No toca rutas funcionales, templates productivos, renderer LaTeX/PDF, import/export JSON ni ATS scoring.
-- Documento arquitectonico asociado: `docs/adr/ADR-0002-structured-cv-editor.md`.
+- Documento arquitectonico asociado: `docs/adr/ADR-0003-structured-cv-editor.md`.
 
 ## Mapa actual del modulo CV
 
@@ -106,6 +106,16 @@ Regla para import schema `1`:
 - Si la derivacion no valida, el CV queda en modo legacy canonico.
 - Nunca debe reutilizarse un `structured_payload` previo ni mezclarse con contenido importado plano.
 
+## Duplicate vs update/import legacy
+
+- Duplicate/copy de un CV estructurado puede preservar `structured_payload` y `structured_schema_version` si el contenido no cambia.
+- La copia debe persistir campos legacy derivados consistentes con el payload preservado.
+- Update legacy sobre CV estructurado no debe conservar payload viejo como valido.
+- La opcion recomendada para este proyecto es regenerar payload desde los campos legacy actualizados dentro de la misma operacion logica.
+- Si esa regeneracion falla, limpiar o invalidar el payload y volver a modo legacy canonico.
+- Import schema `1` sobre un CV estructurado debe tratarse como overwrite legacy y regenerar o limpiar el payload en la misma operacion.
+- PDF, TEX, JSON y ATS siempre deben resolver una unica fuente canonica consistente por registro.
+
 ## Subetapas
 
 ## Etapa 9.1 - Modelo estructurado en memoria
@@ -150,6 +160,7 @@ Alcance:
 - Mantener campos planos obligatorios.
 - Leer/escribir payload sin romper CVs legacy.
 - Definir fuente canonica por registro y evitar payload stale tras ediciones legacy.
+- Definir consistencia explicita para duplicate/copy frente a update/import legacy.
 
 Archivos probables:
 
@@ -167,13 +178,18 @@ Validaciones:
 - `ALTER TABLE ADD COLUMN` se ejecuta solo cuando falta la columna;
 - correr la migracion dos veces no falla;
 - crear, editar, duplicar y soft delete CVs legacy y estructurados;
+- duplicar CV estructurado conserva payload valido y campos legacy consistentes;
 - editar por flujo legacy regenera payload o deja legacy canonico sin stale payload;
+- import schema `1` sobre CV estructurado regenera o limpia payload en la misma operacion;
 - `docker compose exec app python -m pytest`.
 
 Criterios de aceptacion:
 
 - CVs existentes siguen funcionando.
 - Payload se preserva en update/duplicate.
+- Duplicar CV estructurado conserva payload valido.
+- Editar legacy CV estructurado regenera o limpia payload.
+- Import schema `1` sobre CV estructurado no deja payload stale.
 - DB nueva funciona.
 - DB existente schema `1` funciona.
 - Migracion idempotente corre dos veces sin error.
@@ -361,6 +377,7 @@ No hacer:
 - Export/import JSON versionado.
 - Fuente canonica clara: payload estructurado valido o legacy canonico, nunca mezcla stale.
 - Migracion idempotente basada en `PRAGMA table_info(cvs)` y `ALTER TABLE ADD COLUMN` condicionado.
+- Duplicate, update legacy e import schema `1` mantienen consistencia sin dejar payload obsoleto.
 - LaTeX/PDF validado con `pdftotext` si cambia rendering.
 - ATS no cambia scoring sin etapa especifica.
 - Tests por repository, service, route, UI route, export/import, LaTeX, PDF y ATS.

@@ -1,4 +1,4 @@
-# ADR-0002 - Structured CV Editor
+# ADR-0003 - Structured CV Editor
 
 ## Estado
 
@@ -74,6 +74,36 @@ Reglas adicionales:
 - Importar JSON schema `1` despues de que exista soporte estructurado debe crear un CV cuyo payload estructurado se derive inmediatamente desde los campos planos importados. Ese nuevo CV queda canonico por `structured_payload` si la derivacion valida correctamente.
 - Si una derivacion desde schema `1` o flujo legacy falla, el CV debe quedar en modo legacy canonico y export/render/ATS deben usar campos planos, no un payload viejo.
 - Para evitar PDF/JSON/ATS con contenido obsoleto, cualquier actualizacion de campos planos debe ocurrir en la misma transaccion logica que la regeneracion o limpieza del payload. Si no se puede garantizar sincronizacion, el servicio normalizador debe rechazar el payload como stale y usar legacy canonico.
+
+## Reglas de consistencia para duplicate, update legacy e import schema 1
+
+### Duplicate o copy
+
+- Si se duplica un CV estructurado sin modificar su contenido, la copia puede preservar `structured_payload` y `structured_schema_version`.
+- La copia representa el mismo contenido inicial del origen en el momento del duplicado.
+- Los campos legacy derivados de la copia deben recalcularse desde el payload preservado o validarse contra el mismo antes de persistir.
+- El duplicado no debe marcar el payload como stale si no hubo transformacion de contenido.
+
+### Update por flujo legacy sobre CV estructurado
+
+- Una actualizacion legacy no debe preservar ciegamente un `structured_payload` previo.
+- La operacion recomendada para este proyecto sigue siendo regenerar `structured_payload` desde los campos legacy actualizados dentro de la misma operacion logica.
+- Si la regeneracion falla, el sistema debe limpiar o invalidar `structured_payload` y `structured_schema_version`, dejando al CV en modo legacy canonico.
+- No debe quedar un payload estructurado anterior marcado como valido junto a campos legacy nuevos.
+- PDF, TEX, JSON y ATS deben consumir solo la fuente canonica resuelta despues de esa operacion.
+
+### Import schema 1 sobre un CV que ya tenia estructura
+
+- Debe tratarse como overwrite legacy del contenido.
+- En la misma operacion se debe regenerar `structured_payload` desde el contenido importado o limpiar/invalidate el payload previo y volver a modo legacy canonico.
+- Nunca debe sobrevivir un payload schema `2` anterior si el contenido efectivo pasa a ser el del import schema `1`.
+
+### Criterios de aceptacion de consistencia
+
+- Duplicar un CV estructurado conserva payload valido y consistente con sus campos legacy derivados.
+- Editar por flujo legacy un CV estructurado regenera payload o lo limpia sin dejarlo stale.
+- Import schema `1` sobre un CV estructurado no deja payload viejo marcado como valido.
+- Export PDF/TEX/JSON y ATS usan una unica fuente canonica consistente por registro.
 
 ## Alternativas consideradas
 

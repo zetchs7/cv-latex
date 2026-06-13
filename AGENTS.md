@@ -73,7 +73,7 @@ GET /documentation/usage
 - `docs/development/MVP_VALIDATION.md`: validaciones fuertes y checklist manual.
 - `docs/development/LESSONS_LEARNED.md`: errores reales, causa raiz, correccion aplicada y reglas futuras reutilizables.
 - `docs/development/PROJECT_PLAYBOOK.md`: playbook operativo para iniciar, validar, revisar y cerrar etapas con Codex/ChatGPT.
-- `docs/adr/ADR-0002-structured-cv-editor.md` y `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`: diseno y plan del editor estructurado; leerlos antes de tocar DB, rutas, export/import, ATS, LaTeX/PDF o UI del modulo CV.
+- `docs/adr/ADR-0003-structured-cv-editor.md` y `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`: diseno y plan del editor estructurado; leerlos antes de tocar DB, rutas, export/import, ATS, LaTeX/PDF o UI del modulo CV.
 - `docs/development/CHANGELOG_GENERAL.md`: cambios por version/release, no timestamp por comando.
 - `docs/development/MODULE_INDEX.md`: mapa de modulos, no bitacora temporal.
 - `docs/development/VERSIONING.md`: fechas de release/tag y criterio SemVer.

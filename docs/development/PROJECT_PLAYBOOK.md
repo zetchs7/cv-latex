@@ -196,4 +196,4 @@ main <- development <- feature/*
 - Documentar alternativas con ventajas, riesgos, impacto en tests y rollback.
 - Elegir una arquitectura que preserve compatibilidad con datos existentes.
 - Dividir implementacion en subetapas chicas con criterios de aceptacion.
-- Para el editor estructurado de CV, leer `docs/adr/ADR-0002-structured-cv-editor.md` y `docs/development/STRUCTURED_CV_EDITOR_PLAN.md` antes de implementar.
+- Para el editor estructurado de CV, leer `docs/adr/ADR-0003-structured-cv-editor.md` y `docs/development/STRUCTURED_CV_EDITOR_PLAN.md` antes de implementar.
