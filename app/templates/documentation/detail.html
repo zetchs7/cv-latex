@@ -55,6 +55,13 @@
           </ol>
           {% elif block.kind == "code" %}
           <pre class="documentation-code"><code>{{ block.content }}</code></pre>
+          {% elif block.kind == "callout" %}
+          <div class="documentation-callout documentation-callout-{{ block.content.tone }}">
+            <strong>{{ block.content.title }}</strong>
+            {% for item in block.content.body %}
+            <p>{{ item }}</p>
+            {% endfor %}
+          </div>
           {% elif block.kind == "table" %}
           <div class="table-wrap documentation-table-wrap">
             <table class="data-table documentation-table">

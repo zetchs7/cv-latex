@@ -1,5 +1,184 @@
 # Command Log
 
+## Formato vigente para entradas nuevas
+
+Cada ejecucion nueva relevante debe registrarse con timestamp local, etapa e ID secuencial del comando dentro del bloque. Los logs historicos anteriores se preservan como evidencia existente y no se reescriben con timestamps inventados.
+
+```text
+YYYY-MM-DD HH:MM:SS ART | Etapa X.Y | CMD-001
+Accion:
+Motivo:
+Comando:
+Argumentos:
+Resultado:
+Error completo:
+Reintento/correccion:
+```
+
+## 2026-06-11 - Etapa 8.3 trazabilidad y documentacion visual
+
+2026-06-11 01:05:31 ART | Etapa 8.3 | CMD-001
+Accion:
+Leer instrucciones y configuracion persistente de Codex.
+Motivo:
+Cumplir la auditoria obligatoria antes de modificar documentacion persistente del repo.
+Comando:
+`Get-Content`
+Argumentos:
+`C:\Users\zetchs\.codex\AGENTS.md`, `C:\Users\zetchs\.codex\config.toml`, `AGENTS.md`, `.codex/config.toml`
+Resultado:
+Se leyo `~/.codex/AGENTS.md` y `~/.codex/config.toml`. No existian `AGENTS.md` ni `.codex/config.toml` en la raiz del repo.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+2026-06-11 01:05:31 ART | Etapa 8.3 | CMD-002
+Accion:
+Verificar estado Git inicial y crear rama de trabajo.
+Motivo:
+Partir desde `development` actualizado y aislar la etapa en una rama feature.
+Comando:
+`git status --short --branch`; `git branch --show-current`; `git log --oneline --decorate -7`; `git fetch origin`; `git switch development`; `git switch -c feature/traceability-docs-v0.9.0`
+Argumentos:
+Rama `feature/traceability-docs-v0.9.0`.
+Resultado:
+`main`, `development` y `v0.9.0` estaban alineadas en `cbd10fa`. Se creo la rama `feature/traceability-docs-v0.9.0` desde `development`.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+2026-06-11 01:05:31 ART | Etapa 8.3 | CMD-003
+Accion:
+Inspeccionar fuentes Markdown, servicio de documentacion y PDFs actuales.
+Motivo:
+Identificar fuente, generador y hashes anteriores antes de modificar o regenerar PDFs.
+Comando:
+`rg`; `Get-Content`; `Get-FileHash`
+Argumentos:
+`app/services/documentation_service.py`, `docs/user`, `docs/development`, `app/static/docs/*.pdf`
+Resultado:
+Los PDFs se generan desde `docs/user` mediante `app.services.documentation_service` y `pdflatex`. Hash tecnico anterior SHA256: `FA7103D2E6C32D60A88A0D90050CA18AB8E4ED8C197CA6DCACEB318350C810B0`. Hash manual anterior SHA256: `D19160BCFD2084F6B205C4E5EB1B74A192F7FBBA9050810448671EB9AC00E336`.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+2026-06-11 01:05:31 ART | Etapa 8.3 | CMD-004
+Accion:
+Aplicar cambios documentales y de renderer PDF/HTML.
+Motivo:
+Crear instrucciones persistentes del repo, documentar Prompt IDs externos a Codex, actualizar trazabilidad de `v0.9.0` y mejorar lectura visual de PDFs.
+Comando:
+`apply_patch`
+Argumentos:
+`AGENTS.md`, `app/services/documentation_service.py`, `app/templates/layout.html`, `app/templates/documentation/detail.html`, `app/static/css/app.css`, `docs/user`, `docs/development`, `tests/test_documentation_routes.py`
+Resultado:
+Cambios aplicados en rama feature. Validaciones completas pendientes en este mismo bloque de etapa.
+Error completo:
+No aplica.
+Reintento/correccion:
+El primer patch amplio sobre `documentation_service.py` fallo por contexto no coincidente; se reintento en patches pequenos y fue aplicado correctamente.
+
+2026-06-11 01:12:54 ART | Etapa 8.3 | CMD-005
+Accion:
+Regenerar PDFs de documentacion desde fuentes Markdown.
+Motivo:
+Alinear HTML y PDF despues de actualizar fuentes `docs/user` y el renderer visual.
+Comando:
+`docker compose build`; `docker run --rm -u 0 -v "D:\GIT\cv-latex:/workspace" -w /workspace cv-latex-app python -m app.services.documentation_service`
+Argumentos:
+Fuentes `docs/user/PROJECT_TECHNICAL_DOCUMENTATION.md` y `docs/user/WEB_USAGE_MANUAL.md`.
+Resultado:
+Se regeneraron `app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf` y `app/static/docs/Manual_Uso_Web_CV_LaTeX_Builder.pdf`.
+Error completo:
+No aplica.
+Reintento/correccion:
+Se hizo una segunda regeneracion despues de cambiar `linea preparada` por `linea publicada` en la documentacion tecnica.
+
+2026-06-11 01:12:54 ART | Etapa 8.3 | CMD-006
+Accion:
+Registrar hashes finales de PDFs.
+Motivo:
+Dejar trazabilidad de artefactos regenerados.
+Comando:
+`Get-FileHash`
+Argumentos:
+`app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf`; `app/static/docs/Manual_Uso_Web_CV_LaTeX_Builder.pdf`
+Resultado:
+PDF tecnico SHA256 anterior `FA7103D2E6C32D60A88A0D90050CA18AB8E4ED8C197CA6DCACEB318350C810B0`, nuevo intermedio `52B0B930EF64DFBB8949BB95D0C535A6B7383ACBFEF3909F8DB50496004D73D7`. Manual SHA256 anterior `D19160BCFD2084F6B205C4E5EB1B74A192F7FBBA9050810448671EB9AC00E336`, nuevo intermedio `0936AF2B26BA434A9E8251160A945F8120650C0B1F5E9BD59BBB9BD2F39259E9`.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+2026-06-11 01:12:54 ART | Etapa 8.3 | CMD-007
+Accion:
+Validar PDFs con `pdftotext` y render PNG.
+Motivo:
+Confirmar texto extraible, version correcta, ausencia de strings obsoletos y legibilidad visual.
+Comando:
+`pdftotext`; `pdftoppm`; inspeccion visual de PNG.
+Argumentos:
+Primera pagina y pagina interna de cada PDF regenerado.
+Resultado:
+Ambos PDFs contienen `v0.9.0`. La documentacion tecnica contiene `Prompt IDs`, `Release actual publicado` y `cbd10fa`. No aparecen `feature/ui-private-dashboard`, `Rama visual actual` ni `abrir/integrar el PR visual`. Las capturas PNG muestran portada, jerarquia, callouts, tabla y bloques de comandos legibles, sin solapamientos visibles.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+2026-06-11 01:12:54 ART | Etapa 8.3 | CMD-008
+Accion:
+Ejecutar validaciones finales de runtime y tests.
+Motivo:
+Confirmar que los cambios documentales no rompen app, rutas ni suite.
+Comando:
+`python -m compileall app tests`; `git diff --check`; `docker compose build`; `docker compose up -d --force-recreate`; `docker compose ps`; `docker compose logs app --tail 80`; `docker compose exec app python -m pytest`
+Argumentos:
+No aplica.
+Resultado:
+`compileall` ok. `git diff --check` ok con advertencias esperadas de CRLF. Contenedor `cv_latex_app` `healthy`. Pytest: `50 passed in 1.07s`.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+2026-06-11 01:12:54 ART | Etapa 8.3 | CMD-009
+Accion:
+Validar HTTP/DOM y descarga real de PDFs.
+Motivo:
+Confirmar que la app servida expone `0.9.0`, documentacion HTML alineada y PDFs descargables correctos.
+Comando:
+`Invoke-WebRequest`
+Argumentos:
+`/health`, `/documentation/`, `/documentation/technical`, `/documentation/usage`, PDFs bajo `/static/docs/`.
+Resultado:
+`/health` responde `version: 0.9.0`. La documentacion HTML muestra callouts, Prompt IDs y `Release actual publicado`; no muestra `feature/ui-private-dashboard` ni `Rama visual actual`. Las descargas reales de PDF coinciden con los hashes vigentes de esa iteracion.
+Error completo:
+No aplica.
+Reintento/correccion:
+El Browser plugin no pudo iniciar por bloqueo de permisos de Windows (`CreateProcessAsUserW failed: 5`); se dejo registrado y se mantuvo validacion HTTP/DOM y visual por PNG.
+
+## 2026-06-13 - Etapa 8.3 trazabilidad final de hashes PDF
+
+2026-06-13 01:40:33 ART | Etapa 8.3 | CMD-010
+Accion:
+Corregir la trazabilidad documental de hashes PDF finales en PR #10.
+Motivo:
+Codex Review detecto que `COMMAND_LOG.md` seguia dejando visibles hashes intermedios como si fueran finales actuales del commit.
+Comando:
+`Get-FileHash`; `apply_patch`
+Argumentos:
+`app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf`; `app/static/docs/Manual_Uso_Web_CV_LaTeX_Builder.pdf`; `docs/development/COMMAND_LOG.md`
+Resultado:
+Hash final actual del PDF tecnico: `CDB771519D6470316F56A0CEDA2A07CF9FAE4835E27DA09D00CCD5330BC9EDFB`. Hash final actual del manual: `8DE2FA47FCDD7AB38106F77F46F0A9E643FBB6B59DAB653B2CD94552B624E932`.
+Error completo:
+No aplica.
+Reintento/correccion:
+Los hashes `52B0B930EF64DFBB8949BB95D0C535A6B7383ACBFEF3909F8DB50496004D73D7` y `0936AF2B26BA434A9E8251160A945F8120650C0B1F5E9BD59BBB9BD2F39259E9` se mantienen solo como evidencia intermedia de una regeneracion anterior, no como hashes finales vigentes.
+
 ## 2026-06-10 - Fix PR #9 Codex Review P1 sobre PDF tecnico descargable
 
 Accion:

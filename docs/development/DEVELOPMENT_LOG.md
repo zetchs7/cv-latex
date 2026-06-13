@@ -1,5 +1,45 @@
 # Development Log
 
+## Etapa 8.3 - fix titulos huerfanos y listas PDF
+
+- Fecha: 2026-06-12
+- Rama: `feature/traceability-docs-v0.9.0`
+- Objetivo: corregir titulos huerfanos y listas cortas partidas en PDFs generados, manteniendo indice funcional, contraste aprobado y consistencia HTML/PDF.
+- Modulos afectados: `app/services/documentation_service.py`, `app/static/docs`, `AGENTS.md`, `docs/development`, `tests`.
+- Resumen de cambios:
+  - El renderer PDF estima el espacio necesario segun el bloque posterior a cada heading para evitar que secciones como `Modulos implementados` queden solas al final de pagina.
+  - Las listas cortas se mantienen juntas cuando su tamano permite moverlas completas sin forzar saltos de pagina globales.
+  - Se documenta que las validaciones PDF deben revisar listas cortas partidas, paginas internas afectadas, hashes, `pdftotext`, PNGs y descarga real desde `/static/docs/`.
+- Resultado esperado: PDFs de documentacion `v0.9.0` sin titulos huerfanos ni listas cortas partidas de forma visualmente pobre antes de mergear PR #10.
+
+## Etapa 8.3 - fix TOC y paginacion PDF
+
+- Fecha: 2026-06-12
+- Rama: `feature/traceability-docs-v0.9.0`
+- Objetivo: corregir el indice vacio de PDFs generados, mejorar cortes visuales de secciones y dejar reglas permanentes para documentacion PDF actual y futura.
+- Modulos afectados: `app/services/documentation_service.py`, `app/static/docs`, `AGENTS.md`, `docs/development`, `tests`.
+- Resumen de cambios:
+  - El renderer PDF mantiene `\tableofcontents`, pero ahora agrega entradas reales para headings no numerados y compila con dos pasadas de `pdflatex`.
+  - Se agregan reservas de espacio antes de secciones, subsecciones, callouts, tablas y bloques de codigo para reducir titulos huerfanos y cortes visuales pobres.
+  - Se documenta que no se publican PDFs con indice vacio, que los PDFs deben regenerarse cuando cambian fuentes o renderer, y que la validacion incluye `pdftotext`, PNG de portada/indice/pagina interna, hashes y descarga real desde `/static/docs/`.
+  - Se refuerza que no se deben inventar timestamps historicos y que los Prompt IDs son externos a Codex.
+- Resultado esperado: PDFs de documentacion `v0.9.0` con indice funcional, mejor lectura visual y reglas de validacion persistentes antes de mergear PR #10.
+
+## Etapa 8.3 - trazabilidad y documentacion visual
+
+- Fecha: 2026-06-11
+- Rama: `feature/traceability-docs-v0.9.0`
+- Objetivo: mejorar trazabilidad persistente del repo y elevar la documentacion HTML/PDF a un formato mas profesional, escaneable y consistente.
+- Modulos afectados: `AGENTS.md`, `documentation`, `static/docs`, `docs/user`, `docs/development`, `tests`.
+- Resumen de cambios:
+  - Se crea `AGENTS.md` del repo con reglas especificas de stack, Git Flow, validaciones, documentacion, PDF, seguridad, Code Review y Prompt IDs externos a Codex.
+  - Se documenta que los Prompt IDs son externos a Codex y no deben incluirse dentro de prompts ejecutables.
+  - Se actualizan reglas de timestamps: `COMMAND_LOG.md` para comandos nuevos, `DEVELOPMENT_LOG.md` para hitos, `MVP_VALIDATION.md` para validaciones fuertes, `CHANGELOG_GENERAL.md` por release, `MODULE_INDEX.md` como mapa y `VERSIONING.md` para fechas de release/tag.
+  - Se mejora el renderer de documentacion para soportar callouts en HTML/PDF y generar PDFs con portada, version, fecha, estado, tabla de contenidos, footer, tablas con filas alternadas y bloques visuales.
+  - Se actualiza `PROJECT_HISTORY_ROLLBACK.md` para reflejar `v0.9.0` como release estable actual y `v0.8.0` como release anterior.
+  - Se cambia el copy menor del sidebar de `Base estable: v0.8.0` a `Release anterior: v0.8.0`.
+- Resultado esperado: documentacion mas clara y auditable, sin cambios funcionales nuevos ni cambios de DB.
+
 ## Fix PR #9 - bundled technical PDF before v0.9.0 release
 
 - Fecha: 2026-06-10

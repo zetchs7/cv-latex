@@ -6,6 +6,9 @@
 2. Ejecutar `docker compose up -d`.
 3. Verificar `docker compose ps`.
 
+> [!RESULTADO] Resultado esperado
+> El servicio `app` debe quedar `healthy` y `/health` debe responder `version: 0.9.0`.
+
 ## URL local
 
 - Dashboard principal: `http://localhost:8000`
@@ -86,6 +89,30 @@
 
 - Ejecutar `docker compose exec app python -m pytest`
 
+## Como validar documentacion y PDFs
+
+1. Abrir `http://localhost:8000/documentation/`.
+2. Leer `Documentacion tecnica` y `Manual de uso web` dentro de la app.
+3. Descargar ambos PDFs desde los botones `Descargar PDF`.
+4. Confirmar que la documentacion tecnica menciona `v0.9.0`.
+5. Confirmar que no aparecen referencias obsoletas al estado visual anterior ni tareas de integracion visual ya cerradas.
+
+> [!COMANDO] Validacion tecnica de PDF
+> Para validar el texto extraible dentro del contenedor se puede usar `pdftotext /app/app/static/docs/Proyecto_CV_LaTeX_Builder_Documentacion_Tecnica.pdf -`.
+
+## Como registrar comandos del proyecto
+
+- Registrar comandos relevantes en `docs/development/COMMAND_LOG.md`.
+- Usar timestamp local con zona horaria, etapa e ID secuencial `CMD-###`.
+- Registrar accion, motivo, comando exacto, argumentos, resultado, error completo y reintento si aplica.
+- No usar `COMMAND_LOG.md` como changelog de release; para eso existe `docs/development/CHANGELOG_GENERAL.md`.
+
+## Prompt IDs
+
+- Los Prompt IDs son referencias externas entre Franco y ChatGPT.
+- No se incluyen dentro de prompts ejecutables para Codex.
+- Si hace falta dejar trazabilidad, registrar la regla o el resultado, no el identificador como parte de una orden.
+
 ## Backup basico
 
 ```bash
@@ -113,4 +140,4 @@ docker compose up -d
 ## Historial y rollback
 
 - Referencia: `docs/development/PROJECT_HISTORY_ROLLBACK.md`
-- Sirve para inspeccionar el tag `v0.8.0`, revisar el commit base estable y recordar comandos de rollback sin ejecutarlos sin validacion previa.
+- Sirve para inspeccionar el tag estable actual `v0.9.0`, revisar el release anterior `v0.8.0` y recordar comandos de rollback sin ejecutarlos sin validacion previa.

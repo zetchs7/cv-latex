@@ -14,6 +14,9 @@ DOCUMENTATION_OUTPUT_DIR = REPO_ROOT / "app" / "static" / "docs"
 DOCUMENTATION_BUILD_DIR = REPO_ROOT / "data" / "documentation-build"
 PDFLATEX_COMMAND = "pdflatex"
 PDFLATEX_TIMEOUT_SECONDS = 45
+DOCUMENTATION_RELEASE_VERSION = "v0.9.0"
+DOCUMENTATION_RELEASE_DATE = "2026-06-11"
+DOCUMENTATION_STATUS = "Release estable local"
 
 
 @dataclass(frozen=True)
@@ -121,6 +124,7 @@ def generate_all_documentation_pdfs() -> list[Path]:
 
 def _compile_latex_to_pdf(latex_content: str, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    DOCUMENTATION_BUILD_DIR.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="docs-pdf-", dir=DOCUMENTATION_BUILD_DIR) as temp_directory_name:
         temp_directory = Path(temp_directory_name)
@@ -135,25 +139,26 @@ def _compile_latex_to_pdf(latex_content: str, output_path: Path) -> None:
             tex_path.name,
         ]
 
-        try:
-            result = subprocess.run(
-                command,
-                cwd=temp_directory,
-                capture_output=True,
-                text=True,
-                timeout=PDFLATEX_TIMEOUT_SECONDS,
-                check=False,
-            )
-        except FileNotFoundError as error:
-            raise DocumentationGenerationError("pdflatex no esta disponible para generar los PDFs de documentacion.") from error
-        except subprocess.TimeoutExpired as error:
-            raise DocumentationGenerationError("La generacion de PDFs de documentacion excedio el tiempo maximo permitido.") from error
+        for _ in range(2):
+            try:
+                result = subprocess.run(
+                    command,
+                    cwd=temp_directory,
+                    capture_output=True,
+                    text=True,
+                    timeout=PDFLATEX_TIMEOUT_SECONDS,
+                    check=False,
+                )
+            except FileNotFoundError as error:
+                raise DocumentationGenerationError("pdflatex no esta disponible para generar los PDFs de documentacion.") from error
+            except subprocess.TimeoutExpired as error:
+                raise DocumentationGenerationError("La generacion de PDFs de documentacion excedio el tiempo maximo permitido.") from error
 
-        if result.returncode != 0:
-            error_excerpt = _build_latex_error_excerpt(result.stdout, result.stderr, temp_directory / "documentation.log")
-            raise DocumentationGenerationError(
-                "No se pudo compilar uno de los PDFs de documentacion.\n" + error_excerpt
-            )
+            if result.returncode != 0:
+                error_excerpt = _build_latex_error_excerpt(result.stdout, result.stderr, temp_directory / "documentation.log")
+                raise DocumentationGenerationError(
+                    "No se pudo compilar uno de los PDFs de documentacion.\n" + error_excerpt
+                )
 
         compiled_pdf = temp_directory / "documentation.pdf"
         if not compiled_pdf.exists():
@@ -178,6 +183,7 @@ def _build_latex_error_excerpt(stdout: str, stderr: str, log_path: Path) -> str:
 def _render_markdown_document(title: str, markdown_content: str) -> str:
     body = _markdown_to_latex(markdown_content)
     escaped_title = _escape_latex(title)
+    escaped_status = _escape_latex(DOCUMENTATION_STATUS)
 
     return rf"""\documentclass[11pt,a4paper]{{article}}
 \usepackage[T1]{{fontenc}}
@@ -189,21 +195,78 @@ def _render_markdown_document(title: str, markdown_content: str) -> str:
 \usepackage{{enumitem}}
 \usepackage{{longtable}}
 \usepackage{{array}}
-\usepackage{{xcolor}}
+\usepackage[table]{{xcolor}}
 \usepackage{{fancyvrb}}
-\geometry{{margin=2cm}}
+\usepackage{{fancyhdr}}
+\usepackage{{titlesec}}
+\usepackage{{needspace}}
+\usepackage[most]{{tcolorbox}}
+\geometry{{margin=2.05cm, top=2.2cm, bottom=2.35cm}}
 \setlength{{\parindent}}{{0pt}}
-\setlength{{\parskip}}{{0.75em}}
+\setlength{{\parskip}}{{0.62em}}
+\renewcommand{{\arraystretch}}{{1.28}}
+\definecolor{{DocPaper}}{{HTML}}{{fbf8f1}}
+\definecolor{{DocSurface}}{{HTML}}{{fffdf8}}
+\definecolor{{DocAccent}}{{HTML}}{{8c5a37}}
+\definecolor{{DocAccentDark}}{{HTML}}{{6e4225}}
+\definecolor{{DocBorder}}{{HTML}}{{d8c7b5}}
+\definecolor{{DocMuted}}{{HTML}}{{6b5f54}}
+\definecolor{{DocRow}}{{HTML}}{{f4ede2}}
+\definecolor{{DocCalloutBg}}{{HTML}}{{fff7ed}}
+\definecolor{{DocCalloutTitle}}{{HTML}}{{fff7ef}}
+\pagecolor{{DocPaper}}
+\color{{black}}
+\pagestyle{{fancy}}
+\fancyhf{{}}
+\fancyhead[L]{{\small\textcolor{{DocMuted}}{{CV LaTeX Builder}}}}
+\fancyhead[R]{{\small\textcolor{{DocMuted}}{{{DOCUMENTATION_RELEASE_VERSION}}}}}
+\fancyfoot[L]{{\small\textcolor{{DocMuted}}{{{escaped_title}}}}}
+\fancyfoot[R]{{\small\textcolor{{DocMuted}}{{Pagina \thepage}}}}
+\renewcommand{{\headrulewidth}}{{0.3pt}}
+\renewcommand{{\footrulewidth}}{{0.3pt}}
+\titleformat{{\section}}{{\Large\bfseries\color{{DocAccentDark}}}}{{}}{{0pt}}{{}}
+\titleformat{{\subsection}}{{\large\bfseries\color{{DocAccentDark}}}}{{}}{{0pt}}{{}}
+\titleformat{{\subsubsection}}{{\normalsize\bfseries\color{{DocAccent}}}}{{}}{{0pt}}{{}}
 \hypersetup{{
     colorlinks=true,
-    linkcolor=black,
-    urlcolor=blue
+    linkcolor=DocAccentDark,
+    urlcolor=DocAccentDark
 }}
-\DefineVerbatimEnvironment{{DocCode}}{{Verbatim}}{{fontsize=\small, frame=single}}
+\DefineVerbatimEnvironment{{DocCode}}{{Verbatim}}{{fontsize=\small, frame=single, framesep=3mm, rulecolor=\color{{DocAccent}}}}
+\newtcolorbox{{DocCallout}}[1]{{
+    enhanced,
+    breakable,
+    colback=DocCalloutBg,
+    colbacktitle=DocAccent,
+    colframe=DocAccent,
+    coltitle=DocCalloutTitle,
+    fonttitle=\bfseries,
+    title=#1,
+    boxrule=0.7pt,
+    arc=2mm,
+    left=4mm,
+    right=4mm,
+    top=2mm,
+    bottom=2mm
+}}
 \begin{{document}}
-\begin{{center}}
-{{\LARGE \textbf{{{escaped_title}}}}}\\[0.5em]
-\end{{center}}
+\begin{{titlepage}}
+\vspace*{{1.2cm}}
+{{\color{{DocAccent}}\rule{{\linewidth}}{{1.4pt}}}}\\[1.2cm]
+{{\Huge\bfseries\color{{DocAccentDark}} {escaped_title}}}\\[0.6cm]
+{{\Large CV LaTeX Builder}}\\[1.2cm]
+\begin{{DocCallout}}{{Resumen del documento}}
+\textbf{{Version:}} {DOCUMENTATION_RELEASE_VERSION}\\
+\textbf{{Fecha:}} {DOCUMENTATION_RELEASE_DATE}\\
+\textbf{{Estado:}} {escaped_status}\\
+\textbf{{Proyecto:}} documentacion HTML/PDF servida localmente.
+\end{{DocCallout}}
+\vfill
+{{\color{{DocAccent}}\rule{{\linewidth}}{{0.8pt}}}}\\[0.25cm]
+{{\small Documento generado desde fuentes Markdown versionadas en \texttt{{docs/user}}.}}
+\end{{titlepage}}
+\tableofcontents
+\newpage
 {body}
 \end{{document}}
 """
@@ -283,6 +346,22 @@ def _parse_section_blocks(lines: list[str]) -> list[DocumentationBlock]:
                 index += 1
             blocks.append(DocumentationBlock(kind="code", content="\n".join(code_lines)))
             index += 1
+            continue
+
+        if stripped.startswith(">"):
+            flush_paragraph()
+            callout, next_index = _consume_callout(lines, index)
+            blocks.append(
+                DocumentationBlock(
+                    kind="callout",
+                    content={
+                        "tone": callout["tone"],
+                        "title": _format_inline_html(str(callout["title"])),
+                        "body": tuple(_format_inline_html(item) for item in callout["body"]),
+                    },
+                )
+            )
+            index = next_index
             continue
 
         if _is_table_header(lines, index):
@@ -403,6 +482,7 @@ def _markdown_to_latex(markdown_content: str) -> str:
             while index < len(lines) and not lines[index].strip().startswith("```"):
                 code_lines.append(lines[index])
                 index += 1
+            output.append(r"\Needspace{6\baselineskip}")
             output.append(r"\begin{DocCode}")
             output.extend(code_lines if code_lines else [""])
             output.append(r"\end{DocCode}")
@@ -410,9 +490,22 @@ def _markdown_to_latex(markdown_content: str) -> str:
             index += 1
             continue
 
+        if stripped.startswith(">"):
+            flush_paragraph()
+            callout, next_index = _consume_callout(lines, index)
+            output.append(r"\Needspace{6\baselineskip}")
+            output.append(r"\begin{DocCallout}{" + _format_inline(str(callout["title"])) + "}")
+            body = [item for item in callout["body"] if str(item).strip()]
+            output.append(_format_inline(" ".join(str(item) for item in body)) if body else "")
+            output.append(r"\end{DocCallout}")
+            output.append("")
+            index = next_index
+            continue
+
         if _is_table_header(lines, index):
             flush_paragraph()
             table_rows, next_index = _consume_table(lines, index)
+            output.append(r"\Needspace{7\baselineskip}")
             output.extend(_render_table(table_rows))
             output.append("")
             index = next_index
@@ -420,21 +513,27 @@ def _markdown_to_latex(markdown_content: str) -> str:
 
         if stripped.startswith("# "):
             flush_paragraph()
-            output.append(r"\section*{" + _format_inline(stripped[2:].strip()) + "}")
-            output.append("")
             index += 1
             continue
 
         if stripped.startswith("## "):
             flush_paragraph()
-            output.append(r"\subsection*{" + _format_inline(stripped[3:].strip()) + "}")
+            heading = _format_inline(stripped[3:].strip())
+            output.append(_needspace_directive(_estimate_heading_needspace(lines, index, level=2)))
+            output.append(r"\phantomsection")
+            output.append(r"\addcontentsline{toc}{subsection}{" + heading + "}")
+            output.append(r"\subsection*{" + heading + "}")
             output.append("")
             index += 1
             continue
 
         if stripped.startswith("### "):
             flush_paragraph()
-            output.append(r"\subsubsection*{" + _format_inline(stripped[4:].strip()) + "}")
+            heading = _format_inline(stripped[4:].strip())
+            output.append(_needspace_directive(_estimate_heading_needspace(lines, index, level=3)))
+            output.append(r"\phantomsection")
+            output.append(r"\addcontentsline{toc}{subsubsection}{" + heading + "}")
+            output.append(r"\subsubsection*{" + heading + "}")
             output.append("")
             index += 1
             continue
@@ -442,9 +541,15 @@ def _markdown_to_latex(markdown_content: str) -> str:
         if stripped.startswith(("- ", "* ")):
             flush_paragraph()
             items, next_index = _consume_list(lines, index, ordered=False)
+            wrap_list = _should_keep_list_together(items)
+            if wrap_list:
+                output.append(_needspace_directive(_estimate_list_needspace(items)))
+                output.append(r"\begin{samepage}")
             output.append(r"\begin{itemize}[leftmargin=1.5em]")
             output.extend(r"\item " + _format_inline(item) for item in items)
             output.append(r"\end{itemize}")
+            if wrap_list:
+                output.append(r"\end{samepage}")
             output.append("")
             index = next_index
             continue
@@ -452,9 +557,15 @@ def _markdown_to_latex(markdown_content: str) -> str:
         if re.match(r"^\d+\.\s+", stripped):
             flush_paragraph()
             items, next_index = _consume_list(lines, index, ordered=True)
+            wrap_list = _should_keep_list_together(items)
+            if wrap_list:
+                output.append(_needspace_directive(_estimate_list_needspace(items)))
+                output.append(r"\begin{samepage}")
             output.append(r"\begin{enumerate}[leftmargin=1.8em]")
             output.extend(r"\item " + _format_inline(item) for item in items)
             output.append(r"\end{enumerate}")
+            if wrap_list:
+                output.append(r"\end{samepage}")
             output.append("")
             index = next_index
             continue
@@ -464,6 +575,65 @@ def _markdown_to_latex(markdown_content: str) -> str:
 
     flush_paragraph()
     return "\n".join(output).strip() + "\n"
+
+
+def _needspace_directive(lines: int) -> str:
+    return rf"\Needspace{{{lines}\baselineskip}}"
+
+
+def _estimate_heading_needspace(lines: list[str], heading_index: int, level: int) -> int:
+    base_lines = 4 if level == 2 else 3
+    next_index = _next_nonempty_index(lines, heading_index + 1)
+    if next_index is None:
+        return base_lines
+
+    stripped = lines[next_index].strip()
+
+    if level == 2 and stripped.startswith("### "):
+        nested_index = _next_nonempty_index(lines, next_index + 1)
+        if nested_index is None:
+            return 8
+        nested_stripped = lines[nested_index].strip()
+        if nested_stripped.startswith(("- ", "* ")) or re.match(r"^\d+\.\s+", nested_stripped):
+            items, _ = _consume_list(lines, nested_index, ordered=bool(re.match(r"^\d+\.\s+", nested_stripped)))
+            return min(18, 7 + _estimate_list_needspace(items))
+        return 11
+
+    if stripped.startswith(("- ", "* ")) or re.match(r"^\d+\.\s+", stripped):
+        items, _ = _consume_list(lines, next_index, ordered=bool(re.match(r"^\d+\.\s+", stripped)))
+        if _should_keep_list_together(items):
+            return min(18, base_lines + _estimate_list_needspace(items))
+        return base_lines + 5
+
+    if stripped.startswith(">"):
+        return base_lines + 6
+    if stripped.startswith("```"):
+        return base_lines + 6
+    if _is_table_header(lines, next_index):
+        return base_lines + 8
+    return base_lines + 4
+
+
+def _next_nonempty_index(lines: list[str], start_index: int) -> int | None:
+    for index in range(start_index, len(lines)):
+        if lines[index].strip():
+            return index
+    return None
+
+
+def _should_keep_list_together(items: list[str]) -> bool:
+    if not items:
+        return False
+    total_visual_lines = sum(_estimate_item_visual_lines(item) for item in items)
+    return len(items) <= 9 and total_visual_lines <= 14
+
+
+def _estimate_list_needspace(items: list[str]) -> int:
+    return min(17, 3 + sum(_estimate_item_visual_lines(item) for item in items))
+
+
+def _estimate_item_visual_lines(item: str) -> int:
+    return max(1, (len(item) + 72) // 73)
 
 
 def _is_table_header(lines: list[str], index: int) -> bool:
@@ -502,9 +672,9 @@ def _consume_table(lines: list[str], start_index: int) -> tuple[list[list[str]],
 
 def _render_table(rows: list[list[str]]) -> list[str]:
     column_count = len(rows[0])
-    column_spec = "|" + "|".join("p{0.28\\textwidth}" for _ in range(column_count)) + "|"
+    column_spec = "|" + "|".join("p{0.27\\textwidth}" for _ in range(column_count)) + "|"
     rendered = [
-        r"\renewcommand{\arraystretch}{1.2}",
+        r"\rowcolors{2}{DocRow}{DocSurface}",
         r"\begin{longtable}{" + column_spec + "}",
         r"\hline",
     ]
@@ -517,7 +687,33 @@ def _render_table(rows: list[list[str]]) -> list[str]:
         rendered.append(" & ".join(_format_inline(cell) for cell in normalized_row[:column_count]) + r" \\ \hline")
 
     rendered.append(r"\end{longtable}")
+    rendered.append(r"\rowcolors{2}{}{}")
     return rendered
+
+
+def _consume_callout(lines: list[str], start_index: int) -> tuple[dict[str, object], int]:
+    raw_items: list[str] = []
+    index = start_index
+
+    while index < len(lines):
+        stripped = lines[index].strip()
+        if not stripped.startswith(">"):
+            break
+        raw_items.append(stripped[1:].strip())
+        index += 1
+
+    first = raw_items[0] if raw_items else ""
+    match = re.match(r"^\[!([A-Za-z0-9_-]+)\]\s*(.*)$", first)
+    if match:
+        tone = match.group(1).lower()
+        title = match.group(2).strip() or tone.title()
+        body = raw_items[1:]
+    else:
+        tone = "nota"
+        title = "Nota"
+        body = raw_items
+
+    return {"tone": tone, "title": title, "body": body}, index
 
 
 def _consume_list(lines: list[str], start_index: int, ordered: bool) -> tuple[list[str], int]:
