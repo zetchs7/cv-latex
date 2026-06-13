@@ -57,7 +57,7 @@ Respetar Git Flow y aislar la etapa 9.0 en una rama feature sin tocar codigo fun
 Comando:
 `git fetch origin`; `git switch development`; `git switch -c feature/structured-cv-editor-design`; `apply_patch`
 Argumentos:
-Rama `feature/structured-cv-editor-design`; documentos `docs/adr/ADR-0001-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `AGENTS.md`, `MODULE_INDEX.md`, `DEVELOPMENT_LOG.md`, `MVP_VALIDATION.md`, `PROJECT_PLAYBOOK.md`, `COMMAND_LOG.md`.
+Rama `feature/structured-cv-editor-design`; documentos `docs/adr/ADR-0002-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `AGENTS.md`, `MODULE_INDEX.md`, `DEVELOPMENT_LOG.md`, `MVP_VALIDATION.md`, `PROJECT_PLAYBOOK.md`, `COMMAND_LOG.md`.
 Resultado:
 Se creo la rama de diseno desde `development` actualizado y se agrego documentacion arquitectonica/operativa sin modificar `app/`, `tests/`, DB, templates productivos, renderer LaTeX/PDF, import/export JSON ni ATS.
 Error completo:
@@ -73,9 +73,41 @@ Confirmar que la etapa 9.0 no implemento codigo funcional y que los documentos n
 Comando:
 `git status --short --branch`; `git diff --name-only`; `rg`; `python -m compileall app tests`; `git diff --check`; `docker compose ps`; `docker compose exec app python -m pytest`
 Argumentos:
-`docs/adr/ADR-0001-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `app`, `tests`.
+`docs/adr/ADR-0002-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `app`, `tests`.
 Resultado:
 El diff quedo limitado a documentacion e instrucciones del repo. `compileall` finalizo correctamente. `git diff --check` no reporto errores de whitespace, solo advertencias CRLF del working copy. `docker compose ps` mostro `cv_latex_app` `healthy`. Pytest en contenedor: `53 passed in 1.10s`.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-005
+Accion:
+Corregir hallazgos de Codex Review en PR #12.
+Motivo:
+Resolver bloqueantes de diseno sobre fuente canonica legacy/estructurada, migracion idempotente para DB existente y numeracion unica de ADR sin implementar codigo funcional.
+Comando:
+`apply_patch`; `rg`; `git status --short --branch`; `git diff --name-status`
+Argumentos:
+`docs/adr/ADR-0002-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `AGENTS.md`, `MODULE_INDEX.md`, `DEVELOPMENT_LOG.md`, `MVP_VALIDATION.md`, `PROJECT_PLAYBOOK.md`, `COMMAND_LOG.md`.
+Resultado:
+Se renombro la ADR a `ADR-0002-structured-cv-editor.md`, se actualizaron referencias, se definio `structured_payload` valido con `structured_schema_version >= 2` como fuente canonica, se documento regeneracion desde flujo legacy para evitar payload stale y se especifico migracion idempotente con `PRAGMA table_info(cvs)` y `ALTER TABLE ADD COLUMN` condicionado.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-006
+Accion:
+Validar correcciones documentales de review.
+Motivo:
+Confirmar que no quedan referencias a la ADR duplicada, que estan documentadas fuente canonica e idempotencia, y que la suite sigue estable sin cambios funcionales.
+Comando:
+`git status --short --branch`; `git diff --name-status`; `rg`; `python -m compileall app tests`; `git diff --check`; `docker compose ps`; `docker compose exec app python -m pytest`
+Argumentos:
+Busquedas del nombre ADR anterior/nuevo y de `source of truth|fuente canonica|structured_payload|stale|PRAGMA table_info|ALTER TABLE|idempotent|idempotente|schema_version`.
+Resultado:
+No quedan referencias al nombre ADR anterior. Las reglas de `ADR-0002`, fuente canonica, payload stale y migracion idempotente aparecen en docs. `compileall` ok. `git diff --check` sin errores de whitespace, solo advertencias CRLF del working copy. `docker compose ps` mostro `cv_latex_app` `healthy`. Pytest en contenedor: `53 passed in 1.10s`.
 Error completo:
 No aplica.
 Reintento/correccion:

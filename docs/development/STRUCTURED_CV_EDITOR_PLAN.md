@@ -11,7 +11,7 @@ Planificar la implementacion futura del editor estructurado de CV sin tocar codi
 - No cambia DB.
 - No crea migraciones.
 - No toca rutas funcionales, templates productivos, renderer LaTeX/PDF, import/export JSON ni ATS scoring.
-- Documento arquitectonico asociado: `docs/adr/ADR-0001-structured-cv-editor.md`.
+- Documento arquitectonico asociado: `docs/adr/ADR-0002-structured-cv-editor.md`.
 
 ## Mapa actual del modulo CV
 
@@ -83,6 +83,29 @@ Usar transicion hibrida:
 - Introducir schema JSON `2` cuando exista payload estructurado.
 - Adaptar consumidores mediante representacion normalizada antes de tocar templates o scoring.
 
+## Fuente canonica y stale data
+
+Regla obligatoria para las etapas futuras:
+
+- Si `structured_payload` es valido y `structured_schema_version >= 2`, el payload estructurado es la fuente canonica.
+- Si no hay payload valido, los campos planos legacy son la fuente canonica.
+- Los campos planos se mantienen como snapshot derivado para compatibilidad, no como fuente paralela cuando el payload estructurado es valido.
+- Render, export JSON schema `2`, LaTeX/PDF y ATS deben consumir una representacion normalizada desde el servicio estructurado.
+- Ningun consumidor debe leer `structured_payload` y campos planos por separado.
+
+Decision operativa recomendada:
+
+- Cuando un CV estructurado se edite por el flujo legacy, regenerar `structured_payload` desde los campos legacy en la misma operacion logica.
+- Marcar metadata de sincronizacion del payload, por ejemplo `source = "legacy_edit"` y `synced_from_legacy_at`.
+- Si la regeneracion falla, limpiar o ignorar el payload y dejar el CV en modo legacy canonico para evitar usar contenido stale.
+- No bloquear el flujo legacy en la primera etapa funcional, porque eso agregaria friccion y riesgo para CVs existentes.
+
+Regla para import schema `1`:
+
+- Un import schema `1` debe crear un CV nuevo desde campos planos y derivar payload estructurado si la version ya lo soporta.
+- Si la derivacion no valida, el CV queda en modo legacy canonico.
+- Nunca debe reutilizarse un `structured_payload` previo ni mezclarse con contenido importado plano.
+
 ## Subetapas
 
 ## Etapa 9.1 - Modelo estructurado en memoria
@@ -126,6 +149,7 @@ Alcance:
 - Agregar columnas compatibles en `cvs` para payload estructurado versionado.
 - Mantener campos planos obligatorios.
 - Leer/escribir payload sin romper CVs legacy.
+- Definir fuente canonica por registro y evitar payload stale tras ediciones legacy.
 
 Archivos probables:
 
@@ -139,19 +163,29 @@ Validaciones:
 
 - inicializacion de DB nueva;
 - DB existente con tabla legacy;
+- `PRAGMA table_info(cvs)` detecta columnas antes de migrar;
+- `ALTER TABLE ADD COLUMN` se ejecuta solo cuando falta la columna;
+- correr la migracion dos veces no falla;
 - crear, editar, duplicar y soft delete CVs legacy y estructurados;
+- editar por flujo legacy regenera payload o deja legacy canonico sin stale payload;
 - `docker compose exec app python -m pytest`.
 
 Criterios de aceptacion:
 
 - CVs existentes siguen funcionando.
 - Payload se preserva en update/duplicate.
+- DB nueva funciona.
+- DB existente schema `1` funciona.
+- Migracion idempotente corre dos veces sin error.
+- CVs existentes siguen renderizando PDF/TEX/JSON.
+- Import/export schema `1` sigue funcionando.
 - Rollback posible ignorando columnas nuevas.
 
 No hacer:
 
 - No convertir masivamente texto libre sin aprobacion.
 - No borrar campos legacy.
+- No depender solo de `CREATE TABLE IF NOT EXISTS` para evolucionar una DB existente.
 
 ## Etapa 9.3 - Import/export JSON schema `2`
 
@@ -174,6 +208,7 @@ Validaciones:
 - export schema `2` desde CV estructurado;
 - import schema `1`;
 - import schema `2`;
+- import schema `1` sobre una version con estructura deriva payload o deja modo legacy canonico;
 - rechazo de payload invalido;
 - limite de `512 KB`.
 
@@ -324,9 +359,10 @@ No hacer:
 
 - Compatibilidad con CVs existentes.
 - Export/import JSON versionado.
+- Fuente canonica clara: payload estructurado valido o legacy canonico, nunca mezcla stale.
+- Migracion idempotente basada en `PRAGMA table_info(cvs)` y `ALTER TABLE ADD COLUMN` condicionado.
 - LaTeX/PDF validado con `pdftotext` si cambia rendering.
 - ATS no cambia scoring sin etapa especifica.
 - Tests por repository, service, route, UI route, export/import, LaTeX, PDF y ATS.
 - Rollback documentado antes de migraciones.
 - No implementar funcionalidad en Etapa 9.0.
-

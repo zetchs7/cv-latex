@@ -8,9 +8,10 @@ Version objetivo actual: `0.9.0`
 
 ## Validaciones fuertes Etapa 9.0
 
-- Confirmar que `docs/adr/ADR-0001-structured-cv-editor.md` existe y es una decision de arquitectura, no una implementacion.
+- Confirmar que `docs/adr/ADR-0002-structured-cv-editor.md` existe y es una decision de arquitectura, no una implementacion.
 - Confirmar que `docs/development/STRUCTURED_CV_EDITOR_PLAN.md` existe y divide la implementacion futura en subetapas verificables.
-- Confirmar que ambos documentos mencionan compatibilidad con CVs existentes, export/import JSON, LaTeX/PDF, ATS, migracion/rollback, tests, riesgos, subetapas y no implementacion en 9.0.
+- Confirmar que ambos documentos mencionan compatibilidad con CVs existentes, fuente canonica, payload stale, export/import JSON, LaTeX/PDF, ATS, migracion idempotente/rollback, tests, riesgos, subetapas y no implementacion en 9.0.
+- Confirmar que la migracion futura usa `PRAGMA table_info(cvs)` y `ALTER TABLE ADD COLUMN` condicionado, preservando `/data/app.db`.
 - Confirmar que no se modificaron `app/`, `tests/`, `app/static/docs/`, DB, rutas funcionales, templates productivos ni renderer LaTeX/PDF en esta etapa.
 - Confirmar que `AGENTS.md` y `MODULE_INDEX.md` enlazan la ADR y el plan antes de futuras etapas sobre editor estructurado.
 

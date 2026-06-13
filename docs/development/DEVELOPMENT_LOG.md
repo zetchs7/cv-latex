@@ -11,8 +11,9 @@
   - Se crea ADR de diseno para comparar alternativas de modelo de datos y recomendar transicion hibrida con payload JSON estructurado versionado.
   - Se crea plan por subetapas 9.1 a 9.7 con archivos probables, validaciones, criterios de aceptacion y limites.
   - Se enlaza el diseno desde `AGENTS.md`, `MODULE_INDEX.md`, `MVP_VALIDATION.md` y `PROJECT_PLAYBOOK.md`.
+  - Se corrigen hallazgos de review del PR #12 definiendo ADR unica `ADR-0002`, fuente canonica entre legacy/payload estructurado y migracion idempotente para DBs existentes.
 - Criterio de aceptacion:
-  - La documentacion cubre compatibilidad con CVs existentes, export/import JSON, LaTeX/PDF, ATS, migracion/rollback, tests, riesgos, subetapas y confirma que 9.0 no implementa funcionalidad.
+  - La documentacion cubre compatibilidad con CVs existentes, fuente canonica, export/import JSON, LaTeX/PDF, ATS, migracion idempotente/rollback, tests, riesgos, subetapas y confirma que 9.0 no implementa funcionalidad.
 
 ## Etapa 8.4 - lessons learned y playbook operativo
 
