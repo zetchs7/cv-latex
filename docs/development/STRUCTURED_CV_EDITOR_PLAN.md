@@ -186,7 +186,10 @@ Validaciones:
 Criterios de aceptacion:
 
 - CVs existentes siguen funcionando.
-- Payload se preserva en update/duplicate.
+- Duplicar un CV estructurado conserva `structured_payload` valido cuando no cambia el contenido.
+- Editar por flujo legacy un CV estructurado regenera `structured_payload` o lo limpia/invalida en la misma operacion.
+- Importar schema `1` sobre un CV estructurado regenera `structured_payload` o lo limpia/invalida en la misma operacion.
+- PDF/TEX/JSON/ATS nunca consumen `structured_payload` obsoleto.
 - Duplicar CV estructurado conserva payload valido.
 - Editar legacy CV estructurado regenera o limpia payload.
 - Import schema `1` sobre CV estructurado no deja payload stale.
