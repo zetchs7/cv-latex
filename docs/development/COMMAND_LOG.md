@@ -108,6 +108,12 @@ Argumentos:
 Busquedas del nombre ADR anterior/nuevo y de `source of truth|fuente canonica|structured_payload|stale|PRAGMA table_info|ALTER TABLE|idempotent|idempotente|schema_version`.
 Resultado:
 No quedan referencias al nombre ADR anterior. Las reglas de `ADR-0003`, fuente canonica, payload stale y migracion idempotente aparecen en docs. `compileall` ok. `git diff --check` sin errores de whitespace, solo advertencias CRLF del working copy. `docker compose ps` mostro `cv_latex_app` `healthy`. Pytest en contenedor: `53 passed in 1.10s`.
+Error completo:
+No aplica; el comando finalizo correctamente.
+Reintento/correccion:
+No aplica.
+Validacion posterior:
+`rg` confirmo que no quedaban referencias a la ADR anterior y `docker compose exec app python -m pytest` mantuvo la suite en `53 passed in 1.10s`.
 
 timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-007
 Accion:
@@ -121,13 +127,11 @@ Argumentos:
 Resultado:
 Se verifico que `ADR-0003` era el proximo numero libre real. Se renombro la ADR estructurada a `ADR-0003` y se agregaron reglas explicitas para duplicate/copy, update legacy e import schema `1`, con regeneracion recomendada del payload o fallback a modo legacy canonico si falla la sincronizacion.
 Error completo:
-No aplica.
+No aplica; el comando finalizo correctamente.
 Reintento/correccion:
 No aplica.
-Error completo:
-No aplica.
-Reintento/correccion:
-No aplica.
+Validacion posterior:
+Validacion exacta posterior no reconstruida con certeza en este bloque; se conserva evidencia de verificacion documental y de suite estable en `CMD-006`.
 
 ## 2026-06-13 - Etapa 8.4 lessons learned y playbook
 
