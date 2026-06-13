@@ -1,5 +1,19 @@
 # Development Log
 
+## Etapa 9.0 - diseno tecnico del editor estructurado de CV
+
+- Fecha: 2026-06-13
+- Rama: `feature/structured-cv-editor-design`
+- Objetivo: disenar arquitectura y plan de implementacion del futuro editor estructurado de CV sin tocar codigo funcional, DB, rutas, templates productivos, renderer LaTeX/PDF, import/export JSON ni ATS.
+- Estado previo confirmado: `main`, `development`, `origin/main` y `origin/development` sincronizados en `e5752b6` despues del cierre de PR #11.
+- Modulos analizados: `CV Builder Core`, export/import JSON, LaTeX/PDF, ATS, tests, documentacion de gobernanza y validaciones de release.
+- Alcance ejecutado:
+  - Se crea ADR de diseno para comparar alternativas de modelo de datos y recomendar transicion hibrida con payload JSON estructurado versionado.
+  - Se crea plan por subetapas 9.1 a 9.7 con archivos probables, validaciones, criterios de aceptacion y limites.
+  - Se enlaza el diseno desde `AGENTS.md`, `MODULE_INDEX.md`, `MVP_VALIDATION.md` y `PROJECT_PLAYBOOK.md`.
+- Criterio de aceptacion:
+  - La documentacion cubre compatibilidad con CVs existentes, export/import JSON, LaTeX/PDF, ATS, migracion/rollback, tests, riesgos, subetapas y confirma que 9.0 no implementa funcionalidad.
+
 ## Etapa 8.4 - lessons learned y playbook operativo
 
 - Fecha: 2026-06-13

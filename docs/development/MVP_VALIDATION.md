@@ -6,6 +6,14 @@ Checklist manual minima para validar el MVP local antes de mergear una rama de c
 
 Version objetivo actual: `0.9.0`
 
+## Validaciones fuertes Etapa 9.0
+
+- Confirmar que `docs/adr/ADR-0001-structured-cv-editor.md` existe y es una decision de arquitectura, no una implementacion.
+- Confirmar que `docs/development/STRUCTURED_CV_EDITOR_PLAN.md` existe y divide la implementacion futura en subetapas verificables.
+- Confirmar que ambos documentos mencionan compatibilidad con CVs existentes, export/import JSON, LaTeX/PDF, ATS, migracion/rollback, tests, riesgos, subetapas y no implementacion en 9.0.
+- Confirmar que no se modificaron `app/`, `tests/`, `app/static/docs/`, DB, rutas funcionales, templates productivos ni renderer LaTeX/PDF en esta etapa.
+- Confirmar que `AGENTS.md` y `MODULE_INDEX.md` enlazan la ADR y el plan antes de futuras etapas sobre editor estructurado.
+
 ## Validaciones fuertes Etapa 8.4
 
 - Confirmar que `docs/development/LESSONS_LEARNED.md` existe y documenta aprendizajes reales, no consejos genericos.

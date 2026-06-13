@@ -15,6 +15,72 @@ Error completo:
 Reintento/correccion:
 ```
 
+## 2026-06-13 - Etapa 9.0 diseno tecnico del editor estructurado de CV
+
+timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-001
+Accion:
+Leer pedido, instrucciones persistentes, playbook, lessons learned y documentacion base.
+Motivo:
+Confirmar que la etapa es solo diseno arquitectonico y que no debe tocar codigo funcional, DB, rutas, renderer LaTeX/PDF, import/export JSON ni ATS.
+Comando:
+`Get-Content`; `rg`; `git status --short --branch`; `git branch --show-current`; `git log --oneline --decorate -7`
+Argumentos:
+Archivo adjunto de Etapa 9.0, `~/.codex/AGENTS.md`, `~/.codex/config.toml`, `AGENTS.md`, `PROJECT_PLAYBOOK.md`, `LESSONS_LEARNED.md`, `MODULE_INDEX.md`, `MVP_VALIDATION.md`, `VERSIONING.md`, `CHANGELOG_GENERAL.md`.
+Resultado:
+Se confirmo que `main`, `development`, `origin/main` y `origin/development` estaban sincronizados en `e5752b6`; no existe `.codex/config.toml` del repo ni subagents locales/globales.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-002
+Accion:
+Relevar codigo actual del modulo CV y consumidores.
+Motivo:
+Basar la ADR y el plan en la arquitectura real del repo.
+Comando:
+`Get-Content`; `Get-ChildItem`; `rg`
+Argumentos:
+`app/models.py`, `app/schemas.py`, `app/database.py`, `app/repositories/cv_repository.py`, `app/routes/cvs.py`, `app/validations/cv_validations.py`, `app/services/export_service.py`, `app/services/latex_service.py`, `app/services/pdf_service.py`, `app/services/ats_service.py`, `app/templates/cvs/`, `tests/`.
+Resultado:
+Se identifico que el CV actual usa tabla `cvs` con campos planos, JSON schema `1`, LaTeX/PDF y ATS consumiendo campos legacy, duplicado por copia de campos y soft delete por `deleted_at`.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-003
+Accion:
+Crear rama de diseno desde `development` y aplicar cambios documentales.
+Motivo:
+Respetar Git Flow y aislar la etapa 9.0 en una rama feature sin tocar codigo funcional.
+Comando:
+`git fetch origin`; `git switch development`; `git switch -c feature/structured-cv-editor-design`; `apply_patch`
+Argumentos:
+Rama `feature/structured-cv-editor-design`; documentos `docs/adr/ADR-0001-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `AGENTS.md`, `MODULE_INDEX.md`, `DEVELOPMENT_LOG.md`, `MVP_VALIDATION.md`, `PROJECT_PLAYBOOK.md`, `COMMAND_LOG.md`.
+Resultado:
+Se creo la rama de diseno desde `development` actualizado y se agrego documentacion arquitectonica/operativa sin modificar `app/`, `tests/`, DB, templates productivos, renderer LaTeX/PDF, import/export JSON ni ATS.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.0 | CMD-004
+Accion:
+Validar alcance documental, compilacion, diff y runtime/tests.
+Motivo:
+Confirmar que la etapa 9.0 no implemento codigo funcional y que los documentos nuevos cubren compatibilidad legacy, export/import JSON, LaTeX/PDF, ATS, migracion/rollback, tests, riesgos, subetapas y no implementacion.
+Comando:
+`git status --short --branch`; `git diff --name-only`; `rg`; `python -m compileall app tests`; `git diff --check`; `docker compose ps`; `docker compose exec app python -m pytest`
+Argumentos:
+`docs/adr/ADR-0001-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `app`, `tests`.
+Resultado:
+El diff quedo limitado a documentacion e instrucciones del repo. `compileall` finalizo correctamente. `git diff --check` no reporto errores de whitespace, solo advertencias CRLF del working copy. `docker compose ps` mostro `cv_latex_app` `healthy`. Pytest en contenedor: `53 passed in 1.10s`.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
 ## 2026-06-13 - Etapa 8.4 lessons learned y playbook
 
 timestamp exacto no reconstruido con certeza | Etapa 8.4 | CMD-011
