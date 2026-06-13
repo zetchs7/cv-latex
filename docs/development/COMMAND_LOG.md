@@ -15,6 +15,72 @@ Error completo:
 Reintento/correccion:
 ```
 
+## 2026-06-13 - Etapa 8.4 lessons learned y playbook
+
+timestamp exacto no reconstruido con certeza | Etapa 8.4 | CMD-011
+Accion:
+Auditar instrucciones persistentes, estado Git y preparar la rama documental.
+Motivo:
+Confirmar el alcance exacto de Etapa 8.4, verificar que `main` y `development` estuvieran sincronizadas tras PR #10 y partir desde `development` actualizado.
+Comando:
+`Get-Content`; `git status --short --branch`; `git branch --show-current`; `git log --oneline --decorate -7`; `git fetch origin`; `git switch development`; `git switch -c feature/lessons-learned-playbook-v0.9.0`
+Argumentos:
+`~/.codex/AGENTS.md`, `~/.codex/config.toml`, `AGENTS.md`, archivo adjunto de Etapa 8.4 y rama `feature/lessons-learned-playbook-v0.9.0`.
+Resultado:
+Se confirmo `main`/`development`/`origin/*` sincronizados en `71f1215`. No existe `.codex/config.toml` del repo ni subagents locales. Se creo la rama `feature/lessons-learned-playbook-v0.9.0` desde `development`.
+Error completo:
+`git switch development` fallo primero con `fatal: Unable to create 'D:/GIT/cv-latex/.git/index.lock': Permission denied`.
+Reintento/correccion:
+Se reintento `git switch development` con permisos elevados del entorno y la operacion finalizo correctamente.
+
+timestamp exacto no reconstruido con certeza | Etapa 8.4 | CMD-012
+Accion:
+Inspeccionar documentacion de desarrollo existente y aplicar los cambios documentales de la etapa.
+Motivo:
+Crear `LESSONS_LEARNED.md` y `PROJECT_PLAYBOOK.md`, enlazarlos desde `AGENTS.md` y actualizar trazabilidad sin tocar runtime ni assets.
+Comando:
+`Get-Content`; `rg`; `apply_patch`
+Argumentos:
+`AGENTS.md`, `docs/development/MODULE_INDEX.md`, `docs/development/DEVELOPMENT_LOG.md`, `docs/development/MVP_VALIDATION.md`, `docs/development/COMMAND_LOG.md`.
+Resultado:
+Se crearon `docs/development/LESSONS_LEARNED.md` y `docs/development/PROJECT_PLAYBOOK.md`. Se actualizaron `AGENTS.md`, `MODULE_INDEX.md`, `DEVELOPMENT_LOG.md` y `MVP_VALIDATION.md` para enlazar la nueva gobernanza documental de Etapa 8.4.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+timestamp exacto no reconstruido con certeza | Etapa 8.4 | CMD-013
+Accion:
+Validar cobertura documental y alcance del diff.
+Motivo:
+Confirmar que los conceptos obligatorios quedaron documentados y que no se tocaron archivos fuera de `AGENTS.md` y `docs/development/`.
+Comando:
+`git status --short --branch`; `git branch --show-current`; `git log --oneline --decorate -7`; `git diff --name-only`; `git diff --stat`; `rg -n`
+Argumentos:
+Busqueda de `LESSONS_LEARNED`, `PROJECT_PLAYBOOK`, `Prompt IDs`, `innerHTML`, `pdftotext`, `hash`, `TOC` y `timestamp` en `AGENTS.md` y `docs/development/`.
+Resultado:
+El working tree mostro solo cambios documentales. `LESSONS_LEARNED.md` quedo con 18 aprendizajes reales y `PROJECT_PLAYBOOK.md` cubrio las 16 secciones operativas pedidas. No aparecieron cambios en PDFs, assets estaticos funcionales ni codigo de negocio.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
+2026-06-13 04:05:33 ART | Etapa 8.4 | CMD-014
+Accion:
+Ejecutar validaciones tecnicas de sintaxis, diff y suite.
+Motivo:
+Confirmar que una etapa documental no rompe el runtime ni la suite del proyecto.
+Comando:
+`python -m compileall app tests`; `git diff --check`; `docker compose ps`; `docker compose exec app python -m pytest`
+Argumentos:
+No aplica.
+Resultado:
+`compileall` ok. `git diff --check` no reporto errores de whitespace; solo advertencias CRLF esperadas en el working copy. `docker compose ps` mostro `cv_latex_app` en estado `healthy`. `pytest` dentro del contenedor: `53 passed in 1.19s`.
+Error completo:
+No aplica.
+Reintento/correccion:
+No aplica.
+
 ## 2026-06-11 - Etapa 8.3 trazabilidad y documentacion visual
 
 2026-06-11 01:05:31 ART | Etapa 8.3 | CMD-001

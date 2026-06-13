@@ -6,6 +6,15 @@ Checklist manual minima para validar el MVP local antes de mergear una rama de c
 
 Version objetivo actual: `0.9.0`
 
+## Validaciones fuertes Etapa 8.4
+
+- Confirmar que `docs/development/LESSONS_LEARNED.md` existe y documenta aprendizajes reales, no consejos genericos.
+- Confirmar que `docs/development/PROJECT_PLAYBOOK.md` existe y puede reutilizarse como procedimiento operativo.
+- Confirmar que `AGENTS.md` referencia ambos documentos y exige leerlos antes de etapas nuevas o cambios sensibles.
+- Confirmar que `MODULE_INDEX.md` documenta el objetivo de ambos archivos.
+- Confirmar que `COMMAND_LOG.md` registra solo los comandos nuevos de la etapa 8.4 sin inventar timestamps historicos.
+- Confirmar que no se modificaron PDFs, assets estaticos funcionales, DB ni codigo de negocio en una etapa documental.
+
 ## Validaciones fuertes Etapa 8.3
 
 - Confirmar que existe `AGENTS.md` del repo con reglas reales de stack, Git Flow, validaciones, docs/PDF y Prompt IDs externos a Codex.
