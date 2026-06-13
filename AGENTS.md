@@ -111,7 +111,8 @@ docker compose exec app python -m app.services.documentation_service
 - Mantener consistencia entre HTML y PDF. No dejar strings obsoletos como `feature/ui-private-dashboard`, `Rama visual actual` o referencias a abrir/integrar el PR visual como pendiente.
 - No publicar PDFs con indice/TOC vacio. Si el PDF incluye `\tableofcontents`, las secciones no numeradas deben registrar entradas reales y compilarse con las pasadas necesarias; si no se puede poblar limpiamente, eliminar el indice completo.
 - Antes de cerrar cambios en `docs/user` o en `app/services/documentation_service.py`, renderizar PNG de portada, indice si existe y una pagina interna relevante de cada PDF.
-- Evitar titulos huerfanos al final de pagina, cortes pobres entre titulo y cuerpo, bloques ilegibles, solapamientos y espacios vacios excesivos. Usar reservas de espacio o saltos puntuales solo cuando mejoren la lectura.
+- Evitar titulos huerfanos al final de pagina, cortes pobres entre titulo y cuerpo, listas cortas partidas innecesariamente, bloques ilegibles, solapamientos y espacios vacios excesivos. Usar reservas de espacio, agrupacion de listas cortas o saltos puntuales solo cuando mejoren la lectura.
+- Si se corrige paginacion o layout PDF, regenerar todos los PDFs servidos por la app y validar portada, indice y paginas internas afectadas.
 - Registrar hash anterior/nuevo de cada PDF regenerado y validar la descarga real desde `/static/docs/`.
 
 ## Versionado

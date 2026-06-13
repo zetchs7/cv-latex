@@ -519,7 +519,7 @@ def _markdown_to_latex(markdown_content: str) -> str:
         if stripped.startswith("## "):
             flush_paragraph()
             heading = _format_inline(stripped[3:].strip())
-            output.append(r"\Needspace{7\baselineskip}")
+            output.append(_needspace_directive(_estimate_heading_needspace(lines, index, level=2)))
             output.append(r"\phantomsection")
             output.append(r"\addcontentsline{toc}{subsection}{" + heading + "}")
             output.append(r"\subsection*{" + heading + "}")
@@ -530,7 +530,7 @@ def _markdown_to_latex(markdown_content: str) -> str:
         if stripped.startswith("### "):
             flush_paragraph()
             heading = _format_inline(stripped[4:].strip())
-            output.append(r"\Needspace{5\baselineskip}")
+            output.append(_needspace_directive(_estimate_heading_needspace(lines, index, level=3)))
             output.append(r"\phantomsection")
             output.append(r"\addcontentsline{toc}{subsubsection}{" + heading + "}")
             output.append(r"\subsubsection*{" + heading + "}")
@@ -541,9 +541,15 @@ def _markdown_to_latex(markdown_content: str) -> str:
         if stripped.startswith(("- ", "* ")):
             flush_paragraph()
             items, next_index = _consume_list(lines, index, ordered=False)
+            wrap_list = _should_keep_list_together(items)
+            if wrap_list:
+                output.append(_needspace_directive(_estimate_list_needspace(items)))
+                output.append(r"\begin{samepage}")
             output.append(r"\begin{itemize}[leftmargin=1.5em]")
             output.extend(r"\item " + _format_inline(item) for item in items)
             output.append(r"\end{itemize}")
+            if wrap_list:
+                output.append(r"\end{samepage}")
             output.append("")
             index = next_index
             continue
@@ -551,9 +557,15 @@ def _markdown_to_latex(markdown_content: str) -> str:
         if re.match(r"^\d+\.\s+", stripped):
             flush_paragraph()
             items, next_index = _consume_list(lines, index, ordered=True)
+            wrap_list = _should_keep_list_together(items)
+            if wrap_list:
+                output.append(_needspace_directive(_estimate_list_needspace(items)))
+                output.append(r"\begin{samepage}")
             output.append(r"\begin{enumerate}[leftmargin=1.8em]")
             output.extend(r"\item " + _format_inline(item) for item in items)
             output.append(r"\end{enumerate}")
+            if wrap_list:
+                output.append(r"\end{samepage}")
             output.append("")
             index = next_index
             continue
@@ -563,6 +575,65 @@ def _markdown_to_latex(markdown_content: str) -> str:
 
     flush_paragraph()
     return "\n".join(output).strip() + "\n"
+
+
+def _needspace_directive(lines: int) -> str:
+    return rf"\Needspace{{{lines}\baselineskip}}"
+
+
+def _estimate_heading_needspace(lines: list[str], heading_index: int, level: int) -> int:
+    base_lines = 4 if level == 2 else 3
+    next_index = _next_nonempty_index(lines, heading_index + 1)
+    if next_index is None:
+        return base_lines
+
+    stripped = lines[next_index].strip()
+
+    if level == 2 and stripped.startswith("### "):
+        nested_index = _next_nonempty_index(lines, next_index + 1)
+        if nested_index is None:
+            return 8
+        nested_stripped = lines[nested_index].strip()
+        if nested_stripped.startswith(("- ", "* ")) or re.match(r"^\d+\.\s+", nested_stripped):
+            items, _ = _consume_list(lines, nested_index, ordered=bool(re.match(r"^\d+\.\s+", nested_stripped)))
+            return min(18, 7 + _estimate_list_needspace(items))
+        return 11
+
+    if stripped.startswith(("- ", "* ")) or re.match(r"^\d+\.\s+", stripped):
+        items, _ = _consume_list(lines, next_index, ordered=bool(re.match(r"^\d+\.\s+", stripped)))
+        if _should_keep_list_together(items):
+            return min(18, base_lines + _estimate_list_needspace(items))
+        return base_lines + 5
+
+    if stripped.startswith(">"):
+        return base_lines + 6
+    if stripped.startswith("```"):
+        return base_lines + 6
+    if _is_table_header(lines, next_index):
+        return base_lines + 8
+    return base_lines + 4
+
+
+def _next_nonempty_index(lines: list[str], start_index: int) -> int | None:
+    for index in range(start_index, len(lines)):
+        if lines[index].strip():
+            return index
+    return None
+
+
+def _should_keep_list_together(items: list[str]) -> bool:
+    if not items:
+        return False
+    total_visual_lines = sum(_estimate_item_visual_lines(item) for item in items)
+    return len(items) <= 9 and total_visual_lines <= 14
+
+
+def _estimate_list_needspace(items: list[str]) -> int:
+    return min(17, 3 + sum(_estimate_item_visual_lines(item) for item in items))
+
+
+def _estimate_item_visual_lines(item: str) -> int:
+    return max(1, (len(item) + 72) // 73)
 
 
 def _is_table_header(lines: list[str], index: int) -> bool:

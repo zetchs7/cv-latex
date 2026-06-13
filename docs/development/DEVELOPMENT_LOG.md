@@ -1,5 +1,17 @@
 # Development Log
 
+## Etapa 8.3 - fix titulos huerfanos y listas PDF
+
+- Fecha: 2026-06-12
+- Rama: `feature/traceability-docs-v0.9.0`
+- Objetivo: corregir titulos huerfanos y listas cortas partidas en PDFs generados, manteniendo indice funcional, contraste aprobado y consistencia HTML/PDF.
+- Modulos afectados: `app/services/documentation_service.py`, `app/static/docs`, `AGENTS.md`, `docs/development`, `tests`.
+- Resumen de cambios:
+  - El renderer PDF estima el espacio necesario segun el bloque posterior a cada heading para evitar que secciones como `Modulos implementados` queden solas al final de pagina.
+  - Las listas cortas se mantienen juntas cuando su tamano permite moverlas completas sin forzar saltos de pagina globales.
+  - Se documenta que las validaciones PDF deben revisar listas cortas partidas, paginas internas afectadas, hashes, `pdftotext`, PNGs y descarga real desde `/static/docs/`.
+- Resultado esperado: PDFs de documentacion `v0.9.0` sin titulos huerfanos ni listas cortas partidas de forma visualmente pobre antes de mergear PR #10.
+
 ## Etapa 8.3 - fix TOC y paginacion PDF
 
 - Fecha: 2026-06-12
