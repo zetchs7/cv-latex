@@ -15,6 +15,88 @@ Error completo:
 Reintento/correccion:
 ```
 
+## 2026-06-14 - Etapa 9.2 servicios de CV estructurado y reglas de escritura segura
+
+2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-001
+Accion:
+Leer pedido, instrucciones persistentes, arquitectura aprobada, playbook, lessons learned, validaciones y codigo actual de CV estructurado.
+Motivo:
+Confirmar alcance funcional permitido, restricciones de no tocar UI/PDF/ATS y estado base antes de crear la rama feature.
+Comando:
+`Get-Content`; `rg`; `git status --short --branch`; `git branch --show-current`; `git log --oneline --decorate -7`; `git fetch origin`; `git switch -c feature/structured-cv-services`
+Argumentos:
+Prompt adjunto Etapa 9.2, `~/.codex/AGENTS.md`, `~/.codex/config.toml`, `AGENTS.md`, `docs/adr/ADR-0003-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `PROJECT_PLAYBOOK.md`, `LESSONS_LEARNED.md`, `MVP_VALIDATION.md`, `app/models.py`, `app/database.py`, `app/repositories/cv_repository.py`, `app/services/structured_cv_service.py`, `app/services/export_service.py`, tests relacionados.
+Resultado:
+`development`, `origin/development`, `main` y `origin/main` estaban sincronizados en `5b007a9`; se creo `feature/structured-cv-services` desde `development`.
+Error completo:
+No aplica; los comandos finalizaron correctamente.
+Reintento/correccion:
+No aplica.
+
+2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-002
+Accion:
+Implementar schema v2 minimo, validacion, serializacion, conversion legacy y reglas de update seguro.
+Motivo:
+Evitar payload estructurado obsoleto y dejar servicios internos preparados sin cambiar comportamiento visible.
+Comando:
+`apply_patch`
+Argumentos:
+`app/services/structured_cv_service.py`, `app/repositories/cv_repository.py`, `tests/test_structured_cv_service.py`, `tests/test_cv_repository.py`.
+Resultado:
+Se agrego payload v2 minimo con `personal`, `contact`, `summary`, `skills`, `experience`, `education`, `certifications`, `languages`, `projects`, `links` y `metadata`; `update_cv()` regenera payload si el CV existente era estructurado y conserva legacy canonico para CVs legacy.
+Error completo:
+No aplica; la aplicacion de parches finalizo correctamente.
+Reintento/correccion:
+No aplica.
+
+2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-003
+Accion:
+Validar compilacion y tests focalizados del servicio/repositorio.
+Motivo:
+Detectar errores rapidos antes de correr Docker completo y actualizar PR.
+Comando:
+`python -m compileall app tests`; `python -m pytest tests/test_structured_cv_service.py tests/test_cv_repository.py`; `python -m unittest tests.test_structured_cv_service tests.test_cv_repository`
+Argumentos:
+Modulo `app`, tests del repo y tests focalizados de CV estructurado.
+Resultado:
+`compileall` finalizo correctamente. `python -m unittest tests.test_structured_cv_service tests.test_cv_repository` paso con `Ran 12 tests in 0.082s OK`.
+Error completo:
+`python -m pytest tests/test_structured_cv_service.py tests/test_cv_repository.py` fallo en host con `C:\Program Files\Python312\python.exe: No module named pytest`.
+Reintento/correccion:
+Se uso `unittest` para validacion focalizada local y se dejo `pytest` completo para el contenedor Docker, que es el entorno oficial del repo.
+
+2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-004
+Accion:
+Actualizar documentacion de desarrollo y validar alcance del diff.
+Motivo:
+Registrar la etapa 9.2 sin tocar docs de usuario, PDFs, UI, ATS ni renderer.
+Comando:
+`apply_patch`; `git diff --name-status`; `git diff --check`; `git status --short`; `rg`; `git status --short app/static/docs`; `git diff --name-only -- app/static/docs app/templates app/static/css app/static/js app/services/ats_service.py app/services/latex_service.py app/services/pdf_service.py app/services/export_service.py`
+Argumentos:
+`docs/development/DEVELOPMENT_LOG.md`, `docs/development/MODULE_INDEX.md`, `docs/development/MVP_VALIDATION.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md` y archivos fuera de alcance.
+Resultado:
+Documentacion de desarrollo actualizada. `git diff --check` sin errores. No hubo cambios en `app/static/docs`, templates, CSS/JS, ATS, LaTeX/PDF, PDF service ni export service.
+Error completo:
+No aplica; los comandos finalizaron correctamente. Git mostro advertencias informativas LF/CRLF del working copy.
+Reintento/correccion:
+No aplica.
+
+2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-005
+Accion:
+Validar build, runtime, tests completos, healthcheck, DB y artefactos PDF sin cambios.
+Motivo:
+Confirmar que la implementacion interna funciona en Docker y no rompe version, DB, docs servidas ni artefactos descargables.
+Comando:
+`docker compose build`; `docker compose up -d --force-recreate`; `docker compose ps`; `docker compose logs app --tail 100`; `docker compose exec app python -m pytest`; `curl.exe`; `docker compose exec app python -c`; `Test-Path`; `Get-FileHash`; `git tag --points-at HEAD`
+Argumentos:
+`/health`, `/documentation/`, `/documentation/technical`, `/documentation/usage`, columnas `structured_*`, `app_metadata.schema_version`, PDFs en `app/static/docs`.
+Resultado:
+`docker compose build` finalizo correctamente. `docker compose up -d --force-recreate` dejo `cv_latex_app` `healthy`. Logs sin errores de arranque. Pytest en contenedor: `67 passed in 1.30s`. `/health` respondio `{"status":"ok","version":"0.9.0","database":{"path":"/data/app.db","exists":true,"directory_exists":true}}`; rutas de documentacion respondieron `200`. La DB mostro `['structured_payload', 'structured_payload_status', 'structured_schema_version']` y schema metadata `2`. Los PDFs tecnico y manual existen y mantienen hashes `CDB771519D6470316F56A0CEDA2A07CF9FAE4835E27DA09D00CCD5330BC9EDFB` y `8DE2FA47FCDD7AB38106F77F46F0A9E643FBB6B59DAB653B2CD94552B624E932`. No hay tag nuevo apuntando a HEAD.
+Error completo:
+No aplica; los comandos finalizaron correctamente.
+Reintento/correccion:
+No aplica.
+
 ## 2026-06-13 - Etapa 9.1 modelo de datos y migracion segura para CV estructurado
 
 2026-06-13 14:59:42 ART | Etapa 9.1 | CMD-001

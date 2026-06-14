@@ -1,5 +1,23 @@
 # Development Log
 
+## Etapa 9.2 - servicios de CV estructurado y escritura segura
+
+- Fecha: 2026-06-14
+- Rama: `feature/structured-cv-services`
+- Objetivo: implementar servicios internos para construir, validar, serializar, invalidar y resolver `structured_payload` v2 sin cambiar UI, PDF/TEX, JSON visible ni ATS scoring.
+- Estado previo confirmado: `main`, `development`, `origin/main` y `origin/development` sincronizados en `5b007a9` despues del cierre de PR #13.
+- Modulos afectados: `app/services/structured_cv_service.py`, `app/repositories/cv_repository.py`, tests de repositorio/servicio y documentacion de desarrollo.
+- Alcance ejecutado:
+  - Se define schema minimo v2 con `personal`, `contact`, `summary`, `skills`, `experience`, `education`, `certifications`, `languages`, `projects`, `links` y `metadata`.
+  - Se agrega validacion estructural, serializacion deterministica y conversion legacy -> payload v2.
+  - El resolver solo acepta `structured_schema_version >= 2`, payload v2 valido y estado `valid`; cualquier payload ausente, invalido, stale o no valido cae a legacy canonico.
+  - El update legacy de un CV ya estructurado regenera payload desde los campos legacy actualizados en el mismo `UPDATE`; si la regeneracion falla, vuelve a legacy canonico.
+  - Los CVs legacy nuevos y existentes siguen operando como legacy; duplicate/copy conserva payload valido cuando el contenido copiado no cambia.
+- Criterio de aceptacion:
+  - CVs legacy siguen creando, leyendo, actualizando, duplicando y exportando por los flujos existentes.
+  - No queda payload estructurado viejo marcado como valido cuando se actualiza un CV estructurado por flujo legacy.
+  - No se modifica UI, templates productivos, PDFs servidos, renderer LaTeX/PDF, ATS scoring ni export JSON visible.
+
 ## Etapa 9.1 - modelo de datos y migracion segura para CV estructurado
 
 - Fecha: 2026-06-13

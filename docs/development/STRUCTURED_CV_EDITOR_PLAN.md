@@ -21,6 +21,15 @@ Planificar la implementacion futura del editor estructurado de CV sin tocar codi
 - No cambia UI, templates productivos, render LaTeX/PDF, export JSON visible ni ATS scoring.
 - Los consumidores actuales siguen usando campos legacy hasta una etapa posterior de representacion normalizada.
 
+## Estado de Etapa 9.2
+
+- Estado: servicios internos de payload estructurado y reglas de escritura segura.
+- Define schema minimo v2 para `structured_payload` con `personal`, `contact`, `summary`, `skills`, `experience`, `education`, `certifications`, `languages`, `projects`, `links` y `metadata`.
+- Agrega conversion legacy -> payload v2, validacion, serializacion, deserializacion y helpers de columnas para estados `legacy`, `valid`, `invalid` y `stale`.
+- `update_cv()` regenera payload desde campos legacy cuando el CV existente ya era estructurado; si no puede regenerar, vuelve a legacy canonico.
+- `duplicate_cv()` mantiene la regla de preservar payload valido solo cuando el contenido copiado no cambia.
+- No cambia UI, templates productivos, render LaTeX/PDF, export JSON visible, import JSON visible ni ATS scoring.
+
 ## Mapa actual del modulo CV
 
 ### Estructura de datos actual
@@ -175,22 +184,22 @@ No hacer:
 - No cambiar export/import.
 - No parsear ni backfillear masivamente datos reales.
 
-## Etapa 9.2 - Persistencia compatible
+## Etapa 9.2 - Servicios estructurados y persistencia compatible
 
 Alcance:
 
-- Expandir la persistencia ya creada en 9.1 hacia escritura estructurada real desde servicios futuros.
+- Expandir la persistencia ya creada en 9.1 hacia escritura estructurada real desde servicios internos.
 - Mantener campos planos obligatorios.
-- Leer/escribir payload desde flujos estructurados sin romper CVs legacy.
-- Definir conversion estructurado -> legacy cuando exista editor o import schema `2`.
+- Construir, validar, serializar y resolver payload v2 sin romper CVs legacy.
+- Dejar preparada la conversion estructurado -> legacy para cuando exista editor o import schema `2`.
 - Mantener consistencia explicita para duplicate/copy frente a update/import legacy.
 
 Archivos probables:
 
-- `app/database.py`
 - `app/repositories/cv_repository.py`
-- `app/models.py`
+- `app/services/structured_cv_service.py`
 - `tests/test_cv_repository.py`
+- `tests/test_structured_cv_service.py`
 - documentacion de migracion/rollback
 
 Validaciones:
@@ -204,6 +213,7 @@ Validaciones:
 - duplicar CV estructurado conserva payload valido y campos legacy consistentes;
 - editar por flujo legacy regenera payload o deja legacy canonico sin stale payload;
 - import schema `1` sobre CV estructurado regenera o limpia payload en la misma operacion;
+- payload v2 valida secciones obligatorias y rechaza estructuras incompletas o tipos incorrectos;
 - `docker compose exec app python -m pytest`.
 
 Criterios de aceptacion:
