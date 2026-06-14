@@ -118,11 +118,28 @@ class StructuredCVServiceTest(unittest.TestCase):
         self.assertFalse(validation.is_valid)
         self.assertIn("schema_version_missing", validation.errors)
 
+    def test_payload_with_null_schema_version_is_rejected_even_if_row_declares_v2(self):
+        state = resolve_structured_payload_state(
+            structured_schema_version=2,
+            structured_payload='{"schema_version":null,"personal":{"full_name":"Ana"}}',
+            structured_payload_status="valid",
+        )
+
+        self.assertFalse(state.is_structured)
+        self.assertEqual(state.reason, "payload_invalid")
+
     def test_payload_with_non_integer_schema_version_is_rejected(self):
         validation = validate_structured_payload_v2({"schema_version": "2", "personal": {"full_name": "Ana"}})
 
         self.assertFalse(validation.is_valid)
         self.assertIn("schema_version_must_be_integer", validation.errors)
+
+    def test_payload_with_integer_schema_version_remains_valid(self):
+        validation = validate_structured_payload_v2({"schema_version": 2, "personal": {"full_name": "Ana"}})
+
+        self.assertTrue(validation.is_valid)
+        self.assertIsNotNone(validation.normalized_payload)
+        self.assertEqual(validation.normalized_payload["schema_version"], 2)
 
     def test_rejects_payload_with_corrupt_top_level_types(self):
         validation = validate_structured_payload_v2(

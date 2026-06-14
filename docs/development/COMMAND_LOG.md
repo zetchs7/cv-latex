@@ -49,6 +49,22 @@ No aplica; los comandos finalizaron correctamente.
 Reintento/correccion:
 No aplica.
 
+2026-06-14 12:38:06 ART | Etapa 9.2 | CMD-008
+Accion:
+Corregir la distincion entre `schema_version` ausente y `schema_version = null` en la validacion de `structured_payload` v2.
+Motivo:
+Mantener compatibilidad solo para payloads schema-less realmente antiguos y rechazar payloads que traen la key presente con valor `null` o no entero.
+Comando:
+`apply_patch`; `python -m compileall app tests`; `python -m unittest tests.test_structured_cv_service tests.test_cv_repository`
+Argumentos:
+`app/services/structured_cv_service.py`, `tests/test_structured_cv_service.py`.
+Resultado:
+La validacion ahora detecta presencia real de la key `schema_version`: si falta y la fila declara schema `2`, normaliza a `2`; si la key existe con `null` o valor no entero, rechaza. `python -m unittest tests.test_structured_cv_service tests.test_cv_repository` paso con `Ran 20 tests in 0.127s OK`.
+Error completo:
+Un primer `compileall`/`unittest` fallo por `SyntaxError: positional argument follows keyword argument` en la llamada a `_resolve_payload_schema_version`.
+Reintento/correccion:
+Se corrigio el orden de argumentos nombrando explicitamente `declared_schema_version=` y `errors=` en la llamada. Luego compile y unittest pasaron.
+
 2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-001
 Accion:
 Leer pedido, instrucciones persistentes, arquitectura aprobada, playbook, lessons learned, validaciones y codigo actual de CV estructurado.
