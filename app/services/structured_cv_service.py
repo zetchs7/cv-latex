@@ -423,6 +423,9 @@ def _resolve_payload_schema_version(
         if not isinstance(declared_schema_version, int):
             errors.append("schema_version_must_be_integer")
             return None
+        if declared_schema_version != CURRENT_STRUCTURED_SCHEMA_VERSION:
+            errors.append("schema_version_unsupported")
+            return None
         return declared_schema_version
 
     if payload_schema_version is None:
@@ -431,6 +434,10 @@ def _resolve_payload_schema_version(
 
     if not isinstance(payload_schema_version, int):
         errors.append("schema_version_must_be_integer")
+        return None
+
+    if payload_schema_version != CURRENT_STRUCTURED_SCHEMA_VERSION:
+        errors.append("schema_version_unsupported")
         return None
 
     return payload_schema_version

@@ -65,6 +65,22 @@ Un primer `compileall`/`unittest` fallo por `SyntaxError: positional argument fo
 Reintento/correccion:
 Se corrigio el orden de argumentos nombrando explicitamente `declared_schema_version=` y `errors=` en la llamada. Luego compile y unittest pasaron.
 
+2026-06-14 12:52:03 ART | Etapa 9.2 | CMD-009
+Accion:
+Restringir la compatibilidad schema-less exclusivamente a filas que declaran `structured_schema_version = 2`.
+Motivo:
+Evitar que una fila futura con schema `3` o superior sea tratada como payload v2 valido por el validador actual.
+Comando:
+`apply_patch`; `python -m compileall app tests`; `python -m unittest tests.test_structured_cv_service tests.test_cv_repository`
+Argumentos:
+`app/services/structured_cv_service.py`, `tests/test_structured_cv_service.py`.
+Resultado:
+El validador v2 ahora solo acepta payload schema-less cuando `declared_schema_version == 2`; si la fila declara `3+` o el payload trae `schema_version` distinto de `2`, el validador v2 devuelve rechazo seguro. `python -m unittest tests.test_structured_cv_service tests.test_cv_repository` paso con `Ran 22 tests in 0.104s OK`.
+Error completo:
+No aplica; los comandos finalizaron correctamente.
+Reintento/correccion:
+No aplica.
+
 2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-001
 Accion:
 Leer pedido, instrucciones persistentes, arquitectura aprobada, playbook, lessons learned, validaciones y codigo actual de CV estructurado.
