@@ -33,6 +33,22 @@ Error completo:
 Reintento/correccion:
 Se tomo el blocker exacto del pedido y se continuo sin depender de esa vista legacy de GitHub. La validacion puntual del PR se rehará al final con comentario nuevo de `@codex review`.
 
+2026-06-14 01:17:45 ART | Etapa 9.2 | CMD-007
+Accion:
+Corregir compatibilidad backward de payload v2 sin `schema_version` interno cuando la fila DB ya declara `structured_schema_version = 2`.
+Motivo:
+Evitar que payloads v2 previamente aceptados caigan a legacy solo por faltar `schema_version` dentro del JSON y luego se pierdan por un update legacy.
+Comando:
+`apply_patch`; `python -m compileall app tests`; `python -m unittest tests.test_structured_cv_service tests.test_cv_repository`
+Argumentos:
+`app/services/structured_cv_service.py`, `tests/test_structured_cv_service.py`, `tests/test_cv_repository.py`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `docs/development/MVP_VALIDATION.md`.
+Resultado:
+La validacion v2 ahora infiere `schema_version = 2` cuando el payload JSON no lo trae pero la fila ya declara `structured_schema_version = 2`; si `schema_version` existe y no es integer, sigue rechazandose. `python -m unittest tests.test_structured_cv_service tests.test_cv_repository` paso con `Ran 18 tests in 0.100s OK`.
+Error completo:
+No aplica; los comandos finalizaron correctamente.
+Reintento/correccion:
+No aplica.
+
 2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-001
 Accion:
 Leer pedido, instrucciones persistentes, arquitectura aprobada, playbook, lessons learned, validaciones y codigo actual de CV estructurado.

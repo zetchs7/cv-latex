@@ -146,7 +146,7 @@ def _mark_cv_as_structured(cv_id: int) -> str:
 
 
 def _mark_cv_as_partial_structured(cv_id: int) -> str:
-    payload = '{"schema_version":2,"personal":{"full_name":"Nombre Valido"}}'
+    payload = '{"personal":{"full_name":"Nombre Valido"}}'
     with get_connection() as connection:
         connection.execute(
             """

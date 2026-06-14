@@ -64,10 +64,10 @@ class StructuredCVServiceTest(unittest.TestCase):
         self.assertFalse(state.is_structured)
         self.assertEqual(state.reason, "payload_not_marked_valid")
 
-    def test_partial_v2_payload_still_resolves_as_structured(self):
+    def test_payload_without_internal_schema_version_uses_declared_row_version(self):
         state = resolve_structured_payload_state(
             structured_schema_version=2,
-            structured_payload='{"schema_version":2,"personal":{"full_name":"Ana"}}',
+            structured_payload='{"personal":{"full_name":"Ana"}}',
             structured_payload_status="valid",
         )
 
@@ -97,28 +97,47 @@ class StructuredCVServiceTest(unittest.TestCase):
         validation = validate_structured_payload_v2(payload)
         self.assertTrue(validation.is_valid)
 
-    def test_partial_v2_payload_is_normalized_with_defaults(self):
+    def test_schema_less_payload_is_normalized_with_declared_v2_defaults(self):
         normalized_payload = normalize_structured_payload_v2(
             {
-                "schema_version": 2,
                 "personal": {"full_name": "Ana Perez"},
-            }
+            },
+            declared_schema_version=2,
         )
 
         self.assertIsNotNone(normalized_payload)
+        self.assertEqual(normalized_payload["schema_version"], 2)
         self.assertEqual(normalized_payload["summary"], "")
         self.assertEqual(normalized_payload["contact"]["email"], "")
         self.assertEqual(normalized_payload["skills"], [])
         self.assertEqual(normalized_payload["metadata"]["source"], "")
 
+    def test_schema_less_payload_without_declared_version_is_rejected(self):
+        validation = validate_structured_payload_v2({"personal": {"full_name": "Ana"}})
+
+        self.assertFalse(validation.is_valid)
+        self.assertIn("schema_version_missing", validation.errors)
+
+    def test_payload_with_non_integer_schema_version_is_rejected(self):
+        validation = validate_structured_payload_v2({"schema_version": "2", "personal": {"full_name": "Ana"}})
+
+        self.assertFalse(validation.is_valid)
+        self.assertIn("schema_version_must_be_integer", validation.errors)
+
     def test_rejects_payload_with_corrupt_top_level_types(self):
-        validation = validate_structured_payload_v2({"schema_version": 2, "contact": "broken"})
+        validation = validate_structured_payload_v2(
+            {"personal": {"full_name": "Ana"}, "contact": "broken"},
+            declared_schema_version=2,
+        )
 
         self.assertFalse(validation.is_valid)
         self.assertIn("contact_must_be_object", validation.errors)
 
     def test_rejects_payload_with_corrupt_item_types(self):
-        validation = validate_structured_payload_v2({"schema_version": 2, "skills": ["python"]})
+        validation = validate_structured_payload_v2(
+            {"skills": ["python"]},
+            declared_schema_version=2,
+        )
 
         self.assertFalse(validation.is_valid)
         self.assertIn("skills_0_must_be_object", validation.errors)

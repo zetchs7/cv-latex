@@ -27,6 +27,7 @@ Planificar la implementacion futura del editor estructurado de CV sin tocar codi
 - Define schema minimo v2 para `structured_payload` con `personal`, `contact`, `summary`, `skills`, `experience`, `education`, `certifications`, `languages`, `projects`, `links` y `metadata`.
 - Agrega conversion legacy -> payload v2, validacion, serializacion, deserializacion y helpers de columnas para estados `legacy`, `valid`, `invalid` y `stale`.
 - La validacion v2 es backward-compatible con payloads parciales previamente aceptados: si faltan secciones opcionales, el servicio las normaliza con defaults vacios sin subir a schema `3`.
+- Si la fila ya declara `structured_schema_version = 2`, un payload v2 sin `schema_version` interno se normaliza agregando `schema_version = 2`; si el campo existe y no es integer, el payload sigue siendo invalido.
 - `update_cv()` regenera payload desde campos legacy cuando el CV existente ya era estructurado; si no puede regenerar, vuelve a legacy canonico.
 - `duplicate_cv()` mantiene la regla de preservar payload valido solo cuando el contenido copiado no cambia.
 - No cambia UI, templates productivos, render LaTeX/PDF, export JSON visible, import JSON visible ni ATS scoring.

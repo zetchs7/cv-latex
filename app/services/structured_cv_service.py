@@ -57,7 +57,10 @@ def resolve_structured_payload_state(
     if payload is None:
         return StructuredCVState(mode="legacy", is_structured=False, reason="payload_invalid")
 
-    validation = validate_structured_payload_v2(payload)
+    validation = validate_structured_payload_v2(
+        payload,
+        declared_schema_version=structured_schema_version,
+    )
     if not validation.is_valid:
         return StructuredCVState(mode="legacy", is_structured=False, reason="payload_invalid")
 
@@ -160,8 +163,15 @@ def deserialize_structured_payload(raw_payload: str) -> dict[str, object] | None
     return payload
 
 
-def validate_structured_payload_v2(payload: object) -> StructuredPayloadValidation:
-    normalized_payload, errors = _normalize_structured_payload_v2(payload)
+def validate_structured_payload_v2(
+    payload: object,
+    *,
+    declared_schema_version: int | None = None,
+) -> StructuredPayloadValidation:
+    normalized_payload, errors = _normalize_structured_payload_v2(
+        payload,
+        declared_schema_version=declared_schema_version,
+    )
     return StructuredPayloadValidation(
         is_valid=not errors,
         errors=tuple(errors),
@@ -169,8 +179,15 @@ def validate_structured_payload_v2(payload: object) -> StructuredPayloadValidati
     )
 
 
-def normalize_structured_payload_v2(payload: object) -> dict[str, object] | None:
-    validation = validate_structured_payload_v2(payload)
+def normalize_structured_payload_v2(
+    payload: object,
+    *,
+    declared_schema_version: int | None = None,
+) -> dict[str, object] | None:
+    validation = validate_structured_payload_v2(
+        payload,
+        declared_schema_version=declared_schema_version,
+    )
     return validation.normalized_payload
 
 
@@ -209,22 +226,30 @@ def _current_utc_timestamp() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
-def _normalize_structured_payload_v2(payload: object) -> tuple[dict[str, object] | None, list[str]]:
+def _normalize_structured_payload_v2(
+    payload: object,
+    *,
+    declared_schema_version: int | None,
+) -> tuple[dict[str, object] | None, list[str]]:
     errors: list[str] = []
 
     if not isinstance(payload, dict):
         return None, ["payload_must_be_object"]
 
     schema_version = payload.get("schema_version")
-    if not isinstance(schema_version, int):
-        errors.append("schema_version_must_be_integer")
-    elif schema_version < CURRENT_STRUCTURED_SCHEMA_VERSION:
+    normalized_schema_version = _resolve_payload_schema_version(
+        schema_version,
+        declared_schema_version,
+        errors,
+    )
+    if normalized_schema_version is not None and normalized_schema_version < CURRENT_STRUCTURED_SCHEMA_VERSION:
         errors.append("schema_version_unsupported")
 
     if errors:
         return None, errors
 
     normalized_payload = dict(payload)
+    normalized_payload["schema_version"] = normalized_schema_version
     normalized_payload["personal"] = _normalize_object_field(
         payload,
         "personal",
@@ -380,3 +405,24 @@ def _normalize_structured_items(
         normalized_items.append(normalized_item)
 
     return normalized_items
+
+
+def _resolve_payload_schema_version(
+    payload_schema_version: object,
+    declared_schema_version: int | None,
+    errors: list[str],
+) -> int | None:
+    if payload_schema_version is None:
+        if declared_schema_version is None:
+            errors.append("schema_version_missing")
+            return None
+        if not isinstance(declared_schema_version, int):
+            errors.append("schema_version_must_be_integer")
+            return None
+        return declared_schema_version
+
+    if not isinstance(payload_schema_version, int):
+        errors.append("schema_version_must_be_integer")
+        return None
+
+    return payload_schema_version
