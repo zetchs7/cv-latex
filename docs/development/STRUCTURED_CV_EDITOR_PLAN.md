@@ -26,6 +26,7 @@ Planificar la implementacion futura del editor estructurado de CV sin tocar codi
 - Estado: servicios internos de payload estructurado y reglas de escritura segura.
 - Define schema minimo v2 para `structured_payload` con `personal`, `contact`, `summary`, `skills`, `experience`, `education`, `certifications`, `languages`, `projects`, `links` y `metadata`.
 - Agrega conversion legacy -> payload v2, validacion, serializacion, deserializacion y helpers de columnas para estados `legacy`, `valid`, `invalid` y `stale`.
+- La validacion v2 es backward-compatible con payloads parciales previamente aceptados: si faltan secciones opcionales, el servicio las normaliza con defaults vacios sin subir a schema `3`.
 - `update_cv()` regenera payload desde campos legacy cuando el CV existente ya era estructurado; si no puede regenerar, vuelve a legacy canonico.
 - `duplicate_cv()` mantiene la regla de preservar payload valido solo cuando el contenido copiado no cambia.
 - No cambia UI, templates productivos, render LaTeX/PDF, export JSON visible, import JSON visible ni ATS scoring.
@@ -213,12 +214,13 @@ Validaciones:
 - duplicar CV estructurado conserva payload valido y campos legacy consistentes;
 - editar por flujo legacy regenera payload o deja legacy canonico sin stale payload;
 - import schema `1` sobre CV estructurado regenera o limpia payload en la misma operacion;
-- payload v2 valida secciones obligatorias y rechaza estructuras incompletas o tipos incorrectos;
+- payload v2 tolera secciones faltantes previamente aceptadas y las normaliza con defaults, pero sigue rechazando tipos incorrectos o payloads corruptos;
 - `docker compose exec app python -m pytest`.
 
 Criterios de aceptacion:
 
 - CVs existentes siguen funcionando.
+- Payload v2 parcial previamente aceptado sigue resolviendo modo estructurado sin caer a legacy.
 - Duplicar un CV estructurado conserva `structured_payload` valido cuando no cambia el contenido.
 - Editar por flujo legacy un CV estructurado regenera `structured_payload` o lo limpia/invalida en la misma operacion.
 - Importar schema `1` sobre un CV estructurado regenera `structured_payload` o lo limpia/invalida en la misma operacion.

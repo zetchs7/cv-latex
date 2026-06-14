@@ -17,6 +17,22 @@ Reintento/correccion:
 
 ## 2026-06-14 - Etapa 9.2 servicios de CV estructurado y reglas de escritura segura
 
+2026-06-14 01:17:45 ART | Etapa 9.2 | CMD-006
+Accion:
+Corregir compatibilidad backward de validacion `structured_payload` v2 despues del blocker de Codex Review en PR #15.
+Motivo:
+Evitar que payloads v2 parciales previamente aceptados caigan a legacy y se pierdan al pasar por update legacy.
+Comando:
+`Get-Content`; `gh pr view`; `apply_patch`; `python -m compileall app tests`; `python -m unittest tests.test_structured_cv_service tests.test_cv_repository`
+Argumentos:
+`app/services/structured_cv_service.py`, `tests/test_structured_cv_service.py`, `tests/test_cv_repository.py`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `docs/development/MVP_VALIDATION.md`, PR #15.
+Resultado:
+La validacion v2 ahora normaliza con defaults vacios `personal`, `contact`, `summary`, `skills`, `experience`, `education`, `certifications`, `languages`, `projects`, `links` y `metadata` cuando faltan, pero sigue rechazando JSON invalido, tipos top-level incorrectos e items corruptos. `python -m unittest tests.test_structured_cv_service tests.test_cv_repository` paso con `Ran 16 tests in 0.104s OK`.
+Error completo:
+`gh pr view 15 --comments` fallo con `GraphQL: Projects (classic) is being deprecated in favor of the new Projects experience... (repository.pullRequest.projectCards)`.
+Reintento/correccion:
+Se tomo el blocker exacto del pedido y se continuo sin depender de esa vista legacy de GitHub. La validacion puntual del PR se rehará al final con comentario nuevo de `@codex review`.
+
 2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-001
 Accion:
 Leer pedido, instrucciones persistentes, arquitectura aprobada, playbook, lessons learned, validaciones y codigo actual de CV estructurado.

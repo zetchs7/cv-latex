@@ -4,6 +4,7 @@ from app.schemas import CVFormData
 from app.services.structured_cv_service import (
     build_structured_payload_from_legacy,
     deserialize_structured_payload,
+    normalize_structured_payload_v2,
     serialize_structured_payload,
     validate_structured_payload_v2,
     resolve_structured_payload_state,
@@ -63,6 +64,16 @@ class StructuredCVServiceTest(unittest.TestCase):
         self.assertFalse(state.is_structured)
         self.assertEqual(state.reason, "payload_not_marked_valid")
 
+    def test_partial_v2_payload_still_resolves_as_structured(self):
+        state = resolve_structured_payload_state(
+            structured_schema_version=2,
+            structured_payload='{"schema_version":2,"personal":{"full_name":"Ana"}}',
+            structured_payload_status="valid",
+        )
+
+        self.assertTrue(state.is_structured)
+        self.assertEqual(state.reason, "payload_valid")
+
     def test_builds_valid_schema_two_payload_from_legacy_fields(self):
         payload = build_structured_payload_from_legacy(_build_form_data(), metadata_source="legacy_test")
 
@@ -86,11 +97,31 @@ class StructuredCVServiceTest(unittest.TestCase):
         validation = validate_structured_payload_v2(payload)
         self.assertTrue(validation.is_valid)
 
-    def test_rejects_payload_with_missing_required_sections(self):
-        validation = validate_structured_payload_v2({"schema_version": 2})
+    def test_partial_v2_payload_is_normalized_with_defaults(self):
+        normalized_payload = normalize_structured_payload_v2(
+            {
+                "schema_version": 2,
+                "personal": {"full_name": "Ana Perez"},
+            }
+        )
+
+        self.assertIsNotNone(normalized_payload)
+        self.assertEqual(normalized_payload["summary"], "")
+        self.assertEqual(normalized_payload["contact"]["email"], "")
+        self.assertEqual(normalized_payload["skills"], [])
+        self.assertEqual(normalized_payload["metadata"]["source"], "")
+
+    def test_rejects_payload_with_corrupt_top_level_types(self):
+        validation = validate_structured_payload_v2({"schema_version": 2, "contact": "broken"})
 
         self.assertFalse(validation.is_valid)
         self.assertIn("contact_must_be_object", validation.errors)
+
+    def test_rejects_payload_with_corrupt_item_types(self):
+        validation = validate_structured_payload_v2({"schema_version": 2, "skills": ["python"]})
+
+        self.assertFalse(validation.is_valid)
+        self.assertIn("skills_0_must_be_object", validation.errors)
 
 
 def _build_form_data() -> CVFormData:

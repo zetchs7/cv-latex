@@ -9,6 +9,7 @@ Version objetivo actual: `0.9.0`
 ## Validaciones fuertes Etapa 9.2
 
 - Confirmar que `structured_payload` v2 exige `personal`, `contact`, `summary`, `skills`, `experience`, `education`, `certifications`, `languages`, `projects`, `links` y `metadata`.
+- Confirmar que un payload v2 parcial previamente aceptado sigue siendo valido o se normaliza con defaults vacios para secciones faltantes.
 - Confirmar que la conversion legacy -> estructurado produce payload v2 valido sin parsear agresivamente texto libre.
 - Confirmar que `structured_schema_version >= 2`, `structured_payload_status = valid` y payload v2 valido resuelven modo estructurado.
 - Confirmar que payload ausente, invalido, stale o no marcado como valido vuelve a legacy canonico.

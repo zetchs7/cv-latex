@@ -74,6 +74,26 @@ class CVRepositoryTest(unittest.TestCase):
                 self.assertEqual(payload["metadata"]["source"], "legacy_edit")
                 self.assertEqual(payload["skills"][1]["label"], "FastAPI")
 
+    def test_update_structured_cv_with_partial_v2_payload_does_not_clear_it_to_legacy(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_cv(_build_form_data(title="CV Structured"))
+                _mark_cv_as_partial_structured(cv_id)
+
+                updated = update_cv(cv_id, _build_form_data(title="CV Updated", skills="Python, SQL"))
+
+                self.assertTrue(updated)
+                cv = get_cv(cv_id)
+                self.assertIsNotNone(cv)
+                self.assertEqual(cv.structured_schema_version, 2)
+                self.assertEqual(cv.structured_payload_status, "valid")
+                self.assertIsNotNone(cv.structured_payload)
+                payload = deserialize_structured_payload(cv.structured_payload)
+                self.assertIsNotNone(payload)
+                self.assertEqual(payload["metadata"]["source"], "legacy_edit")
+                self.assertEqual(payload["skills"][1]["label"], "SQL")
+
     def test_duplicate_preserves_valid_structured_payload_when_content_is_copied(self):
         with tempfile.TemporaryDirectory() as data_directory:
             with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
@@ -109,6 +129,24 @@ def _mark_cv_as_structured(cv_id: int) -> str:
         metadata_source="test",
     )
     payload = str(structured_columns["structured_payload"])
+    with get_connection() as connection:
+        connection.execute(
+            """
+            UPDATE cvs
+            SET structured_schema_version = 2,
+                structured_payload = ?,
+                structured_payload_status = 'valid'
+            WHERE id = ?
+            """,
+            (payload, cv_id),
+        )
+        connection.commit()
+
+    return payload
+
+
+def _mark_cv_as_partial_structured(cv_id: int) -> str:
+    payload = '{"schema_version":2,"personal":{"full_name":"Nombre Valido"}}'
     with get_connection() as connection:
         connection.execute(
             """

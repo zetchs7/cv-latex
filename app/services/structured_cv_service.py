@@ -24,6 +24,7 @@ class StructuredCVState:
 class StructuredPayloadValidation:
     is_valid: bool
     errors: tuple[str, ...]
+    normalized_payload: dict[str, object] | None = None
 
 
 LegacyCVInput = CV | CVFormData
@@ -144,7 +145,7 @@ def serialize_structured_payload(payload: dict[str, object]) -> str:
         joined_errors = "; ".join(validation.errors)
         raise ValueError(f"Payload estructurado invalido: {joined_errors}")
 
-    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return json.dumps(validation.normalized_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
 def deserialize_structured_payload(raw_payload: str) -> dict[str, object] | None:
@@ -160,38 +161,17 @@ def deserialize_structured_payload(raw_payload: str) -> dict[str, object] | None
 
 
 def validate_structured_payload_v2(payload: object) -> StructuredPayloadValidation:
-    errors: list[str] = []
+    normalized_payload, errors = _normalize_structured_payload_v2(payload)
+    return StructuredPayloadValidation(
+        is_valid=not errors,
+        errors=tuple(errors),
+        normalized_payload=normalized_payload,
+    )
 
-    if not isinstance(payload, dict):
-        return StructuredPayloadValidation(False, ("payload_must_be_object",))
 
-    schema_version = payload.get("schema_version")
-    if not isinstance(schema_version, int):
-        errors.append("schema_version_must_be_integer")
-    elif schema_version < CURRENT_STRUCTURED_SCHEMA_VERSION:
-        errors.append("schema_version_unsupported")
-
-    _require_object(payload, "personal", errors)
-    _require_object(payload, "contact", errors)
-    _require_string(payload, "summary", errors)
-    _require_object(payload, "metadata", errors)
-
-    for list_field in (
-        "skills",
-        "experience",
-        "education",
-        "certifications",
-        "languages",
-        "projects",
-        "links",
-    ):
-        _require_list(payload, list_field, errors)
-
-    _validate_ordered_items(payload.get("skills"), "skills", errors, required_text_field="label")
-    _validate_ordered_items(payload.get("experience"), "experience", errors, required_text_field="summary")
-    _validate_ordered_items(payload.get("education"), "education", errors, required_text_field="summary")
-
-    return StructuredPayloadValidation(is_valid=not errors, errors=tuple(errors))
+def normalize_structured_payload_v2(payload: object) -> dict[str, object] | None:
+    validation = validate_structured_payload_v2(payload)
+    return validation.normalized_payload
 
 
 def _build_skill_items(raw_skills: str) -> list[dict[str, object]]:
@@ -229,36 +209,174 @@ def _current_utc_timestamp() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
-def _require_object(payload: dict[str, object], field_name: str, errors: list[str]) -> None:
-    if not isinstance(payload.get(field_name), dict):
-        errors.append(f"{field_name}_must_be_object")
+def _normalize_structured_payload_v2(payload: object) -> tuple[dict[str, object] | None, list[str]]:
+    errors: list[str] = []
+
+    if not isinstance(payload, dict):
+        return None, ["payload_must_be_object"]
+
+    schema_version = payload.get("schema_version")
+    if not isinstance(schema_version, int):
+        errors.append("schema_version_must_be_integer")
+    elif schema_version < CURRENT_STRUCTURED_SCHEMA_VERSION:
+        errors.append("schema_version_unsupported")
+
+    if errors:
+        return None, errors
+
+    normalized_payload = dict(payload)
+    normalized_payload["personal"] = _normalize_object_field(
+        payload,
+        "personal",
+        errors,
+        defaults={
+            "full_name": "",
+            "headline": "",
+            "location": "",
+        },
+    )
+    normalized_payload["contact"] = _normalize_object_field(
+        payload,
+        "contact",
+        errors,
+        defaults={
+            "email": "",
+            "phone": "",
+            "links": [],
+        },
+    )
+    normalized_payload["metadata"] = _normalize_object_field(
+        payload,
+        "metadata",
+        errors,
+        defaults={
+            "source": "",
+            "synced_from_legacy_at": "",
+        },
+    )
+    normalized_payload["summary"] = _normalize_string_field(payload, "summary", errors, default="")
+    normalized_payload["skills"] = _normalize_structured_items(
+        payload,
+        "skills",
+        errors,
+        defaults={
+            "label": "",
+            "category": "",
+            "level": "",
+        },
+    )
+    normalized_payload["experience"] = _normalize_structured_items(
+        payload,
+        "experience",
+        errors,
+        defaults={"summary": ""},
+    )
+    normalized_payload["education"] = _normalize_structured_items(
+        payload,
+        "education",
+        errors,
+        defaults={"summary": ""},
+    )
+
+    for list_field in ("certifications", "languages", "projects", "links"):
+        normalized_payload[list_field] = _normalize_list_field(payload, list_field, errors)
+
+    if errors:
+        return None, errors
+
+    return normalized_payload, errors
 
 
-def _require_string(payload: dict[str, object], field_name: str, errors: list[str]) -> None:
-    if not isinstance(payload.get(field_name), str):
-        errors.append(f"{field_name}_must_be_string")
-
-
-def _require_list(payload: dict[str, object], field_name: str, errors: list[str]) -> None:
-    if not isinstance(payload.get(field_name), list):
-        errors.append(f"{field_name}_must_be_list")
-
-
-def _validate_ordered_items(
-    items: object,
+def _normalize_object_field(
+    payload: dict[str, object],
     field_name: str,
     errors: list[str],
     *,
-    required_text_field: str,
-) -> None:
-    if not isinstance(items, list):
-        return
+    defaults: dict[str, object],
+) -> dict[str, object]:
+    raw_value = payload.get(field_name)
+    if raw_value is None:
+        return dict(defaults)
+    if not isinstance(raw_value, dict):
+        errors.append(f"{field_name}_must_be_object")
+        return dict(defaults)
 
-    for index, item in enumerate(items):
-        if not isinstance(item, dict):
-            errors.append(f"{field_name}_{index}_must_be_object")
+    normalized_value = dict(raw_value)
+    for key, default_value in defaults.items():
+        current_value = normalized_value.get(key)
+        if current_value is None:
+            normalized_value[key] = default_value
             continue
-        if not isinstance(item.get(required_text_field), str):
-            errors.append(f"{field_name}_{index}_{required_text_field}_must_be_string")
-        if not isinstance(item.get("order"), int):
-            errors.append(f"{field_name}_{index}_order_must_be_integer")
+        if isinstance(default_value, list):
+            if not isinstance(current_value, list):
+                errors.append(f"{field_name}_{key}_must_be_list")
+        elif not isinstance(current_value, str):
+            errors.append(f"{field_name}_{key}_must_be_string")
+
+    return normalized_value
+
+
+def _normalize_string_field(
+    payload: dict[str, object],
+    field_name: str,
+    errors: list[str],
+    *,
+    default: str,
+) -> str:
+    raw_value = payload.get(field_name)
+    if raw_value is None:
+        return default
+    if not isinstance(raw_value, str):
+        errors.append(f"{field_name}_must_be_string")
+        return default
+    return raw_value
+
+
+def _normalize_list_field(payload: dict[str, object], field_name: str, errors: list[str]) -> list[object]:
+    raw_value = payload.get(field_name)
+    if raw_value is None:
+        return []
+    if not isinstance(raw_value, list):
+        errors.append(f"{field_name}_must_be_list")
+        return []
+    return list(raw_value)
+
+
+def _normalize_structured_items(
+    payload: dict[str, object],
+    field_name: str,
+    errors: list[str],
+    *,
+    defaults: dict[str, str],
+) -> list[dict[str, object]]:
+    raw_items = payload.get(field_name)
+    if raw_items is None:
+        return []
+    if not isinstance(raw_items, list):
+        errors.append(f"{field_name}_must_be_list")
+        return []
+
+    normalized_items: list[dict[str, object]] = []
+    for index, item in enumerate(raw_items, start=1):
+        if not isinstance(item, dict):
+            errors.append(f"{field_name}_{index - 1}_must_be_object")
+            continue
+
+        normalized_item = dict(item)
+        for key, default_value in defaults.items():
+            current_value = normalized_item.get(key)
+            if current_value is None:
+                normalized_item[key] = default_value
+                continue
+            if not isinstance(current_value, str):
+                errors.append(f"{field_name}_{index - 1}_{key}_must_be_string")
+
+        current_order = normalized_item.get("order")
+        if current_order is None:
+            normalized_item["order"] = index
+        elif not isinstance(current_order, int):
+            errors.append(f"{field_name}_{index - 1}_order_must_be_integer")
+
+        normalized_items.append(normalized_item)
+
+    return normalized_items
