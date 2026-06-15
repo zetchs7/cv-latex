@@ -1,5 +1,4 @@
 import os
-import json
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -7,6 +6,7 @@ from unittest.mock import patch
 from app.database import get_connection, initialize_database
 from app.repositories.cv_repository import create_cv, duplicate_cv, get_cv, update_cv
 from app.schemas import CVFormData
+from app.services.structured_cv_service import build_valid_structured_columns_from_legacy, deserialize_structured_payload
 from app.validations.cv_validations import FIELD_LIMITS
 
 
@@ -36,12 +36,11 @@ class CVRepositoryTest(unittest.TestCase):
                 self.assertEqual(len(duplicated_cv.title), FIELD_LIMITS["title"])
                 self.assertTrue(duplicated_cv.title.endswith("(copia)"))
 
-    def test_update_legacy_flow_clears_structured_payload_to_avoid_stale_data(self):
+    def test_update_legacy_cv_keeps_legacy_structured_state(self):
         with tempfile.TemporaryDirectory() as data_directory:
             with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
                 initialize_database()
-                cv_id = create_cv(_build_form_data(title="CV Structured"))
-                _mark_cv_as_structured(cv_id)
+                cv_id = create_cv(_build_form_data(title="CV Legacy"))
 
                 updated = update_cv(cv_id, _build_form_data(title="CV Updated"))
 
@@ -52,6 +51,48 @@ class CVRepositoryTest(unittest.TestCase):
                 self.assertIsNone(cv.structured_schema_version)
                 self.assertIsNone(cv.structured_payload)
                 self.assertEqual(cv.structured_payload_status, "legacy")
+
+    def test_update_structured_cv_regenerates_payload_from_legacy_fields(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_cv(_build_form_data(title="CV Structured"))
+                old_payload = _mark_cv_as_structured(cv_id)
+
+                updated = update_cv(cv_id, _build_form_data(title="CV Updated", skills="Python, FastAPI"))
+
+                self.assertTrue(updated)
+                cv = get_cv(cv_id)
+                self.assertIsNotNone(cv)
+                self.assertEqual(cv.title, "CV Updated")
+                self.assertEqual(cv.structured_schema_version, 2)
+                self.assertIsNotNone(cv.structured_payload)
+                self.assertNotEqual(cv.structured_payload, old_payload)
+                self.assertEqual(cv.structured_payload_status, "valid")
+                payload = deserialize_structured_payload(cv.structured_payload)
+                self.assertIsNotNone(payload)
+                self.assertEqual(payload["metadata"]["source"], "legacy_edit")
+                self.assertEqual(payload["skills"][1]["label"], "FastAPI")
+
+    def test_update_structured_cv_with_partial_v2_payload_does_not_clear_it_to_legacy(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_cv(_build_form_data(title="CV Structured"))
+                _mark_cv_as_partial_structured(cv_id)
+
+                updated = update_cv(cv_id, _build_form_data(title="CV Updated", skills="Python, SQL"))
+
+                self.assertTrue(updated)
+                cv = get_cv(cv_id)
+                self.assertIsNotNone(cv)
+                self.assertEqual(cv.structured_schema_version, 2)
+                self.assertEqual(cv.structured_payload_status, "valid")
+                self.assertIsNotNone(cv.structured_payload)
+                payload = deserialize_structured_payload(cv.structured_payload)
+                self.assertIsNotNone(payload)
+                self.assertEqual(payload["metadata"]["source"], "legacy_edit")
+                self.assertEqual(payload["skills"][1]["label"], "SQL")
 
     def test_duplicate_preserves_valid_structured_payload_when_content_is_copied(self):
         with tempfile.TemporaryDirectory() as data_directory:
@@ -69,7 +110,7 @@ class CVRepositoryTest(unittest.TestCase):
                 self.assertEqual(duplicated_cv.structured_payload, payload)
                 self.assertEqual(duplicated_cv.structured_payload_status, "valid")
 
-def _build_form_data(*, title: str) -> CVFormData:
+def _build_form_data(*, title: str, skills: str = "Python") -> CVFormData:
     return CVFormData(
         title=title,
         full_name="Nombre Valido",
@@ -78,12 +119,34 @@ def _build_form_data(*, title: str) -> CVFormData:
         professional_summary="Perfil",
         experience_summary="Experiencia",
         education_summary="Educacion",
-        skills="Python",
+        skills=skills,
     )
 
 
 def _mark_cv_as_structured(cv_id: int) -> str:
-    payload = json.dumps({"schema_version": 2, "personal": {"full_name": "Nombre Valido"}})
+    structured_columns = build_valid_structured_columns_from_legacy(
+        _build_form_data(title="CV Structured"),
+        metadata_source="test",
+    )
+    payload = str(structured_columns["structured_payload"])
+    with get_connection() as connection:
+        connection.execute(
+            """
+            UPDATE cvs
+            SET structured_schema_version = 2,
+                structured_payload = ?,
+                structured_payload_status = 'valid'
+            WHERE id = ?
+            """,
+            (payload, cv_id),
+        )
+        connection.commit()
+
+    return payload
+
+
+def _mark_cv_as_partial_structured(cv_id: int) -> str:
+    payload = '{"personal":{"full_name":"Nombre Valido"}}'
     with get_connection() as connection:
         connection.execute(
             """

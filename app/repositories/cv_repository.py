@@ -3,6 +3,7 @@ from app.models import CV
 from app.schemas import CVFormData
 from app.services.structured_cv_service import (
     STRUCTURED_PAYLOAD_STATUS_VALID,
+    build_valid_structured_columns_from_legacy,
     build_legacy_structured_columns,
     resolve_structured_cv_state,
 )
@@ -87,8 +88,12 @@ def _insert_cv(form_data: CVFormData, *, structured_columns: dict[str, object]) 
 
 
 def update_cv(cv_id: int, form_data: CVFormData) -> bool:
+    current_cv = get_cv(cv_id)
+    if current_cv is None:
+        return False
+
     values = form_data.as_database_values()
-    values.update(build_legacy_structured_columns())
+    values.update(_build_structured_columns_for_legacy_update(current_cv, form_data))
     values["id"] = str(cv_id)
 
     with get_connection() as connection:
@@ -115,6 +120,16 @@ def update_cv(cv_id: int, form_data: CVFormData) -> bool:
         connection.commit()
 
     return cursor.rowcount > 0
+
+
+def _build_structured_columns_for_legacy_update(current_cv: CV, form_data: CVFormData) -> dict[str, object]:
+    if not resolve_structured_cv_state(current_cv).is_structured:
+        return build_legacy_structured_columns()
+
+    try:
+        return build_valid_structured_columns_from_legacy(form_data, metadata_source="legacy_edit")
+    except ValueError:
+        return build_legacy_structured_columns()
 
 
 def duplicate_cv(cv_id: int) -> int | None:
