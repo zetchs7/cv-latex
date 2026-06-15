@@ -128,6 +128,16 @@ class StructuredCVServiceTest(unittest.TestCase):
         self.assertFalse(state.is_structured)
         self.assertEqual(state.reason, "payload_invalid")
 
+    def test_declared_version_three_with_internal_schema_version_two_is_rejected(self):
+        state = resolve_structured_payload_state(
+            structured_schema_version=3,
+            structured_payload='{"schema_version":2,"personal":{"full_name":"Ana"}}',
+            structured_payload_status="valid",
+        )
+
+        self.assertFalse(state.is_structured)
+        self.assertEqual(state.reason, "payload_invalid")
+
     def test_payload_with_null_schema_version_is_rejected_even_if_row_declares_v2(self):
         state = resolve_structured_payload_state(
             structured_schema_version=2,

@@ -236,6 +236,12 @@ def _normalize_structured_payload_v2(
     if not isinstance(payload, dict):
         return None, ["payload_must_be_object"]
 
+    if declared_schema_version is not None:
+        if not isinstance(declared_schema_version, int):
+            return None, ["schema_version_must_be_integer"]
+        if declared_schema_version != CURRENT_STRUCTURED_SCHEMA_VERSION:
+            return None, ["schema_version_unsupported"]
+
     schema_version_present = "schema_version" in payload
     schema_version = payload["schema_version"] if schema_version_present else _MISSING_SCHEMA_VERSION
     normalized_schema_version = _resolve_payload_schema_version(

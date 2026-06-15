@@ -81,6 +81,22 @@ No aplica; los comandos finalizaron correctamente.
 Reintento/correccion:
 No aplica.
 
+2026-06-15 00:18:26 ART | Etapa 9.2 | CMD-010
+Accion:
+Rechazar filas futuras `structured_schema_version >= 3` dentro del validador v2, incluso si el JSON interno dice `schema_version: 2`.
+Motivo:
+Evitar que una fila de schema futuro/desconocido sea procesada como payload v2 por compatibilidad schema-less o por un `schema_version` interno viejo.
+Comando:
+`apply_patch`; `python -m compileall app tests`; `python -m unittest tests.test_structured_cv_service tests.test_cv_repository`
+Argumentos:
+`app/services/structured_cv_service.py`, `tests/test_structured_cv_service.py`.
+Resultado:
+El validador v2 ahora rechaza cualquier `declared_schema_version` distinto de `2`, y se agrego el caso explicito `declared_schema_version = 3` + `schema_version: 2` => rechazo seguro. `python -m unittest tests.test_structured_cv_service tests.test_cv_repository` paso con `Ran 23 tests in 0.108s OK`.
+Error completo:
+No aplica; los comandos finalizaron correctamente.
+Reintento/correccion:
+No aplica.
+
 2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-001
 Accion:
 Leer pedido, instrucciones persistentes, arquitectura aprobada, playbook, lessons learned, validaciones y codigo actual de CV estructurado.
