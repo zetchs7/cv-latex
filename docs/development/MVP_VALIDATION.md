@@ -6,6 +6,19 @@ Checklist manual minima para validar el MVP local antes de mergear una rama de c
 
 Version objetivo actual: `0.9.0`
 
+## Validaciones fuertes Etapa 9.2
+
+- Confirmar que `structured_payload` v2 exige `personal`, `contact`, `summary`, `skills`, `experience`, `education`, `certifications`, `languages`, `projects`, `links` y `metadata`.
+- Confirmar que un payload v2 parcial previamente aceptado sigue siendo valido o se normaliza con defaults vacios para secciones faltantes.
+- Confirmar que un payload sin `schema_version` interno sigue siendo valido solo cuando la fila ya declara `structured_schema_version = 2`, y que `schema_version` no entero sigue rechazandose.
+- Confirmar que la conversion legacy -> estructurado produce payload v2 valido sin parsear agresivamente texto libre.
+- Confirmar que `structured_schema_version >= 2`, `structured_payload_status = valid` y payload v2 valido resuelven modo estructurado.
+- Confirmar que payload ausente, invalido, stale o no marcado como valido vuelve a legacy canonico.
+- Confirmar que actualizar por flujo legacy un CV estructurado regenera `structured_payload` desde los campos actualizados o vuelve a legacy canonico sin dejar payload viejo valido.
+- Confirmar que actualizar un CV legacy sigue dejando estado legacy y no fuerza conversion visible.
+- Confirmar que duplicate/copy de un CV estructurado conserva payload valido cuando no cambia el contenido.
+- Confirmar que import/export JSON schema `1`, PDF/TEX, ATS, UI/templates productivos y `app/static/docs/` no cambian en esta etapa.
+
 ## Validaciones fuertes Etapa 9.1
 
 - Confirmar que `cvs` tiene `structured_schema_version`, `structured_payload` y `structured_payload_status` tanto en DB nueva como en DB legacy migrada.

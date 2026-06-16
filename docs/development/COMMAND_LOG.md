@@ -15,6 +15,168 @@ Error completo:
 Reintento/correccion:
 ```
 
+## 2026-06-14 - Etapa 9.2 servicios de CV estructurado y reglas de escritura segura
+
+2026-06-14 01:17:45 ART | Etapa 9.2 | CMD-006
+Accion:
+Corregir compatibilidad backward de validacion `structured_payload` v2 despues del blocker de Codex Review en PR #15.
+Motivo:
+Evitar que payloads v2 parciales previamente aceptados caigan a legacy y se pierdan al pasar por update legacy.
+Comando:
+`Get-Content`; `gh pr view`; `apply_patch`; `python -m compileall app tests`; `python -m unittest tests.test_structured_cv_service tests.test_cv_repository`
+Argumentos:
+`app/services/structured_cv_service.py`, `tests/test_structured_cv_service.py`, `tests/test_cv_repository.py`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `docs/development/MVP_VALIDATION.md`, PR #15.
+Resultado:
+La validacion v2 ahora normaliza con defaults vacios `personal`, `contact`, `summary`, `skills`, `experience`, `education`, `certifications`, `languages`, `projects`, `links` y `metadata` cuando faltan, pero sigue rechazando JSON invalido, tipos top-level incorrectos e items corruptos. `python -m unittest tests.test_structured_cv_service tests.test_cv_repository` paso con `Ran 16 tests in 0.104s OK`.
+Error completo:
+`gh pr view 15 --comments` fallo con `GraphQL: Projects (classic) is being deprecated in favor of the new Projects experience... (repository.pullRequest.projectCards)`.
+Reintento/correccion:
+Se tomo el blocker exacto del pedido y se continuo sin depender de esa vista legacy de GitHub. La validacion puntual del PR se rehará al final con comentario nuevo de `@codex review`.
+
+2026-06-14 01:17:45 ART | Etapa 9.2 | CMD-007
+Accion:
+Corregir compatibilidad backward de payload v2 sin `schema_version` interno cuando la fila DB ya declara `structured_schema_version = 2`.
+Motivo:
+Evitar que payloads v2 previamente aceptados caigan a legacy solo por faltar `schema_version` dentro del JSON y luego se pierdan por un update legacy.
+Comando:
+`apply_patch`; `python -m compileall app tests`; `python -m unittest tests.test_structured_cv_service tests.test_cv_repository`
+Argumentos:
+`app/services/structured_cv_service.py`, `tests/test_structured_cv_service.py`, `tests/test_cv_repository.py`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `docs/development/MVP_VALIDATION.md`.
+Resultado:
+La validacion v2 ahora infiere `schema_version = 2` cuando el payload JSON no lo trae pero la fila ya declara `structured_schema_version = 2`; si `schema_version` existe y no es integer, sigue rechazandose. `python -m unittest tests.test_structured_cv_service tests.test_cv_repository` paso con `Ran 18 tests in 0.100s OK`.
+Error completo:
+No aplica; los comandos finalizaron correctamente.
+Reintento/correccion:
+No aplica.
+
+2026-06-14 12:38:06 ART | Etapa 9.2 | CMD-008
+Accion:
+Corregir la distincion entre `schema_version` ausente y `schema_version = null` en la validacion de `structured_payload` v2.
+Motivo:
+Mantener compatibilidad solo para payloads schema-less realmente antiguos y rechazar payloads que traen la key presente con valor `null` o no entero.
+Comando:
+`apply_patch`; `python -m compileall app tests`; `python -m unittest tests.test_structured_cv_service tests.test_cv_repository`
+Argumentos:
+`app/services/structured_cv_service.py`, `tests/test_structured_cv_service.py`.
+Resultado:
+La validacion ahora detecta presencia real de la key `schema_version`: si falta y la fila declara schema `2`, normaliza a `2`; si la key existe con `null` o valor no entero, rechaza. `python -m unittest tests.test_structured_cv_service tests.test_cv_repository` paso con `Ran 20 tests in 0.127s OK`.
+Error completo:
+Un primer `compileall`/`unittest` fallo por `SyntaxError: positional argument follows keyword argument` en la llamada a `_resolve_payload_schema_version`.
+Reintento/correccion:
+Se corrigio el orden de argumentos nombrando explicitamente `declared_schema_version=` y `errors=` en la llamada. Luego compile y unittest pasaron.
+
+2026-06-14 12:52:03 ART | Etapa 9.2 | CMD-009
+Accion:
+Restringir la compatibilidad schema-less exclusivamente a filas que declaran `structured_schema_version = 2`.
+Motivo:
+Evitar que una fila futura con schema `3` o superior sea tratada como payload v2 valido por el validador actual.
+Comando:
+`apply_patch`; `python -m compileall app tests`; `python -m unittest tests.test_structured_cv_service tests.test_cv_repository`
+Argumentos:
+`app/services/structured_cv_service.py`, `tests/test_structured_cv_service.py`.
+Resultado:
+El validador v2 ahora solo acepta payload schema-less cuando `declared_schema_version == 2`; si la fila declara `3+` o el payload trae `schema_version` distinto de `2`, el validador v2 devuelve rechazo seguro. `python -m unittest tests.test_structured_cv_service tests.test_cv_repository` paso con `Ran 22 tests in 0.104s OK`.
+Error completo:
+No aplica; los comandos finalizaron correctamente.
+Reintento/correccion:
+No aplica.
+
+2026-06-15 00:18:26 ART | Etapa 9.2 | CMD-010
+Accion:
+Rechazar filas futuras `structured_schema_version >= 3` dentro del validador v2, incluso si el JSON interno dice `schema_version: 2`.
+Motivo:
+Evitar que una fila de schema futuro/desconocido sea procesada como payload v2 por compatibilidad schema-less o por un `schema_version` interno viejo.
+Comando:
+`apply_patch`; `python -m compileall app tests`; `python -m unittest tests.test_structured_cv_service tests.test_cv_repository`
+Argumentos:
+`app/services/structured_cv_service.py`, `tests/test_structured_cv_service.py`.
+Resultado:
+El validador v2 ahora rechaza cualquier `declared_schema_version` distinto de `2`, y se agrego el caso explicito `declared_schema_version = 3` + `schema_version: 2` => rechazo seguro. `python -m unittest tests.test_structured_cv_service tests.test_cv_repository` paso con `Ran 23 tests in 0.108s OK`.
+Error completo:
+No aplica; los comandos finalizaron correctamente.
+Reintento/correccion:
+No aplica.
+
+2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-001
+Accion:
+Leer pedido, instrucciones persistentes, arquitectura aprobada, playbook, lessons learned, validaciones y codigo actual de CV estructurado.
+Motivo:
+Confirmar alcance funcional permitido, restricciones de no tocar UI/PDF/ATS y estado base antes de crear la rama feature.
+Comando:
+`Get-Content`; `rg`; `git status --short --branch`; `git branch --show-current`; `git log --oneline --decorate -7`; `git fetch origin`; `git switch -c feature/structured-cv-services`
+Argumentos:
+Prompt adjunto Etapa 9.2, `~/.codex/AGENTS.md`, `~/.codex/config.toml`, `AGENTS.md`, `docs/adr/ADR-0003-structured-cv-editor.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md`, `PROJECT_PLAYBOOK.md`, `LESSONS_LEARNED.md`, `MVP_VALIDATION.md`, `app/models.py`, `app/database.py`, `app/repositories/cv_repository.py`, `app/services/structured_cv_service.py`, `app/services/export_service.py`, tests relacionados.
+Resultado:
+`development`, `origin/development`, `main` y `origin/main` estaban sincronizados en `5b007a9`; se creo `feature/structured-cv-services` desde `development`.
+Error completo:
+No aplica; los comandos finalizaron correctamente.
+Reintento/correccion:
+No aplica.
+
+2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-002
+Accion:
+Implementar schema v2 minimo, validacion, serializacion, conversion legacy y reglas de update seguro.
+Motivo:
+Evitar payload estructurado obsoleto y dejar servicios internos preparados sin cambiar comportamiento visible.
+Comando:
+`apply_patch`
+Argumentos:
+`app/services/structured_cv_service.py`, `app/repositories/cv_repository.py`, `tests/test_structured_cv_service.py`, `tests/test_cv_repository.py`.
+Resultado:
+Se agrego payload v2 minimo con `personal`, `contact`, `summary`, `skills`, `experience`, `education`, `certifications`, `languages`, `projects`, `links` y `metadata`; `update_cv()` regenera payload si el CV existente era estructurado y conserva legacy canonico para CVs legacy.
+Error completo:
+No aplica; la aplicacion de parches finalizo correctamente.
+Reintento/correccion:
+No aplica.
+
+2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-003
+Accion:
+Validar compilacion y tests focalizados del servicio/repositorio.
+Motivo:
+Detectar errores rapidos antes de correr Docker completo y actualizar PR.
+Comando:
+`python -m compileall app tests`; `python -m pytest tests/test_structured_cv_service.py tests/test_cv_repository.py`; `python -m unittest tests.test_structured_cv_service tests.test_cv_repository`
+Argumentos:
+Modulo `app`, tests del repo y tests focalizados de CV estructurado.
+Resultado:
+`compileall` finalizo correctamente. `python -m unittest tests.test_structured_cv_service tests.test_cv_repository` paso con `Ran 12 tests in 0.082s OK`.
+Error completo:
+`python -m pytest tests/test_structured_cv_service.py tests/test_cv_repository.py` fallo en host con `C:\Program Files\Python312\python.exe: No module named pytest`.
+Reintento/correccion:
+Se uso `unittest` para validacion focalizada local y se dejo `pytest` completo para el contenedor Docker, que es el entorno oficial del repo.
+
+2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-004
+Accion:
+Actualizar documentacion de desarrollo y validar alcance del diff.
+Motivo:
+Registrar la etapa 9.2 sin tocar docs de usuario, PDFs, UI, ATS ni renderer.
+Comando:
+`apply_patch`; `git diff --name-status`; `git diff --check`; `git status --short`; `rg`; `git status --short app/static/docs`; `git diff --name-only -- app/static/docs app/templates app/static/css app/static/js app/services/ats_service.py app/services/latex_service.py app/services/pdf_service.py app/services/export_service.py`
+Argumentos:
+`docs/development/DEVELOPMENT_LOG.md`, `docs/development/MODULE_INDEX.md`, `docs/development/MVP_VALIDATION.md`, `docs/development/STRUCTURED_CV_EDITOR_PLAN.md` y archivos fuera de alcance.
+Resultado:
+Documentacion de desarrollo actualizada. `git diff --check` sin errores. No hubo cambios en `app/static/docs`, templates, CSS/JS, ATS, LaTeX/PDF, PDF service ni export service.
+Error completo:
+No aplica; los comandos finalizaron correctamente. Git mostro advertencias informativas LF/CRLF del working copy.
+Reintento/correccion:
+No aplica.
+
+2026-06-14 00:54:35 ART | Etapa 9.2 | CMD-005
+Accion:
+Validar build, runtime, tests completos, healthcheck, DB y artefactos PDF sin cambios.
+Motivo:
+Confirmar que la implementacion interna funciona en Docker y no rompe version, DB, docs servidas ni artefactos descargables.
+Comando:
+`docker compose build`; `docker compose up -d --force-recreate`; `docker compose ps`; `docker compose logs app --tail 100`; `docker compose exec app python -m pytest`; `curl.exe`; `docker compose exec app python -c`; `Test-Path`; `Get-FileHash`; `git tag --points-at HEAD`
+Argumentos:
+`/health`, `/documentation/`, `/documentation/technical`, `/documentation/usage`, columnas `structured_*`, `app_metadata.schema_version`, PDFs en `app/static/docs`.
+Resultado:
+`docker compose build` finalizo correctamente. `docker compose up -d --force-recreate` dejo `cv_latex_app` `healthy`. Logs sin errores de arranque. Pytest en contenedor: `67 passed in 1.30s`. `/health` respondio `{"status":"ok","version":"0.9.0","database":{"path":"/data/app.db","exists":true,"directory_exists":true}}`; rutas de documentacion respondieron `200`. La DB mostro `['structured_payload', 'structured_payload_status', 'structured_schema_version']` y schema metadata `2`. Los PDFs tecnico y manual existen y mantienen hashes `CDB771519D6470316F56A0CEDA2A07CF9FAE4835E27DA09D00CCD5330BC9EDFB` y `8DE2FA47FCDD7AB38106F77F46F0A9E643FBB6B59DAB653B2CD94552B624E932`. No hay tag nuevo apuntando a HEAD.
+Error completo:
+No aplica; los comandos finalizaron correctamente.
+Reintento/correccion:
+No aplica.
+
 ## 2026-06-13 - Etapa 9.1 modelo de datos y migracion segura para CV estructurado
 
 2026-06-13 14:59:42 ART | Etapa 9.1 | CMD-001
