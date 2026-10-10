@@ -1,0 +1,21 @@
+# Politica de finales de linea del repositorio.
+#
+# Todo archivo de texto se normaliza a LF en el indice y se mantiene en LF en el
+# working tree. Esto evita que el mismo archivo aparezca con cambios completos
+# cuando el repositorio se usa desde WSL y desde Windows, que fue la causa del
+# ruido de ~79 archivos que solo diferian en CRLF.
+* text=auto eol=lf
+
+# Binarios: se declaran explicitamente para que nunca se intenten normalizar.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.zip binary
+*.gz binary
