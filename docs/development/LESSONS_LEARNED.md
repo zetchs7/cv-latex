@@ -189,3 +189,23 @@ Consolidar errores reales detectados durante `cv-latex`, su causa raiz, la corre
 - Validacion que lo confirmo: el historial del PR quedo coherente y el cierre fue auditable.
 - Regla futura para evitarlo: si el hallazgo corrige el mismo entregable, mantenerlo en la misma rama y PR.
 - Instruccion sugerida para proximos prompts: "No abras un PR nuevo para un fix menor del mismo alcance; corrige en la rama abierta y vuelve a pedir review."
+
+## LL-019 - Un test que codifica el contrato defectuoso pasa mientras el bug existe
+
+- Problema detectado: el formulario plano de edicion destruia silenciosamente todas las secciones que solo existen en schema 2 (certificaciones, proyectos, idiomas, links, headline, location) al guardar un CV estructurado, y el CV seguia apareciendo como estructurado porque el payload vacio revalidaba como valido.
+- Causa raiz: los dos tests que cubrian esa ruta afirmaban literalmente el comportamiento destructivo (`test_update_structured_cv_regenerates_payload_from_legacy_fields` esperaba `metadata.source == "legacy_edit"`). Ademas construian la fila con `_mark_cv_as_structured`, que deriva el payload de los campos legacy y por lo tanto ya dejaba vacias las secciones solo-estructuradas antes de editar. El test era verde y no podia detectar la perdida: no existia ningun caso con contenido exclusivo de schema 2 en la ruta legacy.
+- Impacto/riesgo: perdida irreversible de datos del usuario alcanzable desde el boton principal del detalle, con el CV aun etiquetado como estructurado y sin warning. La suite completa en verde no cubria el escenario.
+- Como se corrigio: se elimino el contrato destructivo en tres capas: la escritura (`_build_structured_columns_for_legacy_update` lanza `StructuredCVLegacyUpdateError` para filas estructuradas, antes de abrir conexion, en lugar de regenerar o anular), las rutas (`cvs_edit` y `cvs_update` redirigen con mensaje en espanol) y la vista (el boton "Editar" apunta al editor estructurado cuando `is_structured`). Se reescribieron los dos tests para construir el CV con `create_structured_cv` y contenido exclusivo de schema 2, y comparar seccion por seccion antes y despues.
+- Validacion que lo confirmo: `assertRaises(StructuredCVLegacyUpdateError)` mas igualdad de `sections` antes/despues incluyendo `headline`, `location`, `certifications`, `projects`, `languages`, `links`, `additional_info`, `contact.links` y `metadata.source`. Suite enfocada `80 passed`, suite completa `198 passed`. Prueba HTTP end-to-end: `POST /cvs/1/edit` devolvio 303 sin escribir y el export schema 2 posterior conservo el titulo y las cinco secciones.
+- Regla futura para evitarlo: un test de ruta destructiva debe construir el fixture con el metodo de escritura real del dominio (por ejemplo `create_structured_cv` con contenido exclusivo del schema nuevo), nunca con un helper que derive el estado desde la forma vieja. Si un test afirma un comportamiento que un usuario perderia datos por sufrir, ese test esta codificando el bug.
+- Instruccion sugerida para proximos prompts: "Antes de confiar en un test verde de migracion de datos, verifica que el fixture contiene datos que SOLO existen en el formato nuevo."
+
+## LL-020 - Un limite de longitud sin tope en el sufijo rompe el round-trip
+
+- Problema detectado: un CV exportado con un titulo de 110 a 120 caracteres no podia reimportarse, porque `_build_imported_title` agregaba el sufijo `(importado)` sin respetar `FIELD_LIMITS["title"] = 120`.
+- Causa raiz: la logica de sufijo estaba duplicada. `build_duplicate_title` si truncaba la base para dejar lugar al sufijo; `_build_imported_title` no. El contrato "lo que exporto se puede importar" no estaba verificado en ninguna prueba.
+- Impacto/riesgo: perdida funcional en round-trip y mensajes de error que apuntan al JSON del usuario cuando el problema es del propio importador. Se agrava con cualquier sufijo agregado por el sistema.
+- Como se corrigio: `IMPORTED_TITLE_SUFFIX` mas truncado de la base y `rstrip`, con guarda para base vacia y disponible menor o igual a cero. Se cubrieron 109, 110, 119 y 120 caracteres en schema 1 y schema 2.
+- Validacion que lo confirmo: import HTTP con titulo de 120 caracteres responde 303 en ambos esquemas y el titulo resultante queda en 120 conservando `(importado)`.
+- Regla futura para evitarlo: todo sufijo o prefijo agregado por el sistema debe respectar el mismo `FIELD_LIMITS` del campo que modifica, y la prueba de round-trip debe usar el valor limite exacto.
+- Instruccion sugerida para proximos prompts: "Si el sistema agrega texto a un campo persistido, verifica el limite DESPUES de agregar, no antes."

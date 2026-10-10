@@ -168,6 +168,10 @@ docker compose exec app python -m pytest
 - Descargar el manual de uso PDF y confirmar con `pdftotext` que contiene `v0.9.0` y la regla de Prompt IDs externos a Codex.
 - Confirmar que los PDFs tienen portada, version, fecha, estado, pie de pagina, indice poblado si existe, jerarquia visual, callouts, tablas legibles y bloques de comando diferenciados.
 - Confirmar visualmente portada, indice si existe y pagina interna relevante renderizadas a PNG con `pdftoppm`, evitando titulos huerfanos, listas cortas partidas, cortes pobres y espacios vacios excesivos.
+- Confirmar que el SHA256 de cada PDF descargado desde la app es IDENTICO al del archivo en `app/static/docs/` del workspace, servido por un runtime aislado con el repositorio montado.
+- Confirmar que el texto extraido con `pdftotext` de ambos PDFs contiene completos todos los tokens inline largos de las fuentes Markdown (ningun nombre de archivo o ruta recortada en el margen derecho).
+- Confirmar que el indice de cada PDF esta poblado con numeros de pagina reales y que ninguna pagina queda vacia.
+- Confirmar que la documentacion distingue `v0.9.0` como release estable y presenta Feature 1 (editor estructurado, JSON schema 2 y render normalizado en TEX/PDF/ATS) como implementada y sin publicar.
 
 ### Persistencia y artefactos
 

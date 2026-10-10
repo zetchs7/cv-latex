@@ -32,6 +32,107 @@ Planificar la implementacion futura del editor estructurado de CV sin tocar codi
 - `duplicate_cv()` mantiene la regla de preservar payload valido solo cuando el contenido copiado no cambia.
 - No cambia UI, templates productivos, render LaTeX/PDF, export JSON visible, import JSON visible ni ATS scoring.
 
+## Estado de T2 - contrato normalizado v2 y escritura estructurada
+
+- Estado: implementado sobre la Etapa 9.2 con tests enfocados y suite completa en verde. Sin commits por restriccion explicita del usuario.
+- `app/validations/structured_cv_validations.py` es el contrato unico de validacion/normalizacion del payload v2; `structured_cv_service` delega en el y reexporta su API publica.
+- `resolve_normalized_cv(cv)` devuelve la representacion normalizada unica `NormalizedCV` con:
+  - `mode`/`is_structured`/`reason`: resolucion de fuente canonica.
+  - `sections`: forma completa v2 siempre disponible, desde payload estructurado valido o derivada de campos legacy (`build_structured_sections_from_legacy`, proyeccion de lectura sin timestamps de sincronizacion).
+  - `legacy_snapshot`: proyeccion plana (`CVFormData`) para rutas, LaTeX/PDF y ATS existentes.
+  - Ningun consumidor debe leer `structured_payload` y campos planos por separado; todos deben pedir `NormalizedCV`.
+- Solo schema 2 explicito con estado `valid` y payload validado es canonico estructurado; versiones futuras (3+) o invalidas caen 100% a legacy y nunca se tratan como 2.
+- Compatibilidad 9.2 conservada: payloads parciales aceptados con defaults vacios; payload sin `schema_version` interno con version de fila 2 se normaliza a 2; `schema_version` no entero es invalido.
+- Validacion acotada por campo y seccion:
+  - `personal`: `full_name` 160, `headline` 160 (titulo profesional), `location` 160.
+  - `contact`: `email` 180, `phone` 80, `links` lista de strings (300 c/u, maximo 10).
+  - `summary`: string 1200.
+  - `skills`: items con `label` 120, `category` 80, `level` 80; maximo 40 items.
+  - `experience`: items con `company` 120, `role` 120, `location` 120, `start_date` 40, `end_date` 40, `current` booleano, `summary` 600, `highlights` (240 c/u, maximo 12), `technologies` (60 c/u, maximo 16); maximo 30 items.
+  - `education`: items con `institution` 160, `degree` 160, `field` 120, `start_date` 40, `end_date` 40, `summary` 600; maximo 30 items.
+  - `certifications`: items con `name` 160, `issuer` 120, `date` 40; maximo 30 items.
+  - `languages`: items con `name` 60, `level` 60; maximo 20 items.
+  - `projects`: items con `name` 160, `summary` 600, `link` 300, `technologies` (60 c/u, maximo 16); maximo 30 items.
+  - `links`: items con `label` 80, `url` 300; maximo 30 items.
+  - `additional_info` (informacion adicional): items con `title` 120, `content` 600; maximo 20 items.
+  - `metadata`: `source` 60, `synced_from_legacy_at` 60.
+  - `order` entero (bool rechazado), autocompletado con la posicion cuando falta.
+  - El payload serializado no puede superar 512 KB (`MAX_STRUCTURED_PAYLOAD_BYTES`).
+  - Las claves extra dentro de items, secciones y nivel superior se preservan sin validar para no perder campos solo-estructurados.
+- Escritura estructurada:
+  - `build_structured_cv_write_bundle(title, payload, metadata_source)` valida el payload, estampa `metadata.source`/`synced_from_legacy_at`, deriva el snapshot legacy y lo valida con `validate_cv_form` antes de serializar. Cualquier fallo lanza `StructuredCVWriteError` con errores accionables.
+  - `create_structured_cv`/`update_structured_cv` persisten campos legacy y columnas estructuradas en una sola sentencia atomica; un CV legacy actualizado por este flujo queda estructurado. No hay escritura parcial ante errores.
+- Reglas del snapshot legacy (explicitas, sin truncamiento silencioso):
+  - `personal.full_name` -> `full_name`; `contact.email`/`phone` -> `email`/`phone`; `summary` -> `professional_summary`.
+  - `skills`: labels unidos con `", "` respetando `(order, posicion)`.
+  - `experience`: bloques `Role - Company (inicio - fin/Presente)` con `summary`, bullets `• highlight` y linea `Tecnologias: ...`; unidos por linea vacia.
+  - `education`: bloques `Titulo - Institucion (inicio - fin)` con `Campo: ...` y `summary`.
+  - `headline`, `certifications`, `languages`, `projects`, `links`, `additional_info` y `metadata` son solo-estructurados: viven en el payload y el snapshot no los destruye.
+  - Si el snapshot derivado excede los limites legacy, la escritura se rechaza con error por campo; nunca se trunca contenido.
+- Duplicate, update legacy e import schema 1 mantienen las reglas 9.2 vigentes (payload preservado al duplicar; regeneracion o vuelta a legacy canonico al editar legacy).
+
+## Estado de T3 - import/export JSON schema 2 con compatibilidad schema 1
+
+- Estado: implementado sobre T2 con tests enfocados y suite completa en verde. Sin commits por restriccion explicita del usuario.
+- Export JSON canonico via `resolve_normalized_cv` (fuente unica, sin mezcla):
+  - Un CV estructurado valido exporta un envelope schema 2 lossless con `schema_version`, `exported_at`, `source_cv_id` y `cv` conteniendo `title` mas `structured_payload` completo: todas las secciones soportadas, claves extra, `order` y `metadata` se preservan tal cual estan en el payload canonico.
+  - CVs legacy, con payload invalido, stale o de version futura exportan schema 1 plano desde el snapshot legacy canonico; nunca se mezclan payload y campos planos en un mismo export.
+  - `export_cv_json`/`build_cv_json_payload` aceptan `schema_version` explicito: `1` fuerza el export plano de un CV estructurado (desde el snapshot derivado) para compatibilidad; `2` sobre un CV no estructurado se rechaza con error 400; cualquier otro valor o booleano se rechaza sin downcast.
+  - El filename del export schema 2 usa la variante `cv-schema2` para trazabilidad visual.
+- Import JSON con gate estricto de version:
+  - Nueva entrada estructurada `build_cv_json_import_result(raw_content)` que devuelve `CVJsonImportResult(schema_version, form_data | structured_title + structured_payload)`.
+  - `schema_version` ausente o explicito 1 mantiene el flujo legacy exacto: sufijo `(importado)`, validaciones vigentes y creacion de un CV NUEVO en modo legacy canonico via `create_cv`.
+  - `schema_version` 2 explicito valida tipos y limites con el contrato unico v2 (traduciendo los codigos de error a mensajes accionables en espanol), exige `cv.structured_payload` como objeto y `title` como texto, aplica el sufijo `(importado)` y crea un CV NUEVO estructurado via `create_structured_cv(metadata_source="json_import")`, preservando el payload completo en lugar de aplanarlo a `CVFormData`. Los limites de titulo y del snapshot legacy los valida el bundle T2 antes de persistir, sin escrituras parciales.
+  - Versiones explicitas no soportadas, no enteras o booleanas se rechazan al resolver la version, antes de extraer contenido del CV; nunca se hace downcast a schema 1.
+  - `build_cv_form_data_from_json` se conserva para callers legacy: acepta schema 1 explicito o ausente y rechaza schema 2 explicito para no descartar contenido solo-estructurado.
+  - El limite de 512 KB se aplica por streaming (`read_limited_upload_bytes`) antes del parseo para ambos schemas, y el payload serializado sigue limitado por `MAX_STRUCTURED_PAYLOAD_BYTES` dentro de la escritura T2.
+- UI (cambio aditivo minimo, sin editor):
+  - El detalle de un CV estructurado agrega el enlace "Descargar JSON plano (schema 1)" apuntando a `/cvs/{id}/export/json?schema_version=1`.
+  - El panel de import del listado documenta que acepta JSON schema 1 (plano) y schema 2 (estructurado) y que la importacion siempre crea un registro nuevo.
+- Decision sobre import schema 1: se mantiene la creacion de CV nuevo en modo legacy canonico (opcion admitida por ADR-0003: "dejar el registro en modo legacy canonico"); la derivacion inmediata de payload desde imports schema 1 queda fuera de T3 y solo se retomara si el editor estructurado la exige. La importacion jamas sobrescribe el CV de origen (`source_id`) ni registros existentes.
+- Tests: `tests/test_cv_json_schema2.py` (nuevo) cubre envelope lossless, fallback legacy sin mezcla, export explicito schema 1/2, gate de versiones, errores accionables en espanol, limites, roundtrip estructurado completo, creacion de CV nuevo sin sobrescribir el origen y las rutas HTTP de export/import/detalle; se suman casos de version explicita en `tests/test_export_service.py` y de copy de UI en `tests/test_ui_routes.py`.
+
+## Estado de T4 - editor estructurado completo y orden de items
+
+- Estado: implementado sobre T2/T3 con tests enfocados, suite completa y prueba real de navegador en verde. Sin commits por restriccion explicita del usuario. Verificacion independiente del contrato de persistencia pendiente (acordada con el padre).
+- Rutas aditivas (sin sombrear rutas existentes):
+  - `GET/POST /cvs/new/structured` (`cvs_new_structured`, `cvs_create_structured`): creacion estructurada desde cero.
+  - `GET/POST /cvs/{cv_id}/structured-edit` (`cvs_structured_edit`, `cvs_structured_update`): edicion estructurada de cualquier CV activo; declaradas antes de las rutas dinamicas genericas.
+  - Enlaces aditivos: "Crear CV estructurado" en el listado y "Editar estructurado" en el detalle; los flujos legacy siguen intactos.
+- Servicio nuevo `app/services/structured_cv_editor_service.py`:
+  - Bootstrap canonico unicamente via `resolve_normalized_cv`: CV estructurado valido edita desde su payload completo (con claves desconocidas); legacy/invalido/stale/futuro bootstrapea integramente desde campos legacy con advertencia explicita en espanol (motivo, conversion al guardar, limites por campo).
+  - Parseo del envio: rechaza payload ausente (mensaje de JavaScript requerido), no-JSON, no-objeto y mayor a 512 KB antes de tocar el repositorio.
+  - Traduce codigos del contrato v2 a espanol accionable reutilizando el traductor de import T3, anade mensajes exactos con limites concretos (p.ej. `summary_too_long`) y etiqueta en espanol los errores de snapshot legacy (p.ej. `title:` -> `Titulo interno:`).
+  - Rerender de envios fallidos con el payload tal como lo envio el usuario (incluidas claves desconocidas) y el estado de advertencia del CV subyacente.
+- Editor de cliente `app/static/js/structured_editor.js` (UMD; API pura testeable en Node + montaje DOM):
+  - Estado inicial desde `<script id="structured-editor-bootstrap" type="application/json">` serializado con `| tojson` (escapado seguro); sin `innerHTML` con datos del usuario: solo nodos DOM, `textContent` y `value`.
+  - Items de 8 secciones con agregar/quitar/subir/bajar; renumeracion densa 1..n en cada mutacion y en el submit; checkbox de trabajo actual; listas por linea para logros, tecnologias y links de contacto.
+  - Merge final que preserva claves desconocidas de payload, secciones e items; metadata intacta (el servidor la re-estampa); nunca baja versiones de schema.
+  - Limites de items y `maxlength` como guia UX; la validacion real es 100% servidor (write bundle T2, sin escrituras parciales).
+- Template `app/templates/cvs/structured_form.html` con UI 100% espanol: datos personales/contacto, titulo profesional, resumen, experiencia, educacion, skills, certificaciones, idiomas, proyectos, links, informacion adicional e informacion interna (metadata de solo lectura con nota de procedencia server-owned); `noscript` con advertencia propia (clase `structured-noscript-warning`).
+- Reglas de seguridad y compatibilidad verificadas:
+  - CVs legacy, invalidos, stale o de version futura: bootstrap 100% desde campos legacy y advertencia; guardar convierte explicitamente y reemplaza datos estructurados previos no disponibles.
+  - CVs estructurados validos jamas se regeneran desde campos planos.
+  - Envios con version futura se rechazan sin downcast; errores accionables sin escrituras parciales.
+- Tests:
+  - `tests/test_structured_cv_editor.py` (nuevo, 21 pruebas TestClient): render de secciones y bootstrap, creacion con provenance, titulo obligatorio sin escrituras parciales, JSON invalido/ausente/oversize, version futura, limites de snapshot, bootstrap canonico con claves desconocidas, advertencia legacy, fallback invalido/stale/futuro, orden persistido, edicion sin cambios preserva extensiones, rerender 422 preserva lo ingresado sin mutar lo guardado, conversion legacy, 404, XSS escapado, roundtrip editor -> export schema 2 -> import, compatibilidad de rutas legacy y enlaces de UI.
+  - `tests/test_structured_cv_editor_js.js` (nuevo): 8 tests unitarios Node del contrato puro + 4 flujos reales de browser via CDP directo sobre chromium headless (sin dependencias npm): flujo completo con orden persistido en DB, submit fallido preservando datos con error en espanol, no-ejecucion de payloads maliciosos y conversion legacy con advertencia.
+
+## Estado de T5 - representacion normalizada en LaTeX/PDF y ATS
+
+- Estado: implementado sobre T2/T3/T4 con tests enfocados, suite completa y prueba real de PDFs/HTTP en verde. Sin commits por restriccion explicita del usuario. Verificacion independiente pendiente (acordada con el padre); el checkbox de T5 en el documento ODD queda deliberadamente sin marcar hasta esa verificacion.
+- Servicio nuevo `app/services/structured_cv_rendering.py` como unico punto de conversion desde `NormalizedCV`:
+  - `build_structured_cv_latex_context(normalized)`: contexto LaTeX enriquecido para las 4 plantillas desde las secciones v2 (fullname, headline con fallback al titulo interno, email/telefono/ubicacion/links de contacto, resumen, experiencia con rol - empresa, fechas con Presente, ubicacion, resumen, bullets y Tecnologias, educacion con Campo, skills como `label (categoria, nivel)`, certificaciones, idiomas, proyectos con link y Tecnologias, links e informacion adicional).
+  - `build_structured_ats_text(normalized)`: extraccion de texto plano con TODO el contenido soportado (incluye solo-estructurados; excluye metadata interna); para un payload derivado de campos legacy degenera exactamente en la estimacion legacy, garantizando equivalencia canonica de scoring.
+  - Orden consistente por `(order, posicion)` con la misma semantica que el snapshot T2; items minimos no generan secciones ni entradas vacias; todo texto pasa por `sanitize_latex_text`.
+- `latex_service.generate_cv_tex_document` resuelve la fuente con `resolve_normalized_cv` y bifurca: estructurado valido -> contexto enriquecido desde el payload (aun con snapshot legacy obsoleto); cualquier otro caso -> camino flat previo. El TEX legacy es byte-identico al pre-T5 en las 4 plantillas (verificado contra HEAD).
+- Plantillas `classic/modern/compact/tech`: rama `entries` (headline/meta/cuerpo/bullets) con estilizacion minima por plantilla; guardias de agrupacion solo estructurados (`keep_with_next` + `use_needspace`): `\Needspace*{4\baselineskip}` antes de titulos (compact/modern/tech), `\par\nopagebreak` post-colorbox (tech) y `\nopagebreak` vertical post-`\section*` (classic). Evidencia determinista: `\\*` y `\par\nobreak` NO evitan el corte titulo->itemize (el itemize inserta `\@beginparpenalty`); `\Needspace*` si. El huerfano real de "Links" en compact se detecto en PDF real y se corrigio.
+- ATS sin nuevos criterios: los 6 campos de scoring derivan del snapshot legacy proyectado; `total_characters` usa la extraccion normalizada completa; 7 criterios/pesos/topes/umbrales/estados y resultados legacy intactos; equivalencia exacta legacy vs estructurado convertido (dataclass completo) probada, incluido el caso vacio.
+- Metadata interna (`metadata.source`, `synced_from_legacy_at`, `schema_version`) y claves de extension desconocidas nunca se renderizan en TEX/PDF/ATS (persistencia intacta); probado con payloads con `\end{document}` malicioso y caracteres `& % $ # _ { } ~ ^`.
+- Tests: `tests/test_structured_cv_consumers.py` (nuevo: 4 plantillas, no-mix con snapshot obsoleto, orden, escape, linebreaks/secciones vacias, no-leak de metadata/extensiones, fallback byte-equal corrupt/stale/invalid/future, ATS canonico y no-mix, longitud con solo-estructurados, fuente compartida TEX/ATS); adiciones en `test_latex_service.py` (2), `test_ats_service.py` (3) y `test_pdf_service.py` (1, export PDF estructurado 4 plantillas con pdflatex simulado).
+- Evidencia real: PDFs descargados por HTTP en runtime aislado (4x 200 application/pdf, 2 paginas A4, pdftotext completo sin leaks, SHA256 en COMMAND_LOG, PNGs en /tmp/cv-t5-proof/png, ATS HTTP 100/100 Bueno). RED 13/20 -> GREEN 33 -> suite 173 passed (1 warning preexistente).
+- Correccion T5 (tokens largos, CMD-057..071): la inspeccion visual independiente confirmo desborde del margen derecho en las 4 plantillas (highlight de 200+ caracteres ininterrumpidos; header de modern overfull 27.71626pt). Fix solo-estructurado en `structured_cv_rendering.py`: `_structured_latex_text` sanitiza y luego interpola el separador confiable `\allowbreak \hspace{0pt plus 0.06em}` SOLO entre atomos ya sanitizados de tokens de 24+ atomos (secuencias de escape TeX indivisibles; palabras normales y TEX legacy intactos). Causas raiz cerradas con compilacion real: espacio de terminacion obligatorio de la macro (sin el, `\allowbreakt` es Undefined control sequence) y `\hspace` de ancho natural nulo con estiramiento minimo para que lineas sin pegamento propio justifiquen sin restos overfull. Evidencia: RED 4/36 + logs pre-fix (1183.32/27.71626+1015.92/992.16/1022.61pt) -> GREEN 40 focused/180 full (1 warning preexistente), 0 Overfull en los 4 logs finales, pdftotext con corrida A*200 completa y sin leaks, legacy byte-identico contra HEAD, 9 PNGs en /tmp/cv-t5-wrap-proof/png; classic quedo en 3 paginas (p3 resto legitimo).
+
 ## Mapa actual del modulo CV
 
 ### Estructura de datos actual
