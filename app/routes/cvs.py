@@ -4,13 +4,15 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 
 from app.repositories import cv_repository
-from app.repositories.cv_repository import DuplicateCVError
+from app.repositories.cv_repository import DuplicateCVError, StructuredCVLegacyUpdateError
 from app.models import CV
 from app.schemas import CVFormData
+from app.services import structured_cv_editor_service
 from app.services.ats_service import analyze_cv_ats
 from app.services.export_service import (
     ExportServiceError,
-    build_cv_form_data_from_json,
+    STRUCTURED_JSON_EXPORT_SCHEMA_VERSION,
+    build_cv_json_import_result,
     export_cv_json,
     export_cv_tex,
     read_limited_upload_bytes,
@@ -22,6 +24,7 @@ from app.services.latex_service import (
     generate_cv_tex_document,
 )
 from app.services.pdf_service import PdfCompilationError, generate_cv_pdf_export
+from app.services.structured_cv_service import StructuredCVWriteError, resolve_structured_cv_state
 from app.template_utils import create_templates
 from app.validations.cv_validations import build_cv_form_data, validate_cv_form
 
@@ -29,6 +32,12 @@ from app.validations.cv_validations import build_cv_form_data, validate_cv_form
 router = APIRouter(prefix="/cvs", tags=["CVs"])
 templates = create_templates()
 logger = logging.getLogger(__name__)
+
+LEGACY_EDIT_BLOCKED_MESSAGE = (
+    "Este CV tiene datos estructurados y no se puede editar con el formulario plano porque "
+    "ese formulario no puede representar ni conservar los datos de schema 2. "
+    "Usa el editor estructurado."
+)
 
 
 @router.get("/", response_class=HTMLResponse, name="cvs_list")
@@ -56,6 +65,56 @@ def new_cv(request: Request) -> HTMLResponse:
         action_url=str(request.url_for("cvs_create")),
         page_title="Crear CV",
         submit_label="Crear CV",
+    )
+
+
+@router.get("/new/structured", response_class=HTMLResponse, name="cvs_new_structured")
+def new_structured_cv(request: Request) -> HTMLResponse:
+    context = structured_cv_editor_service.build_new_editor_context()
+    return _render_structured_form(
+        request,
+        context,
+        action_url=str(request.url_for("cvs_create_structured")),
+        page_title="Crear CV estructurado",
+        submit_label="Crear CV estructurado",
+    )
+
+
+@router.post("/new/structured", response_class=HTMLResponse, name="cvs_create_structured")
+def create_structured_cv(
+    request: Request,
+    title: str = Form(""),
+    structured_payload: str = Form(""),
+) -> HTMLResponse:
+    payload, errors = structured_cv_editor_service.parse_structured_editor_submission(structured_payload)
+
+    if not errors:
+        try:
+            cv_id = cv_repository.create_structured_cv(
+                title=title,
+                payload=payload,
+                metadata_source=structured_cv_editor_service.STRUCTURED_EDITOR_METADATA_SOURCE,
+            )
+            return _redirect_to_detail(request, cv_id, "CV estructurado creado correctamente.")
+        except StructuredCVWriteError as error:
+            errors = structured_cv_editor_service.translate_structured_editor_errors(error.errors)
+
+    context = structured_cv_editor_service.build_failed_submission_context(
+        title=title,
+        payload=payload,
+        errors=errors,
+        cv_id=None,
+        is_structured=False,
+        mode_reason="new_structured_cv",
+        source_warning="",
+    )
+    return _render_structured_form(
+        request,
+        context,
+        action_url=str(request.url_for("cvs_create_structured")),
+        page_title="Crear CV estructurado",
+        submit_label="Crear CV estructurado",
+        status_code=422,
     )
 
 
@@ -102,11 +161,23 @@ def create_cv(
 def import_cv_json(request: Request, json_file: UploadFile = File(...)) -> RedirectResponse:
     try:
         raw_content = read_limited_upload_bytes(json_file.file)
-        form_data = build_cv_form_data_from_json(raw_content)
+        import_result = build_cv_json_import_result(raw_content)
     except ExportServiceError as error:
         return _redirect_to_list(request, f"No se pudo importar el JSON: {error}")
 
-    cv_id = cv_repository.create_cv(form_data)
+    if import_result.schema_version == STRUCTURED_JSON_EXPORT_SCHEMA_VERSION:
+        try:
+            cv_id = cv_repository.create_structured_cv(
+                title=import_result.structured_title,
+                payload=import_result.structured_payload,
+                metadata_source="json_import",
+            )
+        except StructuredCVWriteError as error:
+            return _redirect_to_list(request, f"No se pudo importar el JSON: {error}")
+
+        return _redirect_to_detail(request, cv_id, "CV importado desde JSON correctamente.")
+
+    cv_id = cv_repository.create_cv(import_result.form_data)
     return _redirect_to_detail(request, cv_id, "CV importado desde JSON correctamente.")
 
 
@@ -124,6 +195,7 @@ def cv_detail(request: Request, cv_id: int, message: str | None = None) -> HTMLR
             "message": message,
             "templates": available_cv_templates(),
             "default_template": DEFAULT_TEMPLATE_KEY,
+            "is_structured": resolve_structured_cv_state(cv).is_structured,
         },
     )
 
@@ -170,11 +242,11 @@ def export_tex(cv_id: int, template_key: str = DEFAULT_TEMPLATE_KEY) -> FileResp
 
 
 @router.get("/{cv_id}/export/json", name="cvs_export_json")
-def export_json(cv_id: int) -> FileResponse:
+def export_json(cv_id: int, schema_version: int | None = None) -> FileResponse:
     cv = _get_existing_cv(cv_id)
 
     try:
-        exported_file = export_cv_json(cv)
+        exported_file = export_cv_json(cv, schema_version=schema_version)
     except ExportServiceError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
@@ -208,6 +280,9 @@ def edit_cv(request: Request, cv_id: int) -> HTMLResponse:
     cv = cv_repository.get_cv(cv_id)
     if cv is None:
         raise HTTPException(status_code=404, detail="CV no encontrado.")
+
+    if resolve_structured_cv_state(cv).is_structured:
+        return _redirect_to_structured_edit(request, cv_id, LEGACY_EDIT_BLOCKED_MESSAGE)
 
     return _render_form(
         request=request,
@@ -244,6 +319,13 @@ def update_cv(
     education_summary: str = Form(""),
     skills: str = Form(""),
 ):
+    current_cv = cv_repository.get_cv(cv_id)
+    if current_cv is None:
+        raise HTTPException(status_code=404, detail="CV no encontrado.")
+
+    if resolve_structured_cv_state(current_cv).is_structured:
+        return _redirect_to_detail(request, cv_id, LEGACY_EDIT_BLOCKED_MESSAGE)
+
     form_data = _build_form_data_from_fields(
         title,
         full_name,
@@ -257,10 +339,6 @@ def update_cv(
     errors = validate_cv_form(form_data)
 
     if errors:
-        current_cv = cv_repository.get_cv(cv_id)
-        if current_cv is None:
-            raise HTTPException(status_code=404, detail="CV no encontrado.")
-
         return _render_form(
             request=request,
             form_data=form_data,
@@ -274,10 +352,79 @@ def update_cv(
             status_code=422,
         )
 
-    if not cv_repository.update_cv(cv_id, form_data):
+    try:
+        updated = cv_repository.update_cv(cv_id, form_data)
+    except StructuredCVLegacyUpdateError as error:
+        logger.warning("Legacy CV update blocked for structured cv_id=%s: %s", cv_id, error)
+        return _redirect_to_detail(request, cv_id, LEGACY_EDIT_BLOCKED_MESSAGE)
+
+    if not updated:
         raise HTTPException(status_code=404, detail="CV no encontrado.")
 
     return _redirect_to_detail(request, cv_id, "CV actualizado correctamente.")
+
+
+@router.get("/{cv_id}/structured-edit", response_class=HTMLResponse, name="cvs_structured_edit")
+def structured_edit_cv(request: Request, cv_id: int, message: str | None = None) -> HTMLResponse:
+    cv = cv_repository.get_cv(cv_id)
+    if cv is None:
+        raise HTTPException(status_code=404, detail="CV no encontrado.")
+
+    context = structured_cv_editor_service.build_structured_editor_context_for_cv(cv)
+    return _render_structured_form(
+        request,
+        context,
+        action_url=str(request.url_for("cvs_structured_update", cv_id=cv_id)),
+        page_title="Editar CV estructurado",
+        submit_label="Guardar cambios estructurados",
+        message=message or "",
+    )
+
+
+@router.post("/{cv_id}/structured-edit", response_class=HTMLResponse, name="cvs_structured_update")
+def structured_update_cv(
+    request: Request,
+    cv_id: int,
+    title: str = Form(""),
+    structured_payload: str = Form(""),
+) -> HTMLResponse:
+    cv = cv_repository.get_cv(cv_id)
+    if cv is None:
+        raise HTTPException(status_code=404, detail="CV no encontrado.")
+
+    payload, errors = structured_cv_editor_service.parse_structured_editor_submission(structured_payload)
+
+    if not errors:
+        try:
+            if not cv_repository.update_structured_cv(
+                cv_id,
+                title=title,
+                payload=payload,
+                metadata_source=structured_cv_editor_service.STRUCTURED_EDITOR_METADATA_SOURCE,
+            ):
+                raise HTTPException(status_code=404, detail="CV no encontrado.")
+            return _redirect_to_detail(request, cv_id, "CV estructurado actualizado correctamente.")
+        except StructuredCVWriteError as error:
+            errors = structured_cv_editor_service.translate_structured_editor_errors(error.errors)
+
+    current_context = structured_cv_editor_service.build_structured_editor_context_for_cv(cv)
+    context = structured_cv_editor_service.build_failed_submission_context(
+        title=title,
+        payload=payload if payload is not None else current_context.payload,
+        errors=errors,
+        cv_id=cv_id,
+        is_structured=current_context.is_structured,
+        mode_reason=current_context.mode_reason,
+        source_warning=current_context.source_warning,
+    )
+    return _render_structured_form(
+        request,
+        context,
+        action_url=str(request.url_for("cvs_structured_update", cv_id=cv_id)),
+        page_title="Editar CV estructurado",
+        submit_label="Guardar cambios estructurados",
+        status_code=422,
+    )
 
 
 @router.post("/{cv_id}/duplicate", response_class=HTMLResponse, name="cvs_duplicate")
@@ -405,8 +552,37 @@ def _render_form(
     )
 
 
+def _render_structured_form(
+    request: Request,
+    context: structured_cv_editor_service.StructuredEditorContext,
+    *,
+    action_url: str,
+    page_title: str,
+    submit_label: str,
+    status_code: int = 200,
+    message: str = "",
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "cvs/structured_form.html",
+        {
+            "editor": context,
+            "action_url": action_url,
+            "page_title": page_title,
+            "submit_label": submit_label,
+            "message": message,
+        },
+        status_code=status_code,
+    )
+
+
 def _redirect_to_detail(request: Request, cv_id: int, message: str) -> RedirectResponse:
     url = request.url_for("cvs_detail", cv_id=cv_id).include_query_params(message=message)
+    return RedirectResponse(str(url), status_code=303)
+
+
+def _redirect_to_structured_edit(request: Request, cv_id: int, message: str) -> RedirectResponse:
+    url = request.url_for("cvs_structured_edit", cv_id=cv_id).include_query_params(message=message)
     return RedirectResponse(str(url), status_code=303)
 
 

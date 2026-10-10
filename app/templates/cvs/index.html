@@ -12,6 +12,7 @@
   </div>
   <div class="action-row">
     <a class="button primary" href="{{ url_for('cvs_new') }}">Crear nuevo curriculum vitae</a>
+    <a class="button" href="{{ url_for('cvs_new_structured') }}">Crear CV estructurado</a>
     <a class="button" href="#advanced-tools">Herramientas avanzadas</a>
   </div>
 </section>
@@ -101,7 +102,7 @@
     <span class="button small" aria-hidden="true">Abrir</span>
   </summary>
   <div class="advanced-tools-body">
-    <p class="section-copy">El archivo debe provenir del modulo CVs. La importacion siempre crea un nuevo registro.</p>
+    <p class="section-copy">El archivo debe provenir del modulo CVs. Acepta JSON schema 1 (plano) y schema 2 (estructurado). La importacion siempre crea un nuevo registro.</p>
     <form class="inline-form" method="post" action="{{ url_for('cvs_import_json') }}" enctype="multipart/form-data">
       <label class="grow-field">
         <span>Archivo JSON</span>

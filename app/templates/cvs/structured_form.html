@@ -1,0 +1,227 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ page_title }} - CV LaTeX Builder{% endblock %}
+{% block topbar_title %}Editor estructurado{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">{{ page_title }}</p>
+    <h1>{{ editor.title or page_title }}</h1>
+    {% if editor.cv_id %}
+    <p class="section-copy form-context-copy">
+      Editando CV estructurado - {{ editor.title or "Sin titulo" }}
+    </p>
+    {% endif %}
+  </div>
+  <div class="action-row">
+    <a class="button" href="{{ url_for('cvs_list') }}">Volver al listado</a>
+    {% if editor.cv_id %}
+    <a class="button" href="{{ url_for('cvs_detail', cv_id=editor.cv_id) }}">Ver detalle</a>
+    {% else %}
+    <a class="button" href="{{ url_for('cvs_new') }}">Editor plano</a>
+    {% endif %}
+  </div>
+</section>
+
+{% if message %}
+<div class="flash-message" role="status">{{ message }}</div>
+{% endif %}
+
+{% if editor.is_structured %}
+<div class="structured-status" role="status">
+  Datos estructurados validos (schema 2). El editor usa el payload estructurado como fuente canonica.
+</div>
+{% endif %}
+
+{% if editor.source_warning %}
+<div class="structured-warning" role="alert">{{ editor.source_warning }}</div>
+{% endif %}
+
+{% if editor.errors %}
+<div class="structured-error-box" role="alert">
+  <h2>No se pudo guardar el CV estructurado</h2>
+  <ul>
+    {% for error in editor.errors %}
+    <li>{{ error }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<noscript>
+  <div class="structured-noscript-warning" role="alert">
+    El editor estructurado requiere JavaScript activo. Sin JavaScript no se pueden agregar, editar, reordenar ni enviar los items del CV.
+  </div>
+</noscript>
+
+{% set raw_personal = editor.payload.get("personal") %}
+{% set raw_contact = editor.payload.get("contact") %}
+{% set raw_metadata = editor.payload.get("metadata") %}
+{% set personal = raw_personal if raw_personal is mapping else {} %}
+{% set contact = raw_contact if raw_contact is mapping else {} %}
+{% set metadata = raw_metadata if raw_metadata is mapping else {} %}
+{% set raw_contact_links = contact.get("links") %}
+{% set contact_links = raw_contact_links if raw_contact_links is sequence and raw_contact_links is not string else [] %}
+{% set raw_summary = editor.payload.get("summary") %}
+{% set summary = raw_summary if raw_summary is string else "" %}
+
+<form class="structured-editor-form form-panel" method="post" action="{{ action_url }}" data-structured-form novalidate>
+  <input type="hidden" name="structured_payload" id="structured-payload-input" value="">
+  <script id="structured-editor-bootstrap" type="application/json">{{ editor.payload | tojson }}</script>
+
+  <section class="structured-editor-section structured-editor-shell" aria-labelledby="structured-personal-title">
+    <div class="structured-section-head">
+      <h2 id="structured-personal-title">Datos personales y contacto</h2>
+    </div>
+    <div class="form-grid">
+      <label>
+        <span>Titulo interno *</span>
+        <input name="title" value="{{ editor.title }}" maxlength="120" required>
+      </label>
+      <label>
+        <span>Nombre completo *</span>
+        <input data-editor-field="personal.full_name" value="{{ personal.get('full_name', '') }}" maxlength="160" required>
+      </label>
+      <label>
+        <span>Titulo profesional</span>
+        <input data-editor-field="personal.headline" value="{{ personal.get('headline', '') }}" maxlength="160">
+      </label>
+      <label>
+        <span>Ubicacion</span>
+        <input data-editor-field="personal.location" value="{{ personal.get('location', '') }}" maxlength="160">
+      </label>
+      <label>
+        <span>Email</span>
+        <input data-editor-field="contact.email" type="email" value="{{ contact.get('email', '') }}" maxlength="180">
+      </label>
+      <label>
+        <span>Telefono</span>
+        <input data-editor-field="contact.phone" value="{{ contact.get('phone', '') }}" maxlength="80">
+      </label>
+    </div>
+    <label>
+      <span>Links de contacto (uno por linea, maximo 10)</span>
+      <textarea data-editor-field="contact.links" rows="3">{% for link in contact_links %}{{ link }}{% if not loop.last %}
+{% endif %}{% endfor %}</textarea>
+    </label>
+  </section>
+
+  <section class="structured-editor-section structured-editor-shell" aria-labelledby="structured-summary-title">
+    <div class="structured-section-head">
+      <h2 id="structured-summary-title">Resumen profesional</h2>
+    </div>
+    <label>
+      <span>Resumen profesional (maximo 1200 caracteres)</span>
+      <textarea data-editor-field="summary" rows="5" maxlength="1200">{{ summary }}</textarea>
+    </label>
+  </section>
+
+  <div id="structured-editor-root" data-structured-editor>
+
+    <section class="structured-editor-section" data-structured-section="experience" aria-labelledby="structured-experience-title">
+      <div class="structured-section-head">
+        <h2 id="structured-experience-title" data-structured-section-title>Experiencia laboral</h2>
+        <button type="button" class="button small" data-add-item="experience">Agregar experiencia</button>
+      </div>
+      <p class="structured-section-hint">Maximo 30 items. Usa Subir/Bajar para reordenar; el orden se guarda con el CV.</p>
+      <div class="structured-items" data-items-root="experience"></div>
+    </section>
+
+    <section class="structured-editor-section" data-structured-section="education" aria-labelledby="structured-education-title">
+      <div class="structured-section-head">
+        <h2 id="structured-education-title" data-structured-section-title>Educacion</h2>
+        <button type="button" class="button small" data-add-item="education">Agregar educacion</button>
+      </div>
+      <p class="structured-section-hint">Maximo 30 items.</p>
+      <div class="structured-items" data-items-root="education"></div>
+    </section>
+
+    <section class="structured-editor-section" data-structured-section="skills" aria-labelledby="structured-skills-title">
+      <div class="structured-section-head">
+        <h2 id="structured-skills-title" data-structured-section-title>Skills</h2>
+        <button type="button" class="button small" data-add-item="skills">Agregar skill</button>
+      </div>
+      <p class="structured-section-hint">Maximo 40 items.</p>
+      <div class="structured-items" data-items-root="skills"></div>
+    </section>
+
+    <section class="structured-editor-section" data-structured-section="certifications" aria-labelledby="structured-certifications-title">
+      <div class="structured-section-head">
+        <h2 id="structured-certifications-title" data-structured-section-title>Certificaciones</h2>
+        <button type="button" class="button small" data-add-item="certifications">Agregar certificacion</button>
+      </div>
+      <p class="structured-section-hint">Maximo 30 items.</p>
+      <div class="structured-items" data-items-root="certifications"></div>
+    </section>
+
+    <section class="structured-editor-section" data-structured-section="languages" aria-labelledby="structured-languages-title">
+      <div class="structured-section-head">
+        <h2 id="structured-languages-title" data-structured-section-title>Idiomas</h2>
+        <button type="button" class="button small" data-add-item="languages">Agregar idioma</button>
+      </div>
+      <p class="structured-section-hint">Maximo 20 items.</p>
+      <div class="structured-items" data-items-root="languages"></div>
+    </section>
+
+    <section class="structured-editor-section" data-structured-section="projects" aria-labelledby="structured-projects-title">
+      <div class="structured-section-head">
+        <h2 id="structured-projects-title" data-structured-section-title>Proyectos</h2>
+        <button type="button" class="button small" data-add-item="projects">Agregar proyecto</button>
+      </div>
+      <p class="structured-section-hint">Maximo 30 items.</p>
+      <div class="structured-items" data-items-root="projects"></div>
+    </section>
+
+    <section class="structured-editor-section" data-structured-section="links" aria-labelledby="structured-links-title">
+      <div class="structured-section-head">
+        <h2 id="structured-links-title" data-structured-section-title>Links</h2>
+        <button type="button" class="button small" data-add-item="links">Agregar link</button>
+      </div>
+      <p class="structured-section-hint">Maximo 30 items.</p>
+      <div class="structured-items" data-items-root="links"></div>
+    </section>
+
+    <section class="structured-editor-section" data-structured-section="additional_info" aria-labelledby="structured-additional-title">
+      <div class="structured-section-head">
+        <h2 id="structured-additional-title" data-structured-section-title>Informacion adicional</h2>
+        <button type="button" class="button small" data-add-item="additional_info">Agregar informacion</button>
+      </div>
+      <p class="structured-section-hint">Maximo 20 items.</p>
+      <div class="structured-items" data-items-root="additional_info"></div>
+    </section>
+
+  </div>
+
+  <section class="structured-editor-section structured-editor-shell" aria-labelledby="structured-metadata-title">
+    <div class="structured-section-head">
+      <h2 id="structured-metadata-title">Informacion interna (metadata)</h2>
+    </div>
+    <div class="form-grid">
+      <label>
+        <span>Origen de los datos (source)</span>
+        <input value="{{ metadata.get('source', '') }}" readonly tabindex="-1">
+      </label>
+      <label>
+        <span>Ultima sincronizacion con campos planos</span>
+        <input value="{{ metadata.get('synced_from_legacy_at', '') }}" readonly tabindex="-1">
+      </label>
+    </div>
+    <p class="structured-metadata-note">
+      Esta metadata es interna: el servidor la re-estampa al guardar para registrar la procedencia de los datos.
+      Los campos desconocidos de la metadata y del payload se preservan sin cambios.
+    </p>
+  </section>
+
+  <div class="form-actions">
+    <button class="button primary" type="submit">{{ submit_label }}</button>
+    {% if editor.cv_id %}
+    <a class="button" href="{{ url_for('cvs_detail', cv_id=editor.cv_id) }}">Cancelar</a>
+    {% else %}
+    <a class="button" href="{{ url_for('cvs_list') }}">Cancelar</a>
+    {% endif %}
+  </div>
+</form>
+
+<script defer src="{{ url_for('static', path='/js/structured_editor.js') }}?v={{ request.app.state.asset_version }}"></script>
+{% endblock %}
