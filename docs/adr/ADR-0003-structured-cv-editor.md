@@ -2,7 +2,7 @@
 
 ## Estado
 
-Propuesta para Etapa 9.0. No implementada.
+Aceptada para Etapa 9.x. Implementada en la rama `feature/structured-cv-complete`, sin publicar: no tiene version, release ni tag asignado.
 
 ## Contexto
 
@@ -473,3 +473,37 @@ No implementar esta UI en 9.0.
 - 9.5: ATS leyendo estructura normalizada sin cambiar scoring.
 - 9.6: editor UI por secciones sin drag/drop.
 - 9.7: validacion integral, migracion opcional y hardening.
+
+## Implementacion
+
+Estado actual de la decision en la rama `feature/structured-cv-complete`. No esta publicada ni versionada. Las secciones anteriores se conservan como registro de la decision original.
+
+### Rutas finales
+
+Las rutas nuevas son aditivas y no reemplazan las legacy:
+
+- `GET /cvs/new/structured`
+- `POST /cvs/new/structured`
+- `GET /cvs/{cv_id}/structured-edit`
+- `POST /cvs/{cv_id}/structured-edit`
+
+El editor trabaja por secciones: datos personales/contacto, titulo profesional, resumen, experiencia, educacion, skills, certificaciones, idiomas, proyectos, links, informacion adicional y metadata interna de solo lectura. Los items se agregan, eliminan y reordenan con botones `Subir`/`Bajar` con renumeracion automatica. Sin drag and drop.
+
+La validacion es 100% servidor, con errores accionables en espanol y sin escrituras parciales: un envio fallido responde 422 y preserva exactamente lo que el usuario escribio. Una forma de payload malformada que antes Provocaba una excepcion no manejada con HTTP 500 al re-renderizar el formulario ahora devuelve un 422 controlado.
+
+### Proteccion de integridad de datos
+
+La decision original recomendaba regenerar `structured_payload` desde campos planos cuando un CV estructurado se editaba por el flujo legacy. En la practica esa regeneracion perdia datos de forma silenciosa: el payload se rehacia desde los campos planos y descartaba todas las secciones que solo existen en schema `2` (certificaciones, proyectos, idiomas, links, headline y ubicacion), mientras el CV seguia apareciendo como estructurado. La implementacion revierte esa recomendacion y bloquea la operacion en tres capas:
+
+1. El repositorio lanza `StructuredCVLegacyUpdateError` antes de abrir una conexion a la base.
+2. Las rutas redirigen con una explicacion en espanol.
+3. La UI dirige la accion principal al editor estructurado.
+
+### Garantias de compatibilidad
+
+- Los CVs legacy conservan sus campos planos y el TEX generado para ellos queda sin cambios.
+- El ATS mantiene los mismos siete criterios, pesos, topes y umbrales. No hay criterio nuevo.
+- `resolve_normalized_cv` devuelve la fuente estructurada completa o un fallback legacy completo. Las fuentes nunca se mezclan.
+- Solo se acepta `schema_version` 2. Las versiones desconocidas, futuras, nulas o no enteras se rechazan sin downcast.
+- El export JSON de un CV estructurado produce un sobre schema `2` con la variante de nombre `cv-schema2`. Los CVs legacy, invalidos, stale o de version futura siguen exportando schema `1` plano desde el snapshot legacy.
+- El import JSON acepta ambos schemas con el limite de `512 KB` ya vigente y siempre crea un CV nuevo, nunca sobrescribe el origen.

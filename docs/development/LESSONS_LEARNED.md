@@ -209,3 +209,23 @@ Consolidar errores reales detectados durante `cv-latex`, su causa raiz, la corre
 - Validacion que lo confirmo: import HTTP con titulo de 120 caracteres responde 303 en ambos esquemas y el titulo resultante queda en 120 conservando `(importado)`.
 - Regla futura para evitarlo: todo sufijo o prefijo agregado por el sistema debe respectar el mismo `FIELD_LIMITS` del campo que modifica, y la prueba de round-trip debe usar el valor limite exacto.
 - Instruccion sugerida para proximos prompts: "Si el sistema agrega texto a un campo persistido, verifica el limite DESPUES de agregar, no antes."
+
+## LL-021 - La referencia de una prueba de compatibilidad debe salir del baseline
+
+- Problema detectado: la suite afirmaba que el TEX legacy quedaba intacto, pero ningun test lo comparaba contra el codigo anterior a la feature. Una regresion en las cuatro plantillas habria pasado inadvertida.
+- Causa raiz: los tests existentes comparan un CV legacy contra variantes de fallback generadas dentro de la misma corrida, es decir con el mismo `_build_cv_context` y las mismas plantillas modificadas. Ese tipo de comparacion no puede detectar una regresion introducida por el propio diff.
+- Impacto/riesgo: la garantia de compatibilidad legacy era una afirmacion sin respaldo mecanico, justamente en el punto mas sensible de una migracion de formato de datos.
+- Como se corrigio: se extrajo el arbol de `a28d1fd` con `git archive`, se ejecuto el MISMO generador dentro de la imagen contra ese arbol y contra el workspace vigente, y se guardo la salida del baseline como fixture en `tests/fixtures/legacy_tex_a28d1fd`. La prueba `tests/test_legacy_tex_compatibility.py` reconstruye el mismo CV ficticio y exige identidad byte a byte en las cuatro plantillas. Se documento explicitamente que el nivel comprobado es identidad byte a byte y no solo equivalencia textual.
+- Validacion que lo confirmo: las cuatro plantillas coinciden en longitud y SHA256 entre `a28d1fd` y el codigo vigente. Y el guard se provoco: al adulterar el fixture la prueba fallo indicando la linea exacta de la diferencia. Una prueba de identidad que nunca se hizo fallar no demuestra nada.
+- Regla futura para evitarlo: una prueba de compatibilidad con una version anterior debe generar su referencia desde esa version anterior, nunca desde el codigo bajo prueba. Y antes de confiar en ella, hay que verificar que falla cuando el resultado esperado se altera.
+- Instruccion sugerida para proximos prompts: "Si la garantia es 'no cambia el comportamiento anterior', genera el golden fixture desde el commit base y demuestra que el test detecta una diferencia."
+
+## LL-022 - Declarar la politica de finales de linea en vez de normalizar el historico
+
+- Problema detectado: alrededor de 79 archivos aparecian como modificados por unicamente CRLF porque HEAD guardaba LF y el working tree tenia CRLF, sin `.gitattributes` y con `core.autocrlf` sin definir. Un `git add` corriente almacenaba CRLF y producia commits donde cada archivo se leia como reescritura completa.
+- Causa raiz: la politica de EOL nunca estuvo declarada, de modo que cada parte del equipo y cada herramienta decide por su cuenta. Cuando WSL y Windows comparten el repositorio, eso se traduce en ruido permanente y en commits ilegibles.
+- Impacto/riesgo: reviews que parecen masivos y no lo son, riesgo de versionar CRLF por accidente y dificultad para distinguir un cambio real de un cambio de terminador de linea.
+- Como se corrigio: se agrego un `.gitattributes` minimo con `* text=auto eol=lf` y declaracion explicita de binarios. No se ejecuto `git add --renormalize` ni se modifico la configuracion global. El indice de HEAD ya contenia todo archivo de texto en LF, con lo que la politica es compatible con el historial existente y no produce ningun cambio colateral.
+- Validacion que lo confirmo: despues de agregar el archivo, `git status --short` sigue listando solo los archivos con cambio real mas el propio `.gitattributes`, y los 79 archivos con diferencias solo-CRLF siguen byte-identicos a `a28d1fd`. Setenta y dos de ellos permanecen limpios en el working tree; los siete restantes son precisamente los que recibieron cambios de contenido reales en esta etapa.
+- Regla futura para evitarlo: al agregar contenido en este repositorio, agregar tambien las rutas en la misma operacion y verificar con `git diff --ignore-cr-at-eol` que el diff es real. La normalizacion historica de los archivos ya presentes es una decision aparte y debe hacerse de forma explicita, nunca como efecto secundario de un commit de funcionalidad.
+- Instruccion sugerida para proximos prompts: "Antes de commitear, confirma que `git diff --ignore-cr-at-eol` muestra solo cambios reales y que ningun archivo se incorpore solo por CRLF."

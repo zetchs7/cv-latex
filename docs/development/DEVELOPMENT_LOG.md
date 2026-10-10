@@ -1,5 +1,19 @@
 # Development Log
 
+
+## Cierre tecnico previo al PR - politica EOL, navegacion del editor, documentacion y compatibilidad TEX
+
+- Fecha: 2026-10-10
+- Rama: `feature/structured-cv-complete` (commits locales, sin push ni PR)
+- Objetivo: cerrar los pendientes P2 detectados tras la auditoria y la correccion P0/P1, y agregar la prueba de compatibilidad que faltaba.
+- Alcance ejecutado:
+  - Politica de finales de linea: nuevo `.gitattributes` con `* text=auto eol=lf` y binarios declarados. Sin renormalizar el historico y sin tocar la configuracion de Git. Los 79 archivos con diferencias solo-CRLF quedan fuera y siguen byte-identicos a `a28d1fd`.
+  - Navegacion: las acciones "Editar" del listado de CVs y de las vistas de ATS apuntan al editor estructurado o al legacy segun el tipo de CV, sin saltos de redireccion. Las guardas de backend y la proteccion P0 quedan intactas.
+  - Documentacion: `MODULE_INDEX.md`, `ADR-0003`, `CHANGELOG_GENERAL.md` y `CV_BUILDER_CORE.md` alineados con la implementacion real, siempre como feature no publicada. El ADR conserva sus decisiones originales y solo cambia su estado.
+  - Compatibilidad TEX legacy: fixtures generados desde `a28d1fd` y prueba de identidad byte a byte en las cuatro plantillas, con verificacion de que el guard detecta una diferencia real.
+- Evidencia (CMD-085 a CMD-089): suite completa `207 passed, 1 warning`, JavaScript `8 pasan`, `compileall exit 0`, ambos diff check en `exit 0`, y hashes TEX identicos entre baseline y codigo vigente en las cuatro plantillas.
+- Pendientes que no se tocaron: enlaces de edicion en `ats/index.html` y cualquier construccion de URLs en `app/static/js/app.js` (fuera de alcance, sin impacto en datos porque las guardas de backend siguen activas); normalizacion historica de EOL como tarea independiente; y la revision independiente de la feature, que sigue sin realizarse.
+
 ## Cierre T6 - verificacion funcional, documental y de integracion de Feature 1
 
 - Fecha: 2026-10-10

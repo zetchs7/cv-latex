@@ -5070,3 +5070,82 @@ Error completo:
 Ninguno.
 Reintento/correccion:
 No fue necesario.
+2026-10-10 14:31:04 | Etapa 9.7/cierre-tecnico | CMD-085
+Accion:
+Establecer politica explicita de finales de linea sin renormalizar el repositorio.
+Motivo:
+El repositorio no tenia `.gitattributes` ni `core.autocrlf` definido, con HEAD en LF y el working tree en CRLF. Eso hacia que ~79 archivos aparecieran como modificados por unicamente CRLF y que cualquier commit sin cuidado almacenara CRLF y mostrara el archivo completo como reescrito.
+Comando:
+`git config --show-origin --get-all core.autocrlf`; `git ls-files --eol`; `git cat-file -e HEAD:<archivo>`; `git diff --numstat --ignore-cr-at-eol`; creacion de `.gitattributes` con `* text=auto eol=lf` y declaracion explicita de binarios (`*.pdf`, imagenes, fuentes y comprimidos); `git status --short`; `git rev-parse a28d1fd:<archivo>` comparado contra `HEAD:<archivo>`.
+Argumentos:
+No se ejecuto `git add --renormalize`, no se modifico configuracion global ni local de Git y no se toco ningun archivo existente.
+Resultado:
+Tras agregar `.gitattributes`, `git status --short` sigue listando solo los archivos con cambio real de contenido mas el propio `.gitattributes`: 11 entradas y cero ruido colateral. Los 79 archivos con diferencias solo-CRLF siguen byte-identicos a `a28d1fd` en HEAD, y 72 de ellos permanecen completamente limpios en el working tree. Ningun archivo fue reescrito ni renormalizado. `git ls-files --eol .gitattributes` muestra `attr/text=auto eol=lf` y `i/lf w/lf`.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario. La normalizacion historica de los archivos ya presentes en el repositorio queda documentada como tarea independiente del backlog.
+
+2026-10-10 14:31:04 | Etapa 9.7/cierre-tecnico | CMD-086
+Accion:
+Enrutar las acciones "Editar" al editor que corresponde segun el tipo de CV.
+Motivo:
+El listado de CVs y las vistas de ATS seguian apuntando siempre al editor plano. La proteccion P0 interceptaba el acesso y redirigia, con lo que un CV estructurado llegaba al editor correcto mediante un salto de redireccion innecesario.
+Comando:
+`app/routes/cvs.py` (`_build_cv_cards` agrega `is_structured` por tarjeta); `app/routes/ats.py` (ambos contextos agregan `is_structured` usando `resolve_structured_cv_state`); `app/templates/cvs/index.html`, `app/templates/ats/cv_analysis.html` y `app/templates/ats/modal.html` (tres puntos de entrada con rama condicional).
+Argumentos:
+Cambio minimo, sin refactor de frontend ni cambios de JavaScript. Se reutilizo el resolutor existente.
+Resultado:
+Un CV estructurado enlaza directo a `cvs_structured_edit` y uno legacy a `cvs_edit`, sin salto de redireccion. Las guardas de backend permanecen intactas: `cvs_edit` GET en `cvs.py:284`, `cvs_update` POST en `cvs.py:326` y el raise `StructuredCVLegacyUpdateError` en `cv_repository.py:169`. La pagina de detalle no se modifico. CRLF preservado en los seis archivos.
+Error completo:
+Un primer RED mostro tres fallos en lugar de dos porque una prueba nueva asumia que `CV.structured_payload` era un diccionario cuando es un texto JSON; el fallo era de la prueba, no de la aplicacion, y se corrigio con `json.loads`.
+Reintento/correccion:
+RED limpio con 2 fallos esperados y 14 aprobados antes de implementar.
+
+2026-10-10 14:31:04 | Etapa 9.7/cierre-tecnico | CMD-087
+Accion:
+Alinear la documentacion tecnica con la implementacion real de Feature 1.
+Motivo:
+`MODULE_INDEX.md`, `ADR-0003`, `CHANGELOG_GENERAL.md` y `CV_BUILDER_CORE.md` seguian describiendo la feature como no implementada.
+Comando:
+Edicion de los cuatro documentos; verificacion con `git -c core.whitespace=cr-at-eol diff --check` y `git diff --ignore-cr-at-eol --stat -- docs/`.
+Argumentos:
+Sin afirmar publicacion, sin inventar version, release, tag ni fecha. El caracter historico del ADR se preservo.
+Resultado:
+`MODULE_INDEX.md` suma cuatro filas de modulo y actualiza las existentes, todas marcadas como sin publicar. `ADR-0003` cambia solo su linea de estado y agrega una seccion `Implementacion`, conservando las diecinueve secciones de decision originales. `CHANGELOG_GENERAL.md` agrega una entrada `Unreleased - Etapa 9.x (rama feature/structured-cv-complete, sin publicar)` sin tocar las entradas publicadas. `CV_BUILDER_CORE.md` documenta ambos editores, la regla de no edicion por formulario plano, el intercambio JSON schema 1/2 y la compatibilidad de consumidores. Diff real: 209 inserciones y 13 eliminaciones en los cuatro archivos, sin churn de EOL.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario.
+
+2026-10-10 14:31:04 | Etapa 9.7/cierre-tecnico | CMD-088
+Accion:
+Prueba determinista de compatibilidad byte a byte del TEX legacy contra el commit base a28d1fd.
+Motivo:
+La auditoria habia detectado que ningun test comparaba el TEX legacy contra el baseline, de modo que una regresion en las plantillas no seria detectable por la suite.
+Comando:
+`git archive a28d1fd | tar -x -C <tmp>`; ejecucion de un generador identico dentro de la imagen contra el arbol de `a28d1fd` y contra el workspace vigente; `cmp`/SHA256 de los cuatro resultados; alta de `tests/fixtures/legacy_tex_a28d1fd/*.tex` y de `tests/test_legacy_tex_compatibility.py`.
+Argumentos:
+La referencia se genera desde el codigo del baseline, nunca desde el codigo bajo prueba. CV ficticio con timestamps fijos y caracteres que ejercitan escape (`&`, acentos, puntuacion).
+Resultado:
+Las cuatro plantillas producen TEX byte-identico: `classic` ac8acb5c966fe91f, `modern` 2edbaadf2a872878, `compact` 0db6c38da7653c42, `tech` 37ab821259086812, con igual longitud y mismo hash en `a28d1fd` y en el codigo vigente. El nivel de equivalencia comprobado es IDENTIDAD BYTE A BYTE, no solo equivalencia textual. Se verifica que el guard muerde: al adulterar temporalmente el fixture la prueba falla señalando la linea exacta de la diferencia. Se agrega ademas una comprobacion de que el render legacy es determinista, necesaria para que la identidad byte a byte sea un criterio con sentido.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario.
+
+2026-10-10 14:31:04 | Etapa 9.7/cierre-tecnico | CMD-089
+Accion:
+Validacion final del cierre tecnico.
+Motivo:
+Ninguna afirmacion de cierre puede apoyarse en evidencia previa si el contenido cambio.
+Comando:
+Suite completa con el runner fijado; `python -m compileall app tests` sobre copia escribible; `node tests/test_structured_cv_editor_js.js`; `git -c core.whitespace=cr-at-eol diff --check`; `git diff --cached --check`.
+Argumentos:
+Datos ficticios, almacenamiento temporal, `./data` nunca montado.
+Resultado:
+Suite completa `207 passed, 1 warning in 3.24s` (sube desde 198 por 5 pruebas de navegacion y 4 de compatibilidad TEX). JavaScript `8 pasaron, 0 fallaron`. `compileall exit: 0`. Ambos diff check `exit: 0`. `data/app.db` conserva mtime 2026-10-10 03:01:23, anterior a esta sesion: nunca fue montada ni escrita.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario.
