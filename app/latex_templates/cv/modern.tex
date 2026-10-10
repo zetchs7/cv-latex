@@ -8,6 +8,9 @@
 \usepackage[spanish]{babel}
 \usepackage{geometry}
 \usepackage{enumitem}
+[% if use_needspace %]
+\usepackage{needspace}
+[% endif %]
 \usepackage{xcolor}
 \geometry{margin=1.8cm}
 \definecolor{primary}{HTML}{0F766E}
@@ -25,9 +28,31 @@
 \vspace{1.4em}
 
 [% for section in sections %]
+[% if section.keep_with_next %]
+\Needspace*{4\baselineskip}
+[% endif %]
 {\large \textcolor{primary}{\textbf{[[ section.title ]]}}}\\[-0.25em]
 \textcolor{primary}{\rule{\textwidth}{0.6pt}}\\[0.45em]
-[% if section.item_list %]
+[% if section.entries %]
+[% for entry in section.entries %]
+[% if entry.headline %]
+\textcolor{primary}{\textbf{[[ entry.headline ]]}}[% if entry.meta %] {\small [[ entry.meta ]]}[% endif %]\par
+\nopagebreak
+[% endif %]
+[% if entry.body %]
+[[ entry.body ]]
+
+[% endif %]
+[% if entry.highlights %]
+\begin{itemize}
+[% for highlight in entry.highlights %]
+  \item [[ highlight ]]
+[% endfor %]
+\end{itemize}
+[% endif %]
+
+[% endfor %]
+[% elif section.item_list %]
 \begin{itemize}
 [% for item in section.item_list %]
   \item [[ item ]]
