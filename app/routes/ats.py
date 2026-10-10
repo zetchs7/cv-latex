@@ -7,6 +7,7 @@ from app.services.ats_service import (
     MIN_RECOMMENDED_CV_LENGTH,
     analyze_cv_ats,
 )
+from app.services.structured_cv_service import resolve_structured_cv_state
 from app.template_utils import create_templates
 
 
@@ -35,6 +36,7 @@ def ats_cv_analysis(request: Request, cv_id: int) -> HTMLResponse:
         {
             "cv": cv,
             "analysis": analysis,
+            "is_structured": resolve_structured_cv_state(cv).is_structured,
             "ats_length_reference": {
                 "min": MIN_RECOMMENDED_CV_LENGTH,
                 "max": MAX_RECOMMENDED_CV_LENGTH,
@@ -53,6 +55,7 @@ def ats_cv_analysis_modal(request: Request, cv_id: int) -> HTMLResponse:
         {
             "cv": cv,
             "analysis": analysis,
+            "is_structured": resolve_structured_cv_state(cv).is_structured,
             "ats_length_reference": {
                 "min": MIN_RECOMMENDED_CV_LENGTH,
                 "max": MAX_RECOMMENDED_CV_LENGTH,

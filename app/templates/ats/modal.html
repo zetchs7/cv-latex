@@ -7,7 +7,11 @@
     </div>
     <div class="ats-modal-actions">
       <a class="button small" href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}">Abrir vista completa</a>
+      {% if is_structured %}
+      <a class="button small primary" href="{{ url_for('cvs_structured_edit', cv_id=cv.id) }}">Editar CV</a>
+      {% else %}
       <a class="button small primary" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar CV</a>
+      {% endif %}
       <button class="button small" type="button" data-ats-close>Cerrar</button>
     </div>
   </div>
@@ -18,6 +22,10 @@
 
   <div class="ats-modal-footer">
     <a class="button" href="{{ url_for('ats_cv_analysis', cv_id=cv.id) }}">Abrir vista completa</a>
+    {% if is_structured %}
+    <a class="button primary" href="{{ url_for('cvs_structured_edit', cv_id=cv.id) }}">Editar CV</a>
+    {% else %}
     <a class="button primary" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar CV</a>
+    {% endif %}
   </div>
 </div>

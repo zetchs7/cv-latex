@@ -617,6 +617,7 @@ def _build_cv_cards(cvs: list[CV]) -> list[dict[str, object]]:
         {
             "cv": cv,
             "ats_analysis": analyze_cv_ats(cv),
+            "is_structured": resolve_structured_cv_state(cv).is_structured,
         }
         for cv in cvs
     ]
