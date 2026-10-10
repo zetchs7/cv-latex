@@ -185,6 +185,154 @@ class StructuredCVServiceTest(unittest.TestCase):
         self.assertFalse(validation.is_valid)
         self.assertIn("skills_0_must_be_object", validation.errors)
 
+    def test_accepts_full_master_sections_payload(self):
+        validation = validate_structured_payload_v2(_build_master_payload())
+
+        self.assertTrue(validation.is_valid, validation.errors)
+        self.assertIsNotNone(validation.normalized_payload)
+
+    def test_defaults_missing_additional_info_and_headline_fields(self):
+        normalized_payload = normalize_structured_payload_v2(
+            {"personal": {"full_name": "Ana Perez"}},
+            declared_schema_version=2,
+        )
+
+        self.assertEqual(normalized_payload["additional_info"], [])
+        self.assertEqual(normalized_payload["personal"]["headline"], "")
+        self.assertEqual(normalized_payload["metadata"]["source"], "")
+
+    def test_rejects_summary_over_legacy_professional_summary_limit(self):
+        validation = validate_structured_payload_v2({"schema_version": 2, "summary": "x" * 1201})
+
+        self.assertFalse(validation.is_valid)
+        self.assertIn("summary_too_long", validation.errors)
+
+    def test_rejects_skill_label_over_limit(self):
+        validation = validate_structured_payload_v2(
+            {"schema_version": 2, "skills": [{"label": "x" * 121}]},
+        )
+
+        self.assertFalse(validation.is_valid)
+        self.assertIn("skills_0_label_too_long", validation.errors)
+
+    def test_rejects_non_object_items_in_every_list_section(self):
+        payload = {
+            "schema_version": 2,
+            "certifications": ["AWS"],
+            "languages": ["Espanol"],
+            "projects": ["proyecto"],
+            "links": ["link"],
+            "additional_info": ["info"],
+        }
+
+        validation = validate_structured_payload_v2(payload)
+
+        self.assertFalse(validation.is_valid)
+        for section in ("certifications", "languages", "projects", "links", "additional_info"):
+            self.assertIn(f"{section}_0_must_be_object", validation.errors)
+
+    def test_rejects_too_many_items_per_section(self):
+        payload = {
+            "schema_version": 2,
+            "languages": [{"name": f"Idioma {index}"} for index in range(21)],
+        }
+
+        validation = validate_structured_payload_v2(payload)
+
+        self.assertFalse(validation.is_valid)
+        self.assertIn("languages_too_many_items", validation.errors)
+
+    def test_rejects_experience_item_with_non_boolean_current(self):
+        validation = validate_structured_payload_v2(
+            {"schema_version": 2, "experience": [{"current": "si"}]},
+        )
+
+        self.assertFalse(validation.is_valid)
+        self.assertIn("experience_0_current_must_be_boolean", validation.errors)
+
+    def test_rejects_boolean_order_values(self):
+        validation = validate_structured_payload_v2(
+            {"schema_version": 2, "skills": [{"order": True}]},
+        )
+
+        self.assertFalse(validation.is_valid)
+        self.assertIn("skills_0_order_must_be_integer", validation.errors)
+
+    def test_rejects_highlights_that_are_not_string_lists(self):
+        validation = validate_structured_payload_v2(
+            {"schema_version": 2, "experience": [{"highlights": "logro"}]},
+        )
+
+        self.assertFalse(validation.is_valid)
+        self.assertIn("experience_0_highlights_must_be_list", validation.errors)
+
+        validation_with_items = validate_structured_payload_v2(
+            {"schema_version": 2, "experience": [{"highlights": [123]}]},
+        )
+
+        self.assertFalse(validation_with_items.is_valid)
+        self.assertIn("experience_0_highlights_0_must_be_string", validation_with_items.errors)
+
+    def test_rejects_contact_links_over_item_limit(self):
+        payload = {
+            "schema_version": 2,
+            "contact": {"links": [f"https://link{index}.example.com" for index in range(11)]},
+        }
+
+        validation = validate_structured_payload_v2(payload)
+
+        self.assertFalse(validation.is_valid)
+        self.assertIn("contact_links_too_many_items", validation.errors)
+
+    def test_rejects_payload_with_overlong_metadata_source(self):
+        validation = validate_structured_payload_v2(
+            {"schema_version": 2, "metadata": {"source": "x" * 61}},
+        )
+
+        self.assertFalse(validation.is_valid)
+        self.assertIn("metadata_source_too_long", validation.errors)
+
+
+def _build_master_payload() -> dict[str, object]:
+    return {
+        "schema_version": 2,
+        "personal": {"full_name": "Ana Perez", "headline": "Tech Lead", "location": "Buenos Aires"},
+        "contact": {"email": "ana@example.com", "phone": "+54 11 1234 5678", "links": []},
+        "summary": "Perfil profesional",
+        "skills": [{"label": "Python", "category": "Backend", "level": "Avanzado", "order": 1}],
+        "experience": [
+            {
+                "company": "Acme",
+                "role": "Desarrollador",
+                "location": "Remoto",
+                "start_date": "2020",
+                "end_date": "2021",
+                "current": False,
+                "summary": "Desarrollo backend",
+                "highlights": ["Diseno de API"],
+                "technologies": ["Python"],
+                "order": 1,
+            }
+        ],
+        "education": [
+            {
+                "institution": "UNLP",
+                "degree": "Ing. en Sistemas",
+                "field": "Sistemas",
+                "start_date": "2012",
+                "end_date": "2017",
+                "summary": "",
+                "order": 1,
+            }
+        ],
+        "certifications": [{"name": "AWS", "issuer": "Amazon", "date": "2024", "order": 1}],
+        "languages": [{"name": "Espanol", "level": "Nativo", "order": 1}],
+        "projects": [{"name": "cv-latex", "summary": "App de CVs", "technologies": [], "link": "", "order": 1}],
+        "links": [{"label": "LinkedIn", "url": "https://linkedin.com/in/ana", "order": 1}],
+        "additional_info": [{"title": "Disponibilidad", "content": "Full-time", "order": 1}],
+        "metadata": {"source": "test", "synced_from_legacy_at": ""},
+    }
+
 
 def _build_form_data() -> CVFormData:
     return CVFormData(

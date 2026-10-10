@@ -4,13 +4,22 @@ import json
 
 from app.models import CV
 from app.schemas import CVFormData
+from app.validations.cv_validations import build_cv_form_data, validate_cv_form
+from app.validations.structured_cv_validations import (
+    CURRENT_STRUCTURED_SCHEMA_VERSION,
+    StructuredPayloadValidation,
+    normalize_structured_payload_v2,
+    validate_structured_payload_v2,
+)
 
 
-CURRENT_STRUCTURED_SCHEMA_VERSION = 2
 STRUCTURED_PAYLOAD_STATUS_LEGACY = "legacy"
 STRUCTURED_PAYLOAD_STATUS_VALID = "valid"
 STRUCTURED_PAYLOAD_STATUS_INVALID = "invalid"
 STRUCTURED_PAYLOAD_STATUS_STALE = "stale"
+
+MAX_STRUCTURED_PAYLOAD_BYTES = 512 * 1024
+MAX_METADATA_SOURCE_LENGTH = 60
 
 
 @dataclass(frozen=True)
@@ -21,13 +30,75 @@ class StructuredCVState:
 
 
 @dataclass(frozen=True)
-class StructuredPayloadValidation:
-    is_valid: bool
-    errors: tuple[str, ...]
-    normalized_payload: dict[str, object] | None = None
+class NormalizedCV:
+    """Representacion normalizada unica de un CV para todos los consumidores.
+
+    `sections` siempre expone la forma completa del payload v2 (secciones
+    completas, incluyendo campos solo-estructurados), ya sea desde el payload
+    estructurado valido o derivada de los campos legacy.
+    `legacy_snapshot` expone la proyeccion plana compatible con rutas, LaTeX,
+    PDF y ATS existentes. Ningun consumidor debe leer payload y campos planos
+    por separado.
+    """
+
+    cv_id: int
+    title: str
+    mode: str
+    is_structured: bool
+    reason: str
+    sections: dict[str, object]
+    legacy_snapshot: CVFormData
+
+
+class StructuredCVWriteError(ValueError):
+    def __init__(self, message: str, errors: tuple[str, ...] = ()):
+        super().__init__(message)
+        self.errors = tuple(errors)
+
+
+@dataclass(frozen=True)
+class StructuredCVWriteBundle:
+    form_data: CVFormData
+    payload: dict[str, object]
+    serialized_payload: str
+    structured_columns: dict[str, object]
 
 
 LegacyCVInput = CV | CVFormData
+
+
+def resolve_normalized_cv(cv: CV) -> NormalizedCV:
+    state = resolve_structured_cv_state(cv)
+
+    if state.is_structured:
+        payload = deserialize_structured_payload(cv.structured_payload)
+        normalized_payload = normalize_structured_payload_v2(
+            payload,
+            declared_schema_version=cv.structured_schema_version,
+        )
+        if normalized_payload is not None:
+            snapshot = build_legacy_snapshot_from_payload(normalized_payload, title=cv.title)
+            return NormalizedCV(
+                cv_id=cv.id,
+                title=cv.title,
+                mode=state.mode,
+                is_structured=True,
+                reason=state.reason,
+                sections=normalized_payload,
+                legacy_snapshot=snapshot,
+            )
+
+    sections = build_structured_sections_from_legacy(cv)
+    snapshot = _build_legacy_snapshot_from_cv(cv)
+    return NormalizedCV(
+        cv_id=cv.id,
+        title=cv.title,
+        mode=state.mode,
+        is_structured=False,
+        reason=state.reason,
+        sections=sections,
+        legacy_snapshot=snapshot,
+    )
 
 
 def resolve_structured_cv_state(cv: CV) -> StructuredCVState:
@@ -65,6 +136,120 @@ def resolve_structured_payload_state(
         return StructuredCVState(mode="legacy", is_structured=False, reason="payload_invalid")
 
     return StructuredCVState(mode="structured", is_structured=True, reason="payload_valid")
+
+
+def build_structured_payload_from_legacy(
+    legacy_cv: LegacyCVInput,
+    *,
+    metadata_source: str,
+) -> dict[str, object]:
+    payload = _build_sections_from_legacy_fields(
+        legacy_cv,
+        metadata_source=metadata_source,
+        synced_from_legacy_at=_current_utc_timestamp(),
+    )
+    validation = validate_structured_payload_v2(payload)
+    if not validation.is_valid:
+        joined_errors = "; ".join(validation.errors)
+        raise ValueError(f"Payload estructurado invalido: {joined_errors}")
+
+    return payload
+
+
+def build_structured_sections_from_legacy(legacy_cv: LegacyCVInput) -> dict[str, object]:
+    """Deriva la vista de secciones v2 desde campos legacy sin validar para persistencia.
+
+    Es una proyeccion de lectura: preserva el contenido legacy completo sin
+    truncar y sin estampar marcas de sincronizacion.
+    """
+    return _build_sections_from_legacy_fields(
+        legacy_cv,
+        metadata_source="legacy_view",
+        synced_from_legacy_at="",
+    )
+
+
+def build_legacy_snapshot_from_payload(payload: dict[str, object], *, title: str) -> CVFormData:
+    """Deriva el snapshot plano legacy desde un payload v2 normalizado.
+
+    Reglas explicitas (sin truncamiento silencioso):
+    - personal.full_name -> full_name
+    - contact.email/phone -> email/phone
+    - summary -> professional_summary
+    - skills: labels unidos con ", " en orden (order, posicion)
+    - experience/education: bloques formateados y unidos con linea vacia
+    - headline, certifications, languages, projects, links, additional_info y
+      metadata viven solo en el payload; el snapshot no los destruye.
+    """
+    personal = payload.get("personal") or {}
+    contact = payload.get("contact") or {}
+    raw_values = {
+        "title": title,
+        "full_name": _string_value(personal.get("full_name")),
+        "email": _string_value(contact.get("email")),
+        "phone": _string_value(contact.get("phone")),
+        "professional_summary": _string_value(payload.get("summary")),
+        "experience_summary": _format_experience_section(payload.get("experience")),
+        "education_summary": _format_education_section(payload.get("education")),
+        "skills": _format_skill_labels(payload.get("skills")),
+    }
+    return build_cv_form_data(raw_values)
+
+
+def build_structured_cv_write_bundle(
+    *,
+    title: str,
+    payload: object,
+    metadata_source: str,
+) -> StructuredCVWriteBundle:
+    """Valida un write estructurado completo antes de cualquier persistencia.
+
+    Rechaza con `StructuredCVWriteError` si el payload v2 es invalido, si el
+    snapshot legacy derivado viola las validaciones existentes (sin truncar
+    contenido) o si el payload serializado supera el maximo de bytes.
+    """
+    if not metadata_source or len(metadata_source) > MAX_METADATA_SOURCE_LENGTH:
+        raise StructuredCVWriteError(
+            "El origen de metadata del payload estructurado es invalido.",
+            ("metadata_source_invalid",),
+        )
+
+    validation = validate_structured_payload_v2(payload)
+    if not validation.is_valid or validation.normalized_payload is None:
+        joined_errors = "; ".join(validation.errors)
+        raise StructuredCVWriteError(
+            f"Payload estructurado invalido: {joined_errors}",
+            validation.errors,
+        )
+
+    normalized_payload = dict(validation.normalized_payload)
+    metadata = dict(normalized_payload.get("metadata") or {})
+    metadata["source"] = metadata_source
+    metadata["synced_from_legacy_at"] = _current_utc_timestamp()
+    normalized_payload["metadata"] = metadata
+
+    snapshot = build_legacy_snapshot_from_payload(normalized_payload, title=title)
+    snapshot_errors = validate_cv_form(snapshot)
+    if snapshot_errors:
+        error_details = tuple(f"{field}: {message}" for field, message in snapshot_errors.items())
+        joined_details = "; ".join(error_details)
+        raise StructuredCVWriteError(
+            f"El payload estructurado no genera un CV legacy valido: {joined_details}",
+            error_details,
+        )
+
+    serialized_payload = serialize_structured_payload(normalized_payload)
+
+    return StructuredCVWriteBundle(
+        form_data=snapshot,
+        payload=normalized_payload,
+        serialized_payload=serialized_payload,
+        structured_columns={
+            "structured_schema_version": CURRENT_STRUCTURED_SCHEMA_VERSION,
+            "structured_payload": serialized_payload,
+            "structured_payload_status": STRUCTURED_PAYLOAD_STATUS_VALID,
+        },
+    )
 
 
 def build_legacy_structured_columns() -> dict[str, object]:
@@ -106,49 +291,32 @@ def build_invalid_structured_columns(raw_payload: str | None = None) -> dict[str
     }
 
 
-def build_structured_payload_from_legacy(
-    legacy_cv: LegacyCVInput,
-    *,
-    metadata_source: str,
-) -> dict[str, object]:
-    payload: dict[str, object] = {
-        "schema_version": CURRENT_STRUCTURED_SCHEMA_VERSION,
-        "personal": {
-            "full_name": legacy_cv.full_name,
-        },
-        "contact": {
-            "email": legacy_cv.email,
-            "phone": legacy_cv.phone,
-            "links": [],
-        },
-        "summary": legacy_cv.professional_summary,
-        "skills": _build_skill_items(legacy_cv.skills),
-        "experience": _build_text_section_items(legacy_cv.experience_summary),
-        "education": _build_text_section_items(legacy_cv.education_summary),
-        "certifications": [],
-        "languages": [],
-        "projects": [],
-        "links": [],
-        "metadata": {
-            "source": metadata_source,
-            "synced_from_legacy_at": _current_utc_timestamp(),
-        },
-    }
-    validation = validate_structured_payload_v2(payload)
-    if not validation.is_valid:
-        joined_errors = "; ".join(validation.errors)
-        raise ValueError(f"Payload estructurado invalido: {joined_errors}")
-
-    return payload
-
-
 def serialize_structured_payload(payload: dict[str, object]) -> str:
+    """Serializa y valida un payload v2 para persistencia.
+
+    Lanza `StructuredCVWriteError` (subclase de `ValueError`) tanto para un
+    payload invalido como para uno que excede `MAX_STRUCTURED_PAYLOAD_BYTES`,
+    para que los llamadores manejen un unico error de dominio y la escritura
+    se corte antes de tocar la base.
+    """
     validation = validate_structured_payload_v2(payload)
     if not validation.is_valid:
         joined_errors = "; ".join(validation.errors)
         raise ValueError(f"Payload estructurado invalido: {joined_errors}")
 
-    return json.dumps(validation.normalized_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    serialized_payload = json.dumps(
+        validation.normalized_payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    if len(serialized_payload.encode("utf-8")) > MAX_STRUCTURED_PAYLOAD_BYTES:
+        raise StructuredCVWriteError(
+            f"El contenido estructurado supera el maximo de {MAX_STRUCTURED_PAYLOAD_BYTES // 1024} KB.",
+            ("structured_payload_too_large",),
+        )
+
+    return serialized_payload
 
 
 def deserialize_structured_payload(raw_payload: str) -> dict[str, object] | None:
@@ -163,32 +331,51 @@ def deserialize_structured_payload(raw_payload: str) -> dict[str, object] | None
     return payload
 
 
-def validate_structured_payload_v2(
-    payload: object,
+def _build_sections_from_legacy_fields(
+    legacy_cv: LegacyCVInput,
     *,
-    declared_schema_version: int | None = None,
-) -> StructuredPayloadValidation:
-    normalized_payload, errors = _normalize_structured_payload_v2(
-        payload,
-        declared_schema_version=declared_schema_version,
-    )
-    return StructuredPayloadValidation(
-        is_valid=not errors,
-        errors=tuple(errors),
-        normalized_payload=normalized_payload,
-    )
+    metadata_source: str,
+    synced_from_legacy_at: str,
+) -> dict[str, object]:
+    return {
+        "schema_version": CURRENT_STRUCTURED_SCHEMA_VERSION,
+        "personal": {
+            "full_name": legacy_cv.full_name,
+            "headline": "",
+            "location": "",
+        },
+        "contact": {
+            "email": legacy_cv.email,
+            "phone": legacy_cv.phone,
+            "links": [],
+        },
+        "summary": legacy_cv.professional_summary,
+        "skills": _build_skill_items(legacy_cv.skills),
+        "experience": _build_text_section_items(legacy_cv.experience_summary),
+        "education": _build_text_section_items(legacy_cv.education_summary),
+        "certifications": [],
+        "languages": [],
+        "projects": [],
+        "links": [],
+        "additional_info": [],
+        "metadata": {
+            "source": metadata_source,
+            "synced_from_legacy_at": synced_from_legacy_at,
+        },
+    }
 
 
-def normalize_structured_payload_v2(
-    payload: object,
-    *,
-    declared_schema_version: int | None = None,
-) -> dict[str, object] | None:
-    validation = validate_structured_payload_v2(
-        payload,
-        declared_schema_version=declared_schema_version,
+def _build_legacy_snapshot_from_cv(cv: CV) -> CVFormData:
+    return CVFormData(
+        title=cv.title,
+        full_name=cv.full_name,
+        email=cv.email,
+        phone=cv.phone,
+        professional_summary=cv.professional_summary,
+        experience_summary=cv.experience_summary,
+        education_summary=cv.education_summary,
+        skills=cv.skills,
     )
-    return validation.normalized_payload
 
 
 def _build_skill_items(raw_skills: str) -> list[dict[str, object]]:
@@ -222,231 +409,136 @@ def _split_legacy_text_items(raw_text: str) -> list[str]:
     return [item.strip() for item in normalized.split("\n") if item.strip()]
 
 
+def _format_skill_labels(raw_items: object) -> str:
+    return ", ".join(
+        label
+        for label in (_item_string(item, "label") for item in _sorted_items(raw_items))
+        if label
+    )
+
+
+def _format_experience_section(raw_items: object) -> str:
+    return "\n\n".join(
+        block
+        for block in (_format_experience_item(item) for item in _sorted_items(raw_items))
+        if block
+    )
+
+
+def _format_education_section(raw_items: object) -> str:
+    return "\n\n".join(
+        block
+        for block in (_format_education_item(item) for item in _sorted_items(raw_items))
+        if block
+    )
+
+
+def _format_experience_item(item: object) -> str:
+    if not isinstance(item, dict):
+        return ""
+
+    header = " - ".join(
+        part
+        for part in (_item_string(item, "role"), _item_string(item, "company"))
+        if part
+    )
+    date_range = _format_date_range(item)
+    if header and date_range:
+        header = f"{header} ({date_range})"
+    elif not header:
+        header = date_range
+
+    lines = [header] if header else []
+
+    summary = _item_string(item, "summary")
+    if summary:
+        lines.append(summary)
+
+    highlights = item.get("highlights")
+    if isinstance(highlights, list):
+        for highlight in highlights:
+            if isinstance(highlight, str) and highlight:
+                lines.append(f"• {highlight}")
+
+    technologies = ", ".join(
+        technology
+        for technology in (item.get("technologies") or [])
+        if isinstance(technology, str) and technology
+    )
+    if technologies:
+        lines.append(f"Tecnologias: {technologies}")
+
+    return "\n".join(lines)
+
+
+def _format_education_item(item: object) -> str:
+    if not isinstance(item, dict):
+        return ""
+
+    header = " - ".join(
+        part
+        for part in (_item_string(item, "degree"), _item_string(item, "institution"))
+        if part
+    )
+    date_range = _format_date_range(item)
+    if header and date_range:
+        header = f"{header} ({date_range})"
+    elif not header:
+        header = date_range
+
+    lines = [header] if header else []
+
+    field = _item_string(item, "field")
+    if field:
+        lines.append(f"Campo: {field}")
+
+    summary = _item_string(item, "summary")
+    if summary:
+        lines.append(summary)
+
+    return "\n".join(lines)
+
+
+def _format_date_range(item: dict[str, object]) -> str:
+    start_date = _item_string(item, "start_date")
+    end_date = _item_string(item, "end_date")
+    if item.get("current") is True:
+        end_date = "Presente"
+    if start_date and end_date:
+        return f"{start_date} - {end_date}"
+    return start_date or end_date
+
+
+def _sorted_items(raw_items: object) -> list[object]:
+    items = raw_items if isinstance(raw_items, list) else []
+    return [
+        item
+        for _, item in sorted(
+            enumerate(items),
+            key=lambda pair: (_item_order(pair[1], pair[0]), pair[0]),
+        )
+    ]
+
+
+def _item_order(item: object, fallback_index: int) -> int:
+    if isinstance(item, dict):
+        order = item.get("order")
+        if isinstance(order, int) and not isinstance(order, bool):
+            return order
+    return fallback_index + 1
+
+
+def _item_string(item: object, field: str) -> str:
+    if isinstance(item, dict):
+        value = item.get(field)
+        if isinstance(value, str):
+            return value
+    return ""
+
+
+def _string_value(value: object) -> str:
+    return value if isinstance(value, str) else ""
+
+
 def _current_utc_timestamp() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat()
-
-
-def _normalize_structured_payload_v2(
-    payload: object,
-    *,
-    declared_schema_version: int | None,
-) -> tuple[dict[str, object] | None, list[str]]:
-    errors: list[str] = []
-
-    if not isinstance(payload, dict):
-        return None, ["payload_must_be_object"]
-
-    if declared_schema_version is not None:
-        if not isinstance(declared_schema_version, int):
-            return None, ["schema_version_must_be_integer"]
-        if declared_schema_version != CURRENT_STRUCTURED_SCHEMA_VERSION:
-            return None, ["schema_version_unsupported"]
-
-    schema_version_present = "schema_version" in payload
-    schema_version = payload["schema_version"] if schema_version_present else _MISSING_SCHEMA_VERSION
-    normalized_schema_version = _resolve_payload_schema_version(
-        schema_version,
-        schema_version_present=schema_version_present,
-        declared_schema_version=declared_schema_version,
-        errors=errors,
-    )
-    if normalized_schema_version is not None and normalized_schema_version < CURRENT_STRUCTURED_SCHEMA_VERSION:
-        errors.append("schema_version_unsupported")
-
-    if errors:
-        return None, errors
-
-    normalized_payload = dict(payload)
-    normalized_payload["schema_version"] = normalized_schema_version
-    normalized_payload["personal"] = _normalize_object_field(
-        payload,
-        "personal",
-        errors,
-        defaults={
-            "full_name": "",
-            "headline": "",
-            "location": "",
-        },
-    )
-    normalized_payload["contact"] = _normalize_object_field(
-        payload,
-        "contact",
-        errors,
-        defaults={
-            "email": "",
-            "phone": "",
-            "links": [],
-        },
-    )
-    normalized_payload["metadata"] = _normalize_object_field(
-        payload,
-        "metadata",
-        errors,
-        defaults={
-            "source": "",
-            "synced_from_legacy_at": "",
-        },
-    )
-    normalized_payload["summary"] = _normalize_string_field(payload, "summary", errors, default="")
-    normalized_payload["skills"] = _normalize_structured_items(
-        payload,
-        "skills",
-        errors,
-        defaults={
-            "label": "",
-            "category": "",
-            "level": "",
-        },
-    )
-    normalized_payload["experience"] = _normalize_structured_items(
-        payload,
-        "experience",
-        errors,
-        defaults={"summary": ""},
-    )
-    normalized_payload["education"] = _normalize_structured_items(
-        payload,
-        "education",
-        errors,
-        defaults={"summary": ""},
-    )
-
-    for list_field in ("certifications", "languages", "projects", "links"):
-        normalized_payload[list_field] = _normalize_list_field(payload, list_field, errors)
-
-    if errors:
-        return None, errors
-
-    return normalized_payload, errors
-
-
-def _normalize_object_field(
-    payload: dict[str, object],
-    field_name: str,
-    errors: list[str],
-    *,
-    defaults: dict[str, object],
-) -> dict[str, object]:
-    raw_value = payload.get(field_name)
-    if raw_value is None:
-        return dict(defaults)
-    if not isinstance(raw_value, dict):
-        errors.append(f"{field_name}_must_be_object")
-        return dict(defaults)
-
-    normalized_value = dict(raw_value)
-    for key, default_value in defaults.items():
-        current_value = normalized_value.get(key)
-        if current_value is None:
-            normalized_value[key] = default_value
-            continue
-        if isinstance(default_value, list):
-            if not isinstance(current_value, list):
-                errors.append(f"{field_name}_{key}_must_be_list")
-        elif not isinstance(current_value, str):
-            errors.append(f"{field_name}_{key}_must_be_string")
-
-    return normalized_value
-
-
-def _normalize_string_field(
-    payload: dict[str, object],
-    field_name: str,
-    errors: list[str],
-    *,
-    default: str,
-) -> str:
-    raw_value = payload.get(field_name)
-    if raw_value is None:
-        return default
-    if not isinstance(raw_value, str):
-        errors.append(f"{field_name}_must_be_string")
-        return default
-    return raw_value
-
-
-def _normalize_list_field(payload: dict[str, object], field_name: str, errors: list[str]) -> list[object]:
-    raw_value = payload.get(field_name)
-    if raw_value is None:
-        return []
-    if not isinstance(raw_value, list):
-        errors.append(f"{field_name}_must_be_list")
-        return []
-    return list(raw_value)
-
-
-def _normalize_structured_items(
-    payload: dict[str, object],
-    field_name: str,
-    errors: list[str],
-    *,
-    defaults: dict[str, str],
-) -> list[dict[str, object]]:
-    raw_items = payload.get(field_name)
-    if raw_items is None:
-        return []
-    if not isinstance(raw_items, list):
-        errors.append(f"{field_name}_must_be_list")
-        return []
-
-    normalized_items: list[dict[str, object]] = []
-    for index, item in enumerate(raw_items, start=1):
-        if not isinstance(item, dict):
-            errors.append(f"{field_name}_{index - 1}_must_be_object")
-            continue
-
-        normalized_item = dict(item)
-        for key, default_value in defaults.items():
-            current_value = normalized_item.get(key)
-            if current_value is None:
-                normalized_item[key] = default_value
-                continue
-            if not isinstance(current_value, str):
-                errors.append(f"{field_name}_{index - 1}_{key}_must_be_string")
-
-        current_order = normalized_item.get("order")
-        if current_order is None:
-            normalized_item["order"] = index
-        elif not isinstance(current_order, int):
-            errors.append(f"{field_name}_{index - 1}_order_must_be_integer")
-
-        normalized_items.append(normalized_item)
-
-    return normalized_items
-
-
-def _resolve_payload_schema_version(
-    payload_schema_version: object,
-    *,
-    schema_version_present: bool,
-    declared_schema_version: int | None,
-    errors: list[str],
-) -> int | None:
-    if not schema_version_present:
-        if declared_schema_version is None:
-            errors.append("schema_version_missing")
-            return None
-        if not isinstance(declared_schema_version, int):
-            errors.append("schema_version_must_be_integer")
-            return None
-        if declared_schema_version != CURRENT_STRUCTURED_SCHEMA_VERSION:
-            errors.append("schema_version_unsupported")
-            return None
-        return declared_schema_version
-
-    if payload_schema_version is None:
-        errors.append("schema_version_must_be_integer")
-        return None
-
-    if not isinstance(payload_schema_version, int):
-        errors.append("schema_version_must_be_integer")
-        return None
-
-    if payload_schema_version != CURRENT_STRUCTURED_SCHEMA_VERSION:
-        errors.append("schema_version_unsupported")
-        return None
-
-    return payload_schema_version
-
-
-_MISSING_SCHEMA_VERSION = object()

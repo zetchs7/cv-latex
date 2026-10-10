@@ -82,6 +82,57 @@ class ExportServiceTest(unittest.TestCase):
 
         self.assertIn("supera el maximo permitido", str(context.exception))
 
+    def test_import_accepts_explicit_schema_version_1_as_legacy_payload(self):
+        payload = {
+            "schema_version": 1,
+            "cv": {
+                "title": "CV Explicito",
+                "full_name": "Persona Explicita",
+                "email": "explicita@example.com",
+                "phone": "",
+                "professional_summary": "Perfil",
+                "experience_summary": "Experiencia",
+                "education_summary": "",
+                "skills": "Python",
+            },
+        }
+
+        form_data = build_cv_form_data_from_json(json.dumps(payload).encode("utf-8"))
+
+        self.assertEqual(form_data.title, "CV Explicito (importado)")
+        self.assertEqual(form_data.full_name, "Persona Explicita")
+
+    def test_legacy_import_entrypoint_rejects_explicit_schema2(self):
+        payload = {
+            "schema_version": 2,
+            "cv": {
+                "title": "CV Estructurado",
+                "full_name": "Persona Estructurada",
+                "email": "estructurada@example.com",
+                "phone": "",
+                "professional_summary": "Perfil",
+                "experience_summary": "Experiencia",
+                "education_summary": "",
+                "skills": "Python",
+            },
+        }
+
+        with self.assertRaises(ExportServiceError) as context:
+            build_cv_form_data_from_json(json.dumps(payload).encode("utf-8"))
+
+        self.assertIn("schema_version 2", str(context.exception))
+
+    def test_legacy_import_entrypoint_rejects_boolean_schema_version(self):
+        payload = {
+            "schema_version": True,
+            "cv": {"title": "CV Booleano", "full_name": "Persona Booleana", "email": "booleana@example.com"},
+        }
+
+        with self.assertRaises(ExportServiceError) as context:
+            build_cv_form_data_from_json(json.dumps(payload).encode("utf-8"))
+
+        self.assertIn("numero entero", str(context.exception))
+
 
 def _build_cv() -> CV:
     return CV(
