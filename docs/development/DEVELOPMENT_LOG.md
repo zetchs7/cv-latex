@@ -1200,3 +1200,18 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
   - Esperar validacion explicita del usuario antes de cualquier merge.
   - Preparar push de la rama feature y PR hacia `development`.
   - Pedir `@codex review` manual despues del PR.
+
+## Etapa 9.9 - Aislamiento de pruebas independiente de Docker
+
+- Fecha: 2026-10-11
+- Rama: `fix/test-data-isolation` (desde `development` `97e2577`, sin push)
+- Objetivo: que ninguna corrida de pruebas pueda modificar la base de datos o los artefactos del entorno normal de la aplicacion.
+- Causa raiz: no existia `tests/conftest.py`. El aislamiento provenia del runner de Docker (workspace de solo lectura y tmpfs sobre `data`), no del codigo. Ademas `DOCUMENTATION_BUILD_DIR` era una constante de modulo sobre `REPO_ROOT` que ignoraba `APP_DATA_DIR`, y nueve de los veinte archivos de test nunca parcheaban la variable.
+- Alcance ejecutado:
+  - `tests/conftest.py`: temporal unico, `APP_DATA_DIR` y marcador `CV_LATEX_TESTING=1` en tiempo de importacion, y verificacion fail-closed que aborta la sesion antes de escribir si la resolucion no cae en el temporal.
+  - `app/database.py`: `get_data_dir()` rechaza el directorio de datos del repositorio bajo marcador o con `pytest` importado, sin alterar el comportamiento normal.
+  - `app/services/documentation_service.py`: `DOCUMENTATION_BUILD_DIR` pasa a `get_documentation_build_dir()`, derivado de `get_data_dir()` y evaluado en la llamada.
+  - `tests/test_test_isolation.py`: once pruebas que demuestran que la corrida escribe solo en el temporal y que la guardia aborta.
+- Evidencia (CMD-092 y CMD-093): suite completa **sin `APP_DATA_DIR`** en el entorno con `240 passed, 1 warning`; manifiesto recursivo de `data/` identico antes y despues; cero temporales huerfanos; `compileall` y `diff --check` en exit 0.
+- Diagnostico de Docker: WSL2 con systemd activo; el motor es Docker Desktop del lado Windows y no esta corriendo. El contexto activo apunta a un socket unix sin demonio escuchando y el contexto `desktop-linux` a un named pipe de Windows inaccesible desde WSL. Sin sudo y sin instalar motor nativo, no se puede resolver desde esta sesion.
+- Pendiente: cuando Docker vuelva a estar disponible, reejecutar la suite en la imagen para confirmar el mismo resultado por la segunda via. LL-023 queda superada por LL-025.

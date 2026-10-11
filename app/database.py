@@ -2,11 +2,14 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 import sqlite3
+import sys
 
 
 DEFAULT_DATA_DIR = "/data"
 DEFAULT_DB_FILENAME = "app.db"
 CURRENT_SCHEMA_VERSION = "2"
+REPOSITORY_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+TESTING_ENV_MARKER = "CV_LATEX_TESTING"
 STRUCTURED_CV_COLUMNS = {
     "structured_schema_version": "INTEGER",
     "structured_payload": "TEXT",
@@ -28,8 +31,41 @@ class ClosingConnection(sqlite3.Connection):
         return False
 
 
+def _is_test_process() -> bool:
+    """Indica si el proceso actual es una corrida de pruebas.
+
+    El marcador explicito lo define `tests/conftest.py` antes de importar
+    cualquier modulo de la app. La presencia de `pytest` en `sys.modules` cubre
+    las corridas que importan la app desde una sesion de pruebas ya abierta.
+    """
+
+    if os.getenv(TESTING_ENV_MARKER):
+        return True
+
+    return "pytest" in sys.modules
+
+
+def _is_inside_repository_data_dir(path: Path) -> bool:
+    try:
+        path.resolve().relative_to(REPOSITORY_DATA_DIR.resolve())
+    except ValueError:
+        return False
+
+    return True
+
+
 def get_data_dir() -> Path:
-    return Path(os.getenv("APP_DATA_DIR", DEFAULT_DATA_DIR))
+    data_dir = Path(os.getenv("APP_DATA_DIR", DEFAULT_DATA_DIR))
+
+    if _is_test_process() and _is_inside_repository_data_dir(data_dir):
+        raise RuntimeError(
+            "El directorio de datos del repositorio no puede usarse durante las pruebas: "
+            f"{data_dir} esta dentro de {REPOSITORY_DATA_DIR}. "
+            f"Apunta APP_DATA_DIR a un temporal y exporta {TESTING_ENV_MARKER}=1 "
+            "(tests/conftest.py lo resuelve automaticamente) para aislar la corrida."
+        )
+
+    return data_dir
 
 
 def get_database_path() -> Path:

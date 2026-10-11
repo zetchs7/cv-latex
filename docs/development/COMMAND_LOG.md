@@ -5180,3 +5180,34 @@ Error completo:
 Ninguno.
 Reintento/correccion:
 Causa raiz identificada: `app/services/documentation_service.py:14` define `DOCUMENTATION_BUILD_DIR = REPO_ROOT / "data" / "documentation-build"` como constante de modulo que ignora `APP_DATA_DIR`, y los tests que no parchean esa variable operar sobre el `data/` real. Bajo el runner Docker el workspace era de solo lectura con tmpfs en `data`, por lo que el aislamiento era un efecto del entorno y no del codigo.
+2026-10-11 17:32:44 | Etapa 9.9/aislamiento-tests | CMD-092
+Accion:
+Corregir de raiz el aislamiento de pruebas para que no dependa de Docker.
+Motivo:
+Una corrida de pruebas en el host creo el CV id 49 dentro de `data/app.db` real y dejo artefactos en `data/exports`. El aislamiento lo daba el tmpfs del contenedor, no el codigo: no existia `conftest.py` y `DOCUMENTATION_BUILD_DIR` era una constante de modulo que ignoraba `APP_DATA_DIR`.
+Comando:
+`systemctl is-active docker`; `pgrep -a dockerd`; `docker context ls`; `docker --context desktop-linux version`; `grep -rn 'REPO_ROOT|_DIR = Path' app/`; alta de `tests/conftest.py` y `tests/test_test_isolation.py`; edicion de `app/database.py` y `app/services/documentation_service.py`; corrida de la suite sin `APP_DATA_DIR` en el entorno.
+Argumentos:
+Rama `fix/test-data-isolation` creada desde `development` (`97e2577`). Superficie acotada a cuatro archivos. Sin push, PR, merge, tag ni release. Docker no disponible y sin sudo para levantarlo: se valido con el virtualenv efimero de versiones pineadas de `requirements.txt`.
+Resultado:
+`tests/conftest.py` crea un temporal unico y exporta `APP_DATA_DIR` y `CV_LATEX_TESTING=1` en tiempo de importacion, con verificacion fail-closed que aborta la sesion antes de escribir si la resolucion no cae en ese temporal. `get_data_dir()` rechaza el directorio de datos del repositorio mientras haya marcador o `pytest` importado, y conserva su comportamiento normal sin marcador. `DOCUMENTATION_BUILD_DIR` paso a `get_documentation_build_dir()`, derivado de `get_data_dir()` y evaluado en la llamada. Se verifico que `DOCUMENTATION_OUTPUT_DIR` solo lo escribe el comando de mantenimiento explicito, nunca los tests, asi que no se toco.
+Error completo:
+Docker resulto inaccesible por una causa externa: el motor (Docker Desktop del lado Windows) no esta corriendo, el contexto activo `default` apunta a un socket unix sin demonio escuchando y el contexto `desktop-linux` a un named pipe de Windows inaccesible desde WSL (`protocol not available`). No se intento reparar ni usar sudo.
+Reintento/correccion:
+Ninguno. La validacion se hizo con el virtualenv de versiones pineadas.
+
+2026-10-11 17:32:44 | Etapa 9.9/aislamiento-tests | CMD-093
+Accion:
+Verificar que la suite ya no toca el entorno normal de la aplicacion.
+Motivo:
+La correccion solo sirve si se demuestra con evidencia observable, no con narracion.
+Comando:
+`find data -type f -printf '%p|%s|%T@' | sort | sha256sum` antes y despues; `stat data/app.db`; suite completa con `env -u APP_DATA_DIR`; `ls -d /tmp/cv-latex-tests-*`; `pytest tests/test_test_isolation.py`; `python -m compileall -q app tests`; `git -c core.whitespace=cr-at-eol diff --check`.
+Argumentos:
+Sin escrituras sobre `data/` en ningun momento de la verificacion.
+Resultado:
+Suite completa **sin `APP_DATA_DIR` en el entorno**: `240 passed, 1 warning in 3.50s`. Manifiesto recursivo de `data/` identico antes y despues (`a1c64a266de3e6d57cfe7d43b17af293be8b7cbe783665b6ad8314d2e11dcb4c`, 175 archivos). `data/app.db` conserva mtime y tamano. Cero temporales huerfanos. Pruebas de aislamiento propias: 11 aprobadas. `compileall` exit 0. `diff --check` exit 0.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario.
