@@ -16,6 +16,8 @@ import tempfile
 
 import pytest
 
+import conftest
+
 from app.database import get_data_dir, get_database_path
 from app.services import documentation_service
 from app.services.export_service import ensure_exports_directory, ensure_pdf_temp_root
@@ -23,6 +25,7 @@ from app.services.export_service import ensure_exports_directory, ensure_pdf_tem
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_DATA_DIR = REPO_ROOT / "data"
+REPOSITORY_DOCS_OUTPUT_DIR = REPO_ROOT / "app" / "static" / "docs"
 DOCUMENTATION_OUTPUT_DIR = REPO_ROOT / "app" / "static" / "docs"
 SYSTEM_TEMP_ROOT = Path(tempfile.gettempdir()).resolve()
 TESTING_MARKER_ENV_VAR = "CV_LATEX_TESTING"
@@ -185,13 +188,98 @@ def test_marker_alone_activates_the_guard_outside_pytest():
     assert "CV_LATEX_TESTING" in result.stderr
 
 
-# Defined last on purpose: pytest runs tests in definition order, so this one
-# compares the end of the run against the snapshot taken at collection time.
-def test_repository_data_dir_is_unchanged_after_the_suite_ran():
-    for watched_directory, snapshot_at_collection_time in SNAPSHOT_AT_COLLECTION_TIME.items():
-        assert snapshot_directory_tree(watched_directory) == snapshot_at_collection_time, (
-            f"La suite modifico {watched_directory}, que pertenece al entorno real de la app."
+def test_manifest_helpers_detect_a_created_and_a_modified_file():
+    """`_diff_snapshots` debe ver altas y cambios sin depender del entorno.
+
+    Trabaja sobre un temporal propio: escribir dentro de `data/` del repositorio
+    no es una operacion valida y en un contenedor con rootfs de solo lectura
+    ni siquiera seria posible.
+    """
+
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        watched_root = Path(temporary_directory)
+        before = conftest._snapshot((watched_root,))
+        assert conftest._diff_snapshots(before, conftest._snapshot((watched_root,))) == []
+
+        created = watched_root / "aislamiento-ficticio.txt"
+        created.write_text("contenido", encoding="utf-8")
+        assert conftest._diff_snapshots(before, conftest._snapshot((watched_root,))) == [str(created)]
+
+        before_with_file = conftest._snapshot((watched_root,))
+        created.write_text("contenido distinto", encoding="utf-8")
+        assert str(created) in conftest._diff_snapshots(
+            before_with_file, conftest._snapshot((watched_root,))
         )
+
+        created.unlink()
+        assert conftest._diff_snapshots(before_with_file, conftest._snapshot((watched_root,))) == [str(created)]
+
+
+def test_manifest_covers_a_missing_protected_directory():
+    """Un directorio protegido ausente se registra, no se ignora en silencio."""
+
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        absent = Path(temporary_directory) / "no-existe"
+        snapshot = conftest._snapshot((absent,))
+        assert snapshot == {str(absent): None}
+        assert conftest._diff_snapshots(snapshot, conftest._snapshot((absent,))) == []
+
+
+def test_conftest_snapshots_the_real_environment_at_import_time():
+    """El baseline se toma al importar conftest y cubre cada ruta protegida."""
+
+    baseline = conftest.PROTECTED_BASELINE
+    assert baseline, "el manifiesto inicial debe estar capturado"
+    for protected in conftest.PROTECTED_PATHS:
+        prefix = str(protected) + os.sep
+        # Una ruta protegida existente aparece a traves de sus archivos; una
+        # ausente aparece con valor None.
+        assert str(protected) in baseline or any(path.startswith(prefix) for path in baseline), (
+            f"el manifiesto inicial no cubre {protected}"
+        )
+
+
+# Los dos siguientes cubren hallazgos P1 del review de codex: directorios de
+# datos externos al temporal y nombres de base que escapan del temporal.
+def _assert_guard_rejects(environment_overrides: dict[str, str], expected_fragment: str) -> None:
+    script = (
+        "from app.database import get_database_path, get_data_dir\n"
+        "get_data_dir()\n"
+        "get_database_path()\n"
+    )
+    environment = dict(os.environ)
+    environment["CV_LATEX_TESTING"] = "1"
+    environment["PYTHONPATH"] = str(REPO_ROOT)
+    environment.update(environment_overrides)
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env=environment,
+    )
+
+    assert result.returncode != 0, "El guard deberia abortar la corrida."
+    assert expected_fragment in result.stderr
+
+
+def test_guard_rejects_the_compose_data_store_during_tests():
+    """`/data` es el store real montado por Compose: no puede usarse en tests."""
+
+    _assert_guard_rejects({"APP_DATA_DIR": "/data"}, "raiz temporal")
+
+
+def test_guard_rejects_an_absolute_database_filename_during_tests():
+    _assert_guard_rejects({"APP_DB_FILENAME": "/data/app.db"}, "APP_DB_FILENAME")
+
+
+def test_guard_rejects_a_database_filename_with_parent_traversal():
+    _assert_guard_rejects(
+        {"APP_DB_FILENAME": "../escapada/app.db"},
+        "APP_DB_FILENAME",
+    )
 
 
 def _render_fictional_document() -> str:

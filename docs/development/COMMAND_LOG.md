@@ -5226,3 +5226,18 @@ Error completo:
 El primer contenedor HTTP no arranco con `sqlite3.OperationalError: unable to open database file`: el tmpfs `/data` queda en manos de root y el contenedor corre como `appuser` (uid 1000). Ademas, con `--network none` el puerto publicado no es alcanzable. Ambos son defectos de la invocacion, no del codigo ni del aislamiento.
 Reintento/correccion:
 Un reintento acotado con `--tmpfs /data:uid=1000,gid=1000,mode=0770` y red bridge con binding solo a loopback: HTTP 200 en las cuatro rutas.
+2026-10-11 18:01:05 | Etapa 9.9/aislamiento-tests | CMD-095
+Accion:
+Resolver los hallazgos del Codex Review del PR #17 (2 P1 y 1 P2) y revalidar.
+Motivo:
+El review del commit `ce46cfc` reporto que la proteccion fail-closed no cubria todo lo queProtect: un `APP_DATA_DIR` externo como `/data` (el store real de Compose) pasaba el filtro porque solo se reconocia `<repo>/data`; `APP_DB_FILENAME` podia ser absoluto o traer `..` y sacar la base del temporal; y la comprobacion del manifiesto estaba dentro de un test, que es el ultimo de su modulo pero no de la sesion.
+Comando:
+`gh pr view 17 --json reviews`; `gh api repos/zetchs7/cv-latex/pulls/17/comments`; edicion de `app/database.py` y `tests/conftest.py`; ampliacion de `tests/test_test_isolation.py`; `pytest tests/test_test_isolation.py`; suite completa en host sin `APP_DATA_DIR` y en Docker con rootfs de solo lectura.
+Argumentos:
+Rama `fix/test-data-isolation`. Superficie acotada a tres archivos. Sin push, PR, merge, tag ni release en este comando.
+Resultado:
+P1a: durante las pruebas `get_data_dir()` exige un directorio bajo la raiz temporal del sistema, no solo distinto de `<repo>/data`, de modo que `/data` y cualquier store externo quedan rechazados. P1b: `get_database_path()` exige que la base quede dentro del directorio de datos configurado, lo que cubre rutas absolutas y `..`; `conftest` fija `APP_DB_FILENAME` al valor por defecto para neutralizar cualquier valor hostil del host. P2: el manifiesto de `data/` y de `app/static/docs` se captura al importar `conftest` y se compara en `pytest_sessionfinish`, que escala el exit code a 1 si algo cambio. Pruebas nuevas: 4 de regresion mas las del manifiesto, totalling 245. Suite completa `245 passed, 1 warning` tanto en el host sin `APP_DATA_DIR` como en Docker con rootfs de solo lectura y sin montajes.
+Error completo:
+Dos fallos intermediarios fueron de las pruebas nuevas, no del aislamiento: asumian que `data/` del repositorio existe y es escribible, lo que no ocurre con rootfs de solo lectura ni cuando el directorio no existe. Ademas, fijar `APP_DB_FILENAME=test-app.db` rompio `test_database_migrations`, que crea su propia base como `app.db` y migraba una base vacia en su lugar.
+Reintento/correccion:
+Las pruebas del manifiesto pasaron a trabajar sobre un temporal propio y la asercion de cobertura se ajusto a la semántica real del snapshot. `APP_DB_FILENAME` paso a fijarse al nombre por defecto, que neutraliza el valor hostil del entorno sin romper las pruebas de migracion.
