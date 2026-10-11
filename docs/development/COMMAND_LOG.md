@@ -5211,3 +5211,18 @@ Error completo:
 Ninguno.
 Reintento/correccion:
 No fue necesario.
+2026-10-11 17:48:04 | Etapa 9.9/aislamiento-tests | CMD-094
+Accion:
+Validar la correccion de aislamiento dentro de Docker y preparar la integracion.
+Motivo:
+La correccion se habia validado solo con el virtualenv del host porque el motor de Docker no estaba disponible. Faltaba la segunda via y la evidencia de que la suite no toca la persistencia normal.
+Comando:
+`docker info`; `docker build -t cv-latex-test-isolation:c9f9d85 -f Dockerfile .`; `docker run --rm --network none --read-only --tmpfs /tmp --tmpfs /data ... -m pytest -p no:cacheprovider -q`; `docker compose config`; prueba HTTP en un contenedor independiente; `docker exec` para verificar el comportamiento fuera de testing.
+Argumentos:
+Contenedores efimeros sin montar `./data` del host ni volumenes del servicio normal, con tmpfs propio para `/tmp` y `/data` y rootfs de solo lectura. No se ejecuto `docker compose up --force-recreate`. Binding HTTP solo a `127.0.0.1`.
+Resultado:
+Imagen construida desde `c9f9d85`; se verifico que contiene `tests/conftest.py` (85 lineas) y `tests/test_test_isolation.py` (197 lineas), y que su `APP_DATA_DIR` sigue siendo `/data` para que el aislamiento tenga que sobreescribirlo. Suite completa en contenedor de solo lectura: **`240 passed, 1 warning in 2.09s`**. Evidencia interna: `APP_DATA_DIR` resuelve a `/tmp/cv-latex-tests-*`, `get_data_dir()` y `get_documentation_build_dir()` quedan bajo el temporal, la guardia aborta ante el `data/` del repositorio, la base se crea en el temporal y `/data` del contenedor no se abre. HTTP en contenedor independiente: `/health` 200 y las tres rutas de documentacion 200. Fuera de testing la app sigue usando `/data` y su base habitual. Manifiesto recursivo del `data/` del host identico antes y despues (`a1c64a266de3e6d57cfe7d43b17af293be8b7cbe783665b6ad8314d2e11dcb4c`). `docker compose config` exit 0. Contenedor de aplicacion normal intacto.
+Error completo:
+El primer contenedor HTTP no arranco con `sqlite3.OperationalError: unable to open database file`: el tmpfs `/data` queda en manos de root y el contenedor corre como `appuser` (uid 1000). Ademas, con `--network none` el puerto publicado no es alcanzable. Ambos son defectos de la invocacion, no del codigo ni del aislamiento.
+Reintento/correccion:
+Un reintento acotado con `--tmpfs /data:uid=1000,gid=1000,mode=0770` y red bridge con binding solo a loopback: HTTP 200 en las cuatro rutas.
