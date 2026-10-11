@@ -5149,3 +5149,34 @@ Error completo:
 Ninguno.
 Reintento/correccion:
 No fue necesario.
+2026-10-11 08:21:00 | Etapa 9.8/codex-review | CMD-090
+Accion:
+Corregir los tres hallazgos del Codex Review del PR #16 (P1 atomicidad, P2 limite de export, P2 JSON no finito).
+Motivo:
+La revision del commit `8daa85f` quedo COMPLETADA con tres hallazgos: una condicion de carrera TOCTOU en `update_cv`, un export schema 2 que puede superar el limite de importacion, y la aceptacion de `NaN`/`Infinity` en el parseo JSON.
+Comando:
+`gh pr view 16 --json reviews --jq '.reviews[0].body'`; `gh api repos/zetchs7/cv-latex/pulls/16/comments`; edicion de `app/repositories/cv_repository.py`, `app/services/export_service.py`, `app/services/structured_cv_service.py`, `app/services/structured_cv_editor_service.py` y sus tests; validacion con venv efimero en `/tmp` usando las versiones pineadas de `requirements.txt`.
+Argumentos:
+Superficie acotada a 9 archivos. Sin push, merge, tag ni release en este comando.
+Resultado:
+P1: el UPDATE legacy ahora lleva la precondicion de estado legacy en el propio WHERE (`structured_schema_version IS NULL OR < 2 OR structured_payload IS NULL`) y, si afecta 0 filas, `_resolve_zero_row_legacy_update` distingue fila ausente o borrada (`False`) de conflicto de estado (lanza `StructuredCVLegacyUpdateError`) dentro de la misma transaccion y sin commitear. P2 limite: `MAX_JSON_IMPORT_BYTES` se deriva de `MAX_STRUCTURED_PAYLOAD_BYTES` mas un sobre fijo y documentado de 8 KB, y el export schema 2 se emite con separadores compactos; schema 1 conserva su formato indentado. P2 no finitos: helper `reject_non_finite_json_constant` pasado como `parse_constant` en los dos puntos de entrada JSON no confiables, mas `allow_nan=False` en las serializaciones y error de dominio `structured_payload_non_finite_number`.
+Error completo:
+El daemon de Docker estaba caido (`systemctl is-active docker` = `inactive`, sin proceso `dockerd`), por lo que el runner pineado no pudo ejecutarse y no hay sudo para levantarlo. Se armo un venv efimero en `/tmp/opencode/venv-validate` con `fastapi==0.115.6`, `jinja2==3.1.5`, `pytest==8.3.4`, `httpx==0.28.1` y `python-multipart==0.0.20`, exactamente las versiones de `requirements.txt`.
+Reintento/correccion:
+Una primera corrida sin `APP_DATA_DIR` produjo 4 fallos `PermissionError: '/data'` en `test_documentation_routes.py`; es la invocacion, no el codigo. Corregida, la suite completa da `229 passed, 1 warning in 3.20s`. JavaScript `8 pasaron`. `compileall` exit 0. `git -c core.whitespace=cr-at-eol diff --check` exit 0.
+
+2026-10-11 08:21:00 | Etapa 9.8/codex-review | CMD-091
+Accion:
+Verificar y documentar el aislamiento de datos de la suite ejecutada fuera de Docker.
+Motivo:
+Detectado que `data/app.db` cambio de mtime durante la sesion y era necesario determinar si la base real resulto danada.
+Comando:
+`stat -c '%y %s' data/app.db`; `ls -la data/`; `find data/exports -newermt 2026-10-11`; `PRAGMA integrity_check`; `PRAGMA foreign_key_check`; `SELECT COUNT(*)` por tabla; busqueda de `DOCUMENTATION_BUILD_DIR` en `app/services/documentation_service.py`.
+Argumentos:
+Solo lectura sobre la base, abierta con `mode=ro`. No se modifico ni borro nada.
+Resultado:
+La base esta integra: `integrity_check` = `ok`, sin violaciones de claves foraneas, 49 CVs, 10 cartas y 6 postulaciones, y `app_metadata.schema_version` conserva el valor original `2` con sello `2026-10-10 03:01:23`. Sin embargo el CV id 49 (`Tes 65`) fue CREADO hoy a las 10:12:30 y actualizado a las 10:15:27 por una corrida de pruebas ejecutada sobre el host sin el aislamiento de Docker, y dos artefactos de export quedaron en `data/exports` a las 11:09 desde otra corrida. No hay perdida de datos previos: el id 49 es un artefacto de prueba de esta sesion, no un registro del usuario. `data/` esta ignorado por git (`.gitignore:19`), asi que nada de esto entra en el PR. No se reparo ni borro nada sin autorizacion.
+Error completo:
+Ninguno.
+Reintento/correccion:
+Causa raiz identificada: `app/services/documentation_service.py:14` define `DOCUMENTATION_BUILD_DIR = REPO_ROOT / "data" / "documentation-build"` como constante de modulo que ignora `APP_DATA_DIR`, y los tests que no parchean esa variable operar sobre el `data/` real. Bajo el runner Docker el workspace era de solo lectura con tmpfs en `data`, por lo que el aislamiento era un efecto del entorno y no del codigo.
