@@ -7,7 +7,7 @@ import tempfile
 
 from markupsafe import Markup
 
-from app.database import get_data_dir
+from app.database import ensure_isolated_path, get_data_dir
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -93,7 +93,9 @@ def get_documentation_build_dir() -> Path:
     entrada de solo lectura y destino de PDFs servidos, respectivamente.
     """
 
-    return get_data_dir() / DOCUMENTATION_BUILD_SUBDIRECTORY
+    build_directory = get_data_dir() / DOCUMENTATION_BUILD_SUBDIRECTORY
+
+    return ensure_isolated_path(build_directory, "El directorio de compilacion de la documentacion")
 
 
 def list_documentation_assets() -> tuple[DocumentationAsset, ...]:

@@ -15,6 +15,7 @@ import sys
 import tempfile
 
 import pytest
+from unittest.mock import patch
 
 import conftest
 
@@ -273,6 +274,85 @@ def test_guard_rejects_the_compose_data_store_during_tests():
 
 def test_guard_rejects_an_absolute_database_filename_during_tests():
     _assert_guard_rejects({"APP_DB_FILENAME": "/data/app.db"}, "APP_DB_FILENAME")
+
+
+# Hallazgo P1 del review de codex sobre `ae64a2b`: `get_data_dir()` valida el
+# directorio raiz, pero un subdirectorio derivado puede ser un enlace simbolico a
+# otro arbol y las escrituras lo seguirian.
+def test_derived_writes_reject_a_symlink_that_escapes_the_data_dir():
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        root = Path(temporary_directory)
+        data_directory = root / "data"
+        outside_directory = root / "fuera-del-ambiente"
+        data_directory.mkdir()
+        outside_directory.mkdir()
+        (data_directory / "exports").symlink_to(outside_directory, target_is_directory=True)
+        (data_directory / documentation_service.DOCUMENTATION_BUILD_SUBDIRECTORY).symlink_to(
+            outside_directory, target_is_directory=True
+        )
+
+        with patch.dict(os.environ, {"APP_DATA_DIR": str(data_directory)}):
+            with pytest.raises(RuntimeError, match="directorio de exportaciones"):
+                ensure_exports_directory()
+
+            with pytest.raises(RuntimeError, match="directorio de compilacion"):
+                documentation_service.get_documentation_build_dir()
+
+        assert not list(outside_directory.iterdir()), "no debe haberse escrito fuera"
+
+
+def test_derived_writes_still_work_for_a_real_subdirectory():
+    """El guard no puede convertirse en un falso positivo en el caso normal."""
+
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        with patch.dict(os.environ, {"APP_DATA_DIR": temporary_directory}):
+            exports_directory = ensure_exports_directory()
+            pdf_temp_root = ensure_pdf_temp_root()
+            build_directory = documentation_service.get_documentation_build_dir()
+
+        assert exports_directory == Path(temporary_directory) / "exports"
+        assert pdf_temp_root == exports_directory / "_tmp"
+        assert build_directory == (
+            Path(temporary_directory) / documentation_service.DOCUMENTATION_BUILD_SUBDIRECTORY
+        )
+        assert exports_directory.is_dir()
+        assert pdf_temp_root.is_dir()
+
+
+def test_derived_paths_are_not_restricted_outside_a_test_run():
+    """Fuera de una corrida de pruebas el guard es inerte y la app no cambia.
+
+    Va en un subproceso porque `_is_test_process()` tambien detecta `pytest` en
+    `sys.modules`, y en este proceso esa condicion siempre es cierta.
+    """
+
+    # No se escribe nada: se comprueba que el directorio de datos por defecto
+    # sigue siendo `/data` y que el guard devuelve la ruta intacta en vez de
+    # rechazarla, que es lo que haria dentro de una corrida de pruebas.
+    script = (
+        "from pathlib import Path\n"
+        "from app.database import DEFAULT_DATA_DIR, ensure_isolated_path, get_data_dir\n"
+        "assert str(get_data_dir()) == DEFAULT_DATA_DIR, get_data_dir()\n"
+        "outside = Path('/data/exports')\n"
+        "assert ensure_isolated_path(outside, 'exports') == outside\n"
+        "print('MODO NORMAL INTACTO')\n"
+    )
+    environment = dict(os.environ)
+    environment.pop("CV_LATEX_TESTING", None)
+    environment.pop("APP_DATA_DIR", None)
+    environment["PYTHONPATH"] = str(REPO_ROOT)
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env=environment,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "MODO NORMAL INTACTO" in result.stdout
 
 
 def test_guard_rejects_a_database_filename_with_parent_traversal():

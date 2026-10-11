@@ -5241,3 +5241,18 @@ Error completo:
 Dos fallos intermediarios fueron de las pruebas nuevas, no del aislamiento: asumian que `data/` del repositorio existe y es escribible, lo que no ocurre con rootfs de solo lectura ni cuando el directorio no existe. Ademas, fijar `APP_DB_FILENAME=test-app.db` rompio `test_database_migrations`, que crea su propia base como `app.db` y migraba una base vacia en su lugar.
 Reintento/correccion:
 Las pruebas del manifiesto pasaron a trabajar sobre un temporal propio y la asercion de cobertura se ajusto a la semántica real del snapshot. `APP_DB_FILENAME` paso a fijarse al nombre por defecto, que neutraliza el valor hostil del entorno sin romper las pruebas de migracion.
+2026-10-11 18:05:41 | Etapa 9.9/aislamiento-tests | CMD-096
+Accion:
+Resolver el segundo pase del Codex Review del PR #17 y revalidar.
+Motivo:
+La re-review del commit `ae64a2b` reporto dos P1. Uno, sobre `APP_DB_FILENAME`, es el mismo texto del hallazgo ya resuelto y su referencia cruzada apunta al commit `ce46cfc`. El otro es nuevo y real: `get_data_dir()` valida el directorio raiz, pero un subdirectorio derivado puede ser un enlace simbolico a otro arbol y las escrituras lo siguen.
+Comando:
+Reproduccion del escape con un `exports` y un `documentation-build` enlazados a un arbol externo; edicion de `app/database.py`, `app/services/export_service.py` y `app/services/documentation_service.py`; ampliacion de `tests/test_test_isolation.py`; suite completa en host y en Docker; smoke HTTP en un contenedor independiente.
+Argumentos:
+Rama `fix/test-data-isolation`. Superficie acotada a cuatro archivos. Sin push, PR, merge, tag ni release en este comando.
+Resultado:
+Se agrego `ensure_isolated_path()`, un guard compartido en `app/database.py` que, durante una corrida de pruebas, exige que toda ruta derivada resuelva dentro del directorio de datos ya aislado, y que fuera de las pruebas devuelve la ruta intacta. Se aplico en `ensure_exports_directory()`, `ensure_pdf_temp_root()` y `get_documentation_build_dir()`, siempre antes del `mkdir`. La reproduccion que reportaba el review ahora aborta en los tres casos y deja cero archivos escritos fuera. Pruebas nuevas: tres, la del escape, la del caso legitimo que evita un falso positivo y la que prueba en un subproceso que el guard es inerte y que `/data` sigue siendo el directorio por defecto. Suite completa `248 passed, 1 warning` en host sin `APP_DATA_DIR` y en Docker con rootfs de solo lectura, tmpfs en `/tmp` y `/data`, sin red y sin montajes. Manifiestos de `data/` y de `app/static/docs` identicos antes y despues. HTTP: `/health` y las tres rutas de documentacion en 200; el guard devuelve `/data/exports` sin observar y el directorio se crea. JavaScript 8, `compileall` 0, `diff --check` 0, `docker compose config` 0. Contenedor de aplicacion normal intacto.
+Error completo:
+La primera version de la prueba de modo normal fallaba porque `ensure_exports_directory()` crea el directorio y, con el `/data` por defecto, el host no tiene permisos para crearlo.
+Reintento/correccion:
+La prueba paso a no escribir nada: verifica con `get_data_dir()` que el directorio por defecto sigue siendo `/data` y que el guard devuelve la ruta intacta en lugar de rechazarla. El subproceso sigue siendo necesario porque `_is_test_process()` tambien detecta `pytest` en `sys.modules`.

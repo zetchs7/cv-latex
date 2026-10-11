@@ -87,6 +87,31 @@ def _ensure_test_data_dir_is_isolated(data_dir: Path) -> None:
         )
 
 
+def ensure_isolated_path(path: Path, description: str) -> Path:
+    """Exige que una ruta derivada quede dentro del directorio de datos.
+
+    `get_data_dir()` solo valida el directorio raiz: un subdirectorio puede ser
+    un enlace simbolico a otro arbol, y las escrituras lo seguirian. Durante una
+    corrida de pruebas toda ruta sobre la que se escribe tiene que resolver
+    dentro del directorio de datos ya aislado. Fuera de las pruebas no hace nada,
+    para no alterar el comportamiento normal de la aplicacion.
+    """
+
+    if not _is_test_process():
+        return path
+
+    data_dir = get_data_dir()
+
+    if not _is_inside_directory(path, data_dir):
+        raise RuntimeError(
+            f"{description} debe quedar dentro del directorio de datos de la corrida "
+            f"({data_dir}): {path} resuelve a {path.resolve()}, que queda fuera. "
+            "Revisa enlaces simbolicos dentro del directorio de datos de prueba."
+        )
+
+    return path
+
+
 def get_data_dir() -> Path:
     data_dir = Path(os.getenv("APP_DATA_DIR", DEFAULT_DATA_DIR))
 
