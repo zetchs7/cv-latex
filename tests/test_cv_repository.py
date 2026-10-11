@@ -5,12 +5,14 @@ import unittest
 from unittest.mock import patch
 
 from app.database import get_connection, initialize_database
+from app.repositories import cv_repository
 from app.repositories.cv_repository import (
     StructuredCVLegacyUpdateError,
     create_cv,
     create_structured_cv,
     duplicate_cv,
     get_cv,
+    soft_delete_cv,
     update_cv,
     update_structured_cv,
 )
@@ -245,6 +247,141 @@ class CVRepositoryTest(unittest.TestCase):
 
                 self.assertFalse(updated)
 
+    def test_legacy_update_is_rejected_atomically_when_row_became_structured_after_the_state_read(self):
+        """The state guard and the flat UPDATE must be one atomic operation.
+
+        The read that feeds the pre-check happens before a structured editor
+        save converts the same row. Only the atomic guard inside the UPDATE can
+        stop the flat write from destroying the schema 2 payload.
+        """
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_cv(_build_form_data(title="CV Legacy"))
+                legacy_snapshot = get_cv(cv_id)
+
+                update_structured_cv(
+                    cv_id,
+                    title="CV Estructurado",
+                    payload=_build_schema2_only_payload(),
+                    metadata_source="structured_test",
+                )
+                stored_before = get_cv(cv_id)
+                sections_before = resolve_normalized_cv(stored_before).sections
+
+                with patch.object(cv_repository, "get_cv", return_value=legacy_snapshot):
+                    with self.assertRaises(StructuredCVLegacyUpdateError):
+                        update_cv(cv_id, _build_form_data(title="CV Actualizado", skills="Rust"))
+
+                stored_after = get_cv(cv_id)
+                self.assertEqual(stored_after.title, stored_before.title)
+                self.assertEqual(stored_after.full_name, stored_before.full_name)
+                self.assertEqual(stored_after.skills, stored_before.skills)
+                self.assertEqual(stored_after.structured_schema_version, 2)
+                self.assertEqual(stored_after.structured_payload_status, "valid")
+                self.assertEqual(stored_after.structured_payload, stored_before.structured_payload)
+                sections_after = resolve_normalized_cv(stored_after).sections
+                self.assertEqual(sections_after, sections_before)
+                self.assertEqual(sections_after["personal"]["headline"], "Arquitecto de Software")
+                self.assertEqual(sections_after["personal"]["location"], "Cordoba")
+                self.assertEqual(sections_after["certifications"][0]["name"], "AWS Solutions Architect")
+                self.assertEqual(sections_after["languages"][0]["name"], "Espanol")
+                self.assertEqual(sections_after["projects"][0]["name"], "Motor de reportes")
+                self.assertEqual(sections_after["links"][0]["url"], "https://cv.example.com")
+                self.assertEqual(sections_after["additional_info"][0]["title"], "Disponibilidad")
+                self.assertEqual(sections_after["contact"]["links"], ["https://cv.example.com"])
+                self.assertEqual(sections_after["metadata"]["source"], "structured_test")
+
+    def test_legacy_update_returns_false_for_missing_and_soft_deleted_rows_without_raising(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+
+                self.assertFalse(update_cv(999999, _build_form_data(title="CV Inexistente")))
+
+                deleted_id = create_cv(_build_form_data(title="CV Para Borrar"))
+                self.assertTrue(soft_delete_cv(deleted_id))
+                stored_before = get_connection()
+
+                with stored_before:
+                    row_before = stored_before.execute(
+                        "SELECT title, full_name, structured_schema_version, structured_payload, structured_payload_status FROM cvs WHERE id = ?",
+                        (deleted_id,),
+                    ).fetchone()
+
+                self.assertFalse(update_cv(deleted_id, _build_form_data(title="CV Actualizado")))
+
+                with get_connection() as connection:
+                    row_after = connection.execute(
+                        "SELECT title, full_name, structured_schema_version, structured_payload, structured_payload_status FROM cvs WHERE id = ?",
+                        (deleted_id,),
+                    ).fetchone()
+
+                self.assertEqual(tuple(row_after), tuple(row_before))
+
+    def test_get_connection_rolls_back_when_the_block_raises(self):
+        """`get_connection` must discard pending writes when the block raises."""
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_cv(_build_form_data(title="CV Original"))
+
+                with self.assertRaises(RuntimeError):
+                    with get_connection() as connection:
+                        connection.execute(
+                            "UPDATE cvs SET title = :title WHERE id = :id",
+                            {"title": "CV No Persistido", "id": cv_id},
+                        )
+                        raise RuntimeError("fallo controlado")
+
+                self.assertEqual(get_cv(cv_id).title, "CV Original")
+
+
+    def test_atomic_guard_returns_false_when_the_row_disappears_after_the_state_read(self):
+        """La rama `return False` del guardia atomico, no la del pre-check."""
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_cv(_build_form_data(title="CV Legacy"))
+                legacy_snapshot = get_cv(cv_id)
+                self.assertTrue(soft_delete_cv(cv_id))
+
+                with patch.object(cv_repository, "get_cv", return_value=legacy_snapshot):
+                    deleted = update_cv(cv_id, _build_form_data(title="CV Actualizado"))
+
+                self.assertFalse(deleted)
+
+    def test_atomic_guard_rejects_rows_carrying_a_schema2_payload_in_any_status(self):
+        """Un payload schema 2 nunca se degrada a legacy en silencio.
+
+        La pre-verificacion en Python trata `stale` e `invalid` como legacy, asi
+        que antes el UPDATE plano los nulaba en silencio. El guardia atomico los
+        rechaza tambien: el error de dominio es preferible a perder el payload.
+        """
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+
+                for payload_status in ("legacy", "stale", "invalid"):
+                    with self.subTest(structured_payload_status=payload_status):
+                        cv_id = create_cv(_build_form_data(title="CV %s" % payload_status))
+                        payload = _mark_cv_as_partial_structured(cv_id, status=payload_status)
+
+                        with self.assertRaises(StructuredCVLegacyUpdateError):
+                            update_cv(cv_id, _build_form_data(title="CV Actualizado", skills="Rust"))
+
+                        with get_connection() as connection:
+                            row = connection.execute(
+                                "SELECT title, structured_schema_version, structured_payload, structured_payload_status FROM cvs WHERE id = ?",
+                                (cv_id,),
+                            ).fetchone()
+
+                        self.assertEqual(row["title"], "CV %s" % payload_status)
+                        self.assertEqual(row["structured_schema_version"], 2)
+                        self.assertEqual(row["structured_payload"], payload)
+                        self.assertEqual(row["structured_payload_status"], payload_status)
+
+
 def _build_form_data(*, title: str, skills: str = "Python") -> CVFormData:
     return CVFormData(
         title=title,
@@ -349,7 +486,7 @@ def _mark_cv_as_structured(cv_id: int) -> str:
     return payload
 
 
-def _mark_cv_as_partial_structured(cv_id: int) -> str:
+def _mark_cv_as_partial_structured(cv_id: int, *, status: str = "valid") -> str:
     payload = '{"personal":{"full_name":"Nombre Valido"}}'
     with get_connection() as connection:
         connection.execute(
@@ -357,10 +494,10 @@ def _mark_cv_as_partial_structured(cv_id: int) -> str:
             UPDATE cvs
             SET structured_schema_version = 2,
                 structured_payload = ?,
-                structured_payload_status = 'valid'
+                structured_payload_status = ?
             WHERE id = ?
             """,
-            (payload, cv_id),
+            (payload, status, cv_id),
         )
         connection.commit()
 

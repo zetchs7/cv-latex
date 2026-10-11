@@ -25,6 +25,7 @@ from app.models import CV
 from app.services.export_service import _translate_structured_validation_errors
 from app.services.structured_cv_service import (
     MAX_STRUCTURED_PAYLOAD_BYTES,
+    reject_non_finite_json_constant,
     resolve_normalized_cv,
 )
 from app.validations.structured_cv_validations import CURRENT_STRUCTURED_SCHEMA_VERSION
@@ -256,8 +257,10 @@ def translate_structured_editor_errors(errors: tuple[str, ...]) -> list[str]:
 
 
 def _loads_structured_payload(raw_payload: str) -> object:
+    # `parse_constant` rechaza NaN/Infinity/-Infinity: el envio viene del
+    # navegador y no puede romper el bootstrap que el mismo editor emite.
     try:
-        return json.loads(raw_payload)
+        return json.loads(raw_payload, parse_constant=reject_non_finite_json_constant)
     except json.JSONDecodeError as error:
         raise ValueError(str(error)) from error
 

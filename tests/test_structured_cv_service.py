@@ -2,6 +2,7 @@ import unittest
 
 from app.schemas import CVFormData
 from app.services.structured_cv_service import (
+    StructuredCVWriteError,
     build_structured_payload_from_legacy,
     deserialize_structured_payload,
     normalize_structured_payload_v2,
@@ -349,6 +350,29 @@ def _build_form_data() -> CVFormData:
 
 def _build_payload() -> dict[str, object]:
     return build_structured_payload_from_legacy(_build_form_data(), metadata_source="test")
+
+
+class NonFiniteNumberSerializationTest(unittest.TestCase):
+    """El payload persistido nunca puede emitir JSON no estandar."""
+
+    def test_serialize_rejects_non_finite_numbers_with_a_dedicated_error_code(self):
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(value=value):
+                payload = dict(_build_payload(), custom_extension={"score": value})
+
+                with self.assertRaises(StructuredCVWriteError) as context:
+                    serialize_structured_payload(payload)
+
+                self.assertIn("structured_payload_non_finite_number", context.exception.errors)
+                self.assertIn("no es JSON valido", str(context.exception))
+
+    def test_serialize_keeps_accepting_finite_floats_and_unknown_extensions(self):
+        payload = dict(_build_payload(), custom_extension={"score": 4.5, "ratio": -0.25})
+
+        serialized = serialize_structured_payload(payload)
+
+        self.assertIn('"score":4.5', serialized)
+        self.assertIn('"ratio":-0.25', serialized)
 
 
 if __name__ == "__main__":

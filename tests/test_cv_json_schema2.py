@@ -13,6 +13,7 @@ from app.repositories import cv_repository
 from app.schemas import CVFormData
 from app.services.export_service import (
     ExportServiceError,
+    JSON_IMPORT_ENVELOPE_HEADROOM_BYTES,
     MAX_JSON_IMPORT_BYTES,
     build_cv_json_import_result,
     build_cv_json_payload,
@@ -383,6 +384,155 @@ class Schema2ImportServiceTest(unittest.TestCase):
                         self.assertTrue(resolve_normalized_cv(stored).is_structured)
 
 
+class Schema2ExportImportSizeContractTest(unittest.TestCase):
+    """Todo export schema 2 emitido por la app debe ser reimportable por la app."""
+
+    def test_export_of_payload_at_persistence_limit_is_importable_and_round_trips(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                payload = _build_payload_with_unknown_extensions_at_limit(MAX_STRUCTURED_PAYLOAD_BYTES)
+
+                cv_id = cv_repository.create_structured_cv(
+                    title="CV Al Limite",
+                    payload=payload,
+                    metadata_source=_LIMIT_METADATA_SOURCE,
+                )
+                stored = cv_repository.get_cv(cv_id)
+                self.assertEqual(len(stored.structured_payload.encode("utf-8")), MAX_STRUCTURED_PAYLOAD_BYTES)
+
+                exported_file = export_cv_json(stored)
+                raw_content = exported_file.path.read_bytes()
+
+                self.assertLessEqual(len(raw_content), MAX_JSON_IMPORT_BYTES)
+
+                result = build_cv_json_import_result(raw_content)
+                self.assertEqual(result.schema_version, 2)
+                self.assertTrue(result.structured_title.endswith("(importado)"))
+
+                imported_payload = result.structured_payload
+                self.assertEqual(imported_payload["personal"]["full_name"], "Ana Perez")
+                self.assertEqual(imported_payload["personal"]["headline"], "Tech Lead")
+                self.assertEqual(imported_payload["certifications"][0]["name"], "AWS Solutions Architect")
+                self.assertEqual(imported_payload["unknown_section"], {"keep": True, "extra": ["a", "b"]})
+                self.assertEqual(imported_payload["experience"][0]["custom_note"], "dato interno")
+                self.assertEqual(imported_payload["_pad"], payload["_pad"])
+
+                imported_id = cv_repository.create_structured_cv(
+                    title=result.structured_title,
+                    payload=imported_payload,
+                    metadata_source=_LIMIT_METADATA_SOURCE,
+                )
+                imported_stored = cv_repository.get_cv(imported_id)
+                self.assertTrue(resolve_normalized_cv(imported_stored).is_structured)
+                self.assertEqual(imported_stored.full_name, "Ana Perez")
+                self.assertEqual(
+                    json.loads(imported_stored.structured_payload)["unknown_section"],
+                    {"keep": True, "extra": ["a", "b"]},
+                )
+
+    def test_import_limit_is_derived_from_payload_limit_plus_documented_headroom(self):
+        self.assertGreater(MAX_JSON_IMPORT_BYTES, MAX_STRUCTURED_PAYLOAD_BYTES)
+        self.assertEqual(
+            MAX_JSON_IMPORT_BYTES - MAX_STRUCTURED_PAYLOAD_BYTES,
+            JSON_IMPORT_ENVELOPE_HEADROOM_BYTES,
+        )
+
+    def test_oversized_import_is_still_rejected_with_controlled_spanish_error(self):
+        with self.assertRaises(ExportServiceError) as context:
+            build_cv_json_import_result(b"x" * (MAX_JSON_IMPORT_BYTES + 1))
+
+        self.assertIn("supera el maximo permitido", str(context.exception))
+
+    def test_schema1_export_still_round_trips_after_export_serialization_change(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = cv_repository.create_cv(_build_legacy_form_data())
+
+                exported_file = export_cv_json(cv_repository.get_cv(cv_id), schema_version=1)
+                raw_content = exported_file.path.read_bytes()
+
+                payload = json.loads(raw_content.decode("utf-8"))
+                self.assertEqual(payload["schema_version"], 1)
+                self.assertIn("\n", raw_content.decode("utf-8"))
+
+                result = build_cv_json_import_result(raw_content)
+                self.assertEqual(result.schema_version, 1)
+                self.assertEqual(result.form_data.full_name, payload["cv"]["full_name"])
+                self.assertEqual(result.form_data.title, payload["cv"]["title"] + " (importado)")
+
+
+class NonFiniteJsonImportTest(unittest.TestCase):
+    """NaN / Infinity / -Infinity se rechazan antes de tocar la base."""
+
+    def test_schema2_import_rejects_non_finite_numbers_without_writes(self):
+        templates = (
+            '{"schema_version": 2, "cv": {"title": "CV Roto", "structured_payload": {"schema_version": 2, "personal": {"full_name": "Ana"}}}, "extra": %s}',
+            '{"schema_version": %s, "cv": {"title": "CV Roto", "structured_payload": {"schema_version": 2, "personal": {"full_name": "Ana"}}}}',
+        )
+        for token in ("NaN", "Infinity", "-Infinity"):
+            for template in templates:
+                raw_content = (template % token).encode("utf-8")
+                with self.subTest(token=token, raw_content=raw_content):
+                    with tempfile.TemporaryDirectory() as data_directory:
+                        with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                            initialize_database()
+
+                            with self.assertRaises(ExportServiceError) as context:
+                                build_cv_json_import_result(raw_content)
+
+                            self.assertIn("no es JSON valido", str(context.exception))
+                            self.assertEqual(cv_repository.list_cvs(), [])
+
+    def test_schema2_import_rejects_non_finite_number_inside_unknown_extension(self):
+        raw_content = (
+            '{"schema_version": 2, "cv": {"title": "CV Con Extension", "structured_payload": '
+            '{"schema_version": 2, "personal": {"full_name": "Ana"}, "custom_extension": {"score": NaN}}}}'
+        ).encode("utf-8")
+
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+
+                with self.assertRaises(ExportServiceError) as context:
+                    build_cv_json_import_result(raw_content)
+
+                self.assertIn("no es JSON valido", str(context.exception))
+                self.assertEqual(cv_repository.list_cvs(), [])
+
+    def test_schema1_import_rejects_non_finite_number_inside_unknown_extension(self):
+        raw_content = b'{"cv": {"title": "CV Plano", "full_name": "Ana"}, "custom_extension": {"score": Infinity}}'
+
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+
+                with self.assertRaises(ExportServiceError) as context:
+                    build_cv_json_import_result(raw_content)
+
+                self.assertIn("no es JSON valido", str(context.exception))
+                self.assertEqual(cv_repository.list_cvs(), [])
+
+    def test_valid_extension_values_still_round_trip(self):
+        payload = _build_full_payload()
+        payload["unknown_section"] = {"keep": True, "score": 4.5, "ratio": -0.25}
+
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = cv_repository.create_structured_cv(
+                    title="CV Con Extension",
+                    payload=payload,
+                    metadata_source="structured_test",
+                )
+
+                exported = export_cv_json(cv_repository.get_cv(cv_id))
+                result = build_cv_json_import_result(exported.path.read_bytes())
+
+                self.assertEqual(result.structured_payload["unknown_section"], {"keep": True, "score": 4.5, "ratio": -0.25})
+
+
 class StructuredPayloadSizeLimitTest(unittest.TestCase):
     """El limite de bytes del payload se convierte en error de dominio controlado."""
 
@@ -738,6 +888,28 @@ def _build_payload_with_exact_serialized_size(target_bytes: int) -> dict:
 
     raise AssertionError("No se pudo ajustar el tamano del payload estructurado")
 
+
+
+def _build_payload_with_unknown_extensions_at_limit(target_bytes: int) -> dict:
+    """Payload v2 valido con extensiones desconocidas ajustado al tamano exacto."""
+    payload = _build_full_payload()
+    payload["experience"][0]["custom_note"] = "dato interno"
+    payload["unknown_section"] = {"keep": True, "extra": ["a", "b"]}
+    payload["metadata"] = {
+        "source": _LIMIT_METADATA_SOURCE,
+        "synced_from_legacy_at": _LIMIT_METADATA_TIMESTAMP,
+    }
+
+    pad = 0
+    for _ in range(5):
+        candidate = dict(payload)
+        candidate["_pad"] = "x" * pad
+        current = len(serialize_structured_payload(candidate).encode("utf-8"))
+        if current == target_bytes:
+            return candidate
+        pad += target_bytes - current
+
+    raise AssertionError("No se pudo ajustar el tamano del payload estructurado")
 
 def _build_payload_one_byte_over_limit() -> dict:
     """Payload valido que excede el limite por exactamente un byte."""

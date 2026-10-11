@@ -8,7 +8,9 @@ from unittest.mock import patch
 from app.models import CV, CoverLetter
 from app.services.export_service import (
     ExportServiceError,
+    JSON_IMPORT_ENVELOPE_HEADROOM_BYTES,
     MAX_JSON_IMPORT_BYTES,
+    MAX_STRUCTURED_PAYLOAD_BYTES,
     SAFE_EXPORT_FILENAME_MAX_LENGTH,
     build_cv_form_data_from_json,
     export_cv_json,
@@ -168,6 +170,46 @@ def _build_long_cover_letter() -> CoverLetter:
         updated_at="2026-06-04 00:00:00",
         deleted_at=None,
     )
+
+
+class NonFiniteJsonImportTest(unittest.TestCase):
+    """NaN / Infinity / -Infinity no son JSON valido y rompen el editor cliente."""
+
+    def test_import_limit_is_payload_limit_plus_documented_envelope_headroom(self):
+        self.assertGreater(MAX_JSON_IMPORT_BYTES, MAX_STRUCTURED_PAYLOAD_BYTES)
+        self.assertEqual(
+            MAX_JSON_IMPORT_BYTES - MAX_STRUCTURED_PAYLOAD_BYTES,
+            JSON_IMPORT_ENVELOPE_HEADROOM_BYTES,
+        )
+        self.assertEqual(JSON_IMPORT_ENVELOPE_HEADROOM_BYTES, 8 * 1024)
+
+    def test_schema1_import_rejects_non_finite_numbers_at_top_level_and_inside_fields(self):
+        templates = (
+            '{"cv": {"title": "CV Roto", "full_name": "Ana"}, "extra": %s}',
+            '{"cv": {"title": "CV Roto", "full_name": "Ana", "rating": %s}}',
+        )
+        for token in ("NaN", "Infinity", "-Infinity"):
+            for template in templates:
+                raw_content = (template % token).encode("utf-8")
+                with self.subTest(token=token, raw_content=raw_content):
+                    with self.assertRaises(ExportServiceError) as context:
+                        build_cv_form_data_from_json(raw_content)
+
+                    self.assertIn("no es JSON valido", str(context.exception))
+
+    def test_schema1_import_still_round_trips_valid_extension_fields(self):
+        raw_content = b'{"cv": {"title": "CV Valido", "full_name": "Ana", "skills": "Python", "rating": 4.5}}'
+
+        form_data = build_cv_form_data_from_json(raw_content)
+
+        self.assertEqual(form_data.title, "CV Valido (importado)")
+        self.assertEqual(form_data.full_name, "Ana")
+
+    def test_oversized_import_is_still_rejected_with_controlled_spanish_error(self):
+        with self.assertRaises(ExportServiceError) as context:
+            build_cv_form_data_from_json(b"x" * (MAX_JSON_IMPORT_BYTES + 1))
+
+        self.assertIn("supera el maximo permitido", str(context.exception))
 
 
 if __name__ == "__main__":

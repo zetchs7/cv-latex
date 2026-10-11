@@ -118,8 +118,15 @@ def update_cv(cv_id: int, form_data: CVFormData) -> bool:
     """Actualiza un CV desde el formulario plano.
 
     Solo filas legacy son escribibles por esta via. Para una fila estructurada
-    lanza `StructuredCVLegacyUpdateError` antes de abrir la conexion, de modo
-    que nunca hay escritura parcial ni downgrade silencioso a legacy.
+    lanza `StructuredCVLegacyUpdateError` y nunca hay escritura parcial ni
+    downgrade silencioso a legacy.
+
+    La pre-verificacion en Python es la via rapida y clara de rechazo, pero no
+    alcanza: entre esa lectura y el UPDATE otro escritor puede convertir la fila
+    a estructurada. Por eso la precondicion legacy viaja ademas dentro del
+    WHERE del propio UPDATE, que es atomico. Si el UPDATE no afecta filas, la
+    misma transaccion distingue fila ausente o borrada (`False`) de conflicto
+    de estado (error de dominio) y lanza sin commitear.
     """
     current_cv = get_cv(cv_id)
     if current_cv is None:
@@ -146,13 +153,45 @@ def update_cv(cv_id: int, form_data: CVFormData) -> bool:
                 structured_payload = :structured_payload,
                 structured_payload_status = :structured_payload_status,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = :id AND deleted_at IS NULL
+            WHERE id = :id
+                AND deleted_at IS NULL
+                AND (
+                    structured_schema_version IS NULL
+                    OR structured_schema_version < 2
+                    OR structured_payload IS NULL
+                )
             """,
             values,
         )
+
+        if cursor.rowcount == 0:
+            return _resolve_zero_row_legacy_update(connection, cv_id)
+
         connection.commit()
 
-    return cursor.rowcount > 0
+    return True
+
+
+def _resolve_zero_row_legacy_update(connection, cv_id: int) -> bool:
+    """Resuelve un UPDATE legacy que no actualizo ninguna fila.
+
+    O la fila no existe o esta borrada logicamente (semantica `False` de
+    siempre), o otro escritor la convertio a estructurada entre la
+    pre-verificacion y el UPDATE (conflicto de estado). No se commitea en
+    ningun caso y el error de dominio sale del bloque `with`, asi que la
+    conexion descarta cualquier escritura pendiente.
+    """
+    row = connection.execute(
+        "SELECT id FROM cvs WHERE id = ? AND deleted_at IS NULL",
+        (cv_id,),
+    ).fetchone()
+
+    if row is None:
+        return False
+
+    raise StructuredCVLegacyUpdateError(
+        "El CV tiene datos estructurados validos y no se puede actualizar desde el formulario plano."
+    )
 
 
 def _build_structured_columns_for_legacy_update(current_cv: CV) -> dict[str, object]:

@@ -21,6 +21,11 @@ STRUCTURED_PAYLOAD_STATUS_STALE = "stale"
 MAX_STRUCTURED_PAYLOAD_BYTES = 512 * 1024
 MAX_METADATA_SOURCE_LENGTH = 60
 
+NON_FINITE_JSON_CONSTANT_ERROR = (
+    "El contenido estructurado contiene el valor numerico no estandar "
+    "'{constant}', que no es JSON valido."
+)
+
 
 @dataclass(frozen=True)
 class StructuredCVState:
@@ -291,6 +296,19 @@ def build_invalid_structured_columns(raw_payload: str | None = None) -> dict[str
     }
 
 
+def reject_non_finite_json_constant(constant: str) -> float:
+    """Rechaza las constantes JSON no estandar `NaN`, `Infinity` y `-Infinity`.
+
+    `json.loads` las acepta por defecto aunque JSON no las define. Si
+    sobreviven a una importacion, el validador las preserva como claves
+    desconocidas, se persisten, el export las reemite y el `JSON.parse`
+    del navegador rechaza el bootstrap del editor, dejando el modulo
+    inutilizable. Este helper se pasa como `parse_constant` en cada
+    punto de entrada JSON no confiable.
+    """
+    raise ValueError(NON_FINITE_JSON_CONSTANT_ERROR.format(constant=constant))
+
+
 def serialize_structured_payload(payload: dict[str, object]) -> str:
     """Serializa y valida un payload v2 para persistencia.
 
@@ -304,12 +322,19 @@ def serialize_structured_payload(payload: dict[str, object]) -> str:
         joined_errors = "; ".join(validation.errors)
         raise ValueError(f"Payload estructurado invalido: {joined_errors}")
 
-    serialized_payload = json.dumps(
-        validation.normalized_payload,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    )
+    try:
+        serialized_payload = json.dumps(
+            validation.normalized_payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+    except ValueError as error:
+        raise StructuredCVWriteError(
+            NON_FINITE_JSON_CONSTANT_ERROR.format(constant="NaN, Infinity o -Infinity"),
+            ("structured_payload_non_finite_number",),
+        ) from error
     if len(serialized_payload.encode("utf-8")) > MAX_STRUCTURED_PAYLOAD_BYTES:
         raise StructuredCVWriteError(
             f"El contenido estructurado supera el maximo de {MAX_STRUCTURED_PAYLOAD_BYTES // 1024} KB.",

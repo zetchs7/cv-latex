@@ -10,13 +10,27 @@ from app.models import CV, CoverLetter
 from app.schemas import CVFormData
 from app.services.file_naming import SAFE_EXPORT_FILENAME_MAX_LENGTH, build_capped_filename, sanitize_filename_component
 from app.services.latex_service import GeneratedLatexDocument, generate_cv_tex_document
-from app.services.structured_cv_service import NormalizedCV, resolve_normalized_cv
+from app.services.structured_cv_service import (
+    MAX_STRUCTURED_PAYLOAD_BYTES,
+    NormalizedCV,
+    reject_non_finite_json_constant,
+    resolve_normalized_cv,
+)
 from app.validations.cv_validations import FIELD_LIMITS, build_cv_form_data, validate_cv_form
 from app.validations.structured_cv_validations import validate_structured_payload_v2
 
 
 EXPORTS_DIRECTORY_NAME = "exports"
-MAX_JSON_IMPORT_BYTES = 512 * 1024
+
+# Limite de importacion derivado del limite de persistencia del payload
+# estructurado mas un margen acotado para el sobre de exportacion
+# (`schema_version`, `exported_at`, `source_cv_id`, `cv.title` y las
+# claves JSON del sobre). El export schema 2 se emite con separadores
+# compactos, asi que su tamano queda pegado al del payload persistido y
+# este margen alcanza con holgura para cualquier sobre emitido por la app.
+# El margen es fijo y documentado: no escala con el payload.
+JSON_IMPORT_ENVELOPE_HEADROOM_BYTES = 8 * 1024
+MAX_JSON_IMPORT_BYTES = MAX_STRUCTURED_PAYLOAD_BYTES + JSON_IMPORT_ENVELOPE_HEADROOM_BYTES
 JSON_IMPORT_CHUNK_BYTES = 64 * 1024
 JSON_EXPORT_SCHEMA_VERSION = 1
 STRUCTURED_JSON_EXPORT_SCHEMA_VERSION = 2
@@ -113,10 +127,33 @@ def export_cover_letter_generated_tex_document(
 
 def export_cv_json(cv: CV, *, schema_version: int | None = None) -> ExportedFile:
     payload = build_cv_json_payload(cv, schema_version=schema_version)
-    variant = "cv" if payload["schema_version"] == JSON_EXPORT_SCHEMA_VERSION else "cv-schema2"
+    is_legacy_export = payload["schema_version"] == JSON_EXPORT_SCHEMA_VERSION
+    variant = "cv" if is_legacy_export else "cv-schema2"
     filename = _build_entity_export_filename(cv.id, cv.title, variant, "json", entity_prefix="cv")
-    content = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+    content = _dump_export_json(payload, is_legacy_export=is_legacy_export).encode("utf-8")
     return _write_export_file(filename, content, "application/json")
+
+
+def _dump_export_json(payload: dict[str, object], *, is_legacy_export: bool) -> str:
+    """Serializa el sobre de exportacion JSON.
+
+    Schema 1 conserva el formato indentado de siempre: su contenido esta
+    acotado por `FIELD_LIMITS` y nunca se acerca al limite de importacion.
+
+    Schema 2 se emite compacto a proposito. El limite de importacion se
+    deriva del limite de persistencia del payload mas un sobre fijo, asi que
+    un export schema 2 legible con saltos de linea y sangrias puede exceder
+    ese limite y producir un respaldo que la propia app no puede reimportar.
+    Los separadores compactos mantienen el archivo emitido pegado al
+    tamano del payload persistido.
+    """
+    # `allow_nan=False` evita emitir NaN/Infinity si un valor no finito
+    # llegara alguna vez a la exportacion: preferimos un error de dominio
+    # controlado a un archivo que la app no puede reimportar.
+    if is_legacy_export:
+        return json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False)
+
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
 
 
 def build_cv_json_payload(cv: CV, *, schema_version: int | None = None) -> dict[str, object]:
@@ -227,11 +264,16 @@ def _parse_json_import_payload(raw_content: bytes) -> dict[str, object]:
         raise ExportServiceError("El archivo JSON supera el maximo permitido.")
 
     try:
-        payload = json.loads(raw_content.decode("utf-8"))
+        payload = json.loads(
+            raw_content.decode("utf-8"),
+            parse_constant=reject_non_finite_json_constant,
+        )
     except UnicodeDecodeError as error:
         raise ExportServiceError("El archivo JSON debe estar codificado en UTF-8.") from error
     except json.JSONDecodeError as error:
         raise ExportServiceError("El archivo JSON no tiene un formato valido.") from error
+    except ValueError as error:
+        raise ExportServiceError(str(error)) from error
 
     if not isinstance(payload, dict):
         raise ExportServiceError("El JSON debe contener un objeto principal.")

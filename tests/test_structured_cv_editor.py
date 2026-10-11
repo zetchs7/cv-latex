@@ -15,6 +15,9 @@ from app.services.structured_cv_service import (
     resolve_normalized_cv,
     serialize_structured_payload,
 )
+from app.services.structured_cv_editor_service import (
+    parse_structured_editor_submission,
+)
 
 
 BOOTSTRAP_MARKER = '<script id="structured-editor-bootstrap" type="application/json">'
@@ -521,6 +524,50 @@ class StructuredEditorRoutesTest(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertIn("se convierte en estructurado", response.text)
                 self.assertIn("limites", response.text)
+
+
+class NonFiniteStructuredSubmissionTest(unittest.TestCase):
+    """El editor nunca debe aceptar ni reemitir JSON no estandar."""
+
+    def test_submission_with_non_finite_numbers_is_rejected_with_a_controlled_error(self):
+        for token in ("NaN", "Infinity", "-Infinity"):
+            templates = (
+                '{"schema_version": 2, "personal": {"full_name": "Ana"}, "custom_extension": {"score": %s}}',
+                '{"schema_version": 2, "personal": {"full_name": "Ana"}, "score": %s}',
+            )
+            for template in templates:
+                raw_payload = template % token
+                with self.subTest(token=token, raw_payload=raw_payload):
+                    payload, errors = parse_structured_editor_submission(raw_payload)
+
+                    self.assertIsNone(payload)
+                    self.assertEqual(len(errors), 1)
+                    self.assertIn("no es un JSON valido", errors[0])
+
+    def test_valid_extension_values_are_still_accepted(self):
+        raw_payload = '{"schema_version": 2, "personal": {"full_name": "Ana"}, "custom_extension": {"score": 4.5}}'
+
+        payload, errors = parse_structured_editor_submission(raw_payload)
+
+        self.assertEqual(errors, [])
+        self.assertEqual(payload["custom_extension"], {"score": 4.5})
+
+    def test_route_rejects_non_finite_submission_without_partial_writes(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                raw_payload = '{"schema_version": 2, "personal": {"full_name": "Ana"}, "custom_extension": {"score": NaN}}'
+
+                with TestClient(app) as client:
+                    response = client.post(
+                        "/cvs/new/structured",
+                        data={"title": "CV No Finito", "structured_payload": raw_payload},
+                        follow_redirects=False,
+                    )
+
+                self.assertIn(response.status_code, (200, 303, 422))
+                self.assertIn("no es un JSON valido", response.text)
+                self.assertEqual(cv_repository.list_cvs(), [])
 
 
 class LegacyEditOnStructuredCVTest(unittest.TestCase):
