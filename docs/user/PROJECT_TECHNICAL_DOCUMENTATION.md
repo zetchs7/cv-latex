@@ -55,6 +55,13 @@ CV LaTeX Builder es una aplicacion web local para gestionar CVs, cartas de prese
 - Score simple, advertencias y recomendaciones.
 - Penalizacion de secciones criticas faltantes.
 
+### Editor estructurado de CV (Feature 1 sin publicar)
+
+- Editor por secciones con items: datos personales y contacto, titulo profesional, resumen, experiencia, educacion, skills, certificaciones, idiomas, proyectos, links e informacion adicional.
+- Alta, edicion, eliminacion y reordenamiento de items con botones `Agregar`, `Quitar`, `Subir` y `Bajar`.
+- Validacion estricta en servidor; envios fallidos (422) conservan lo ingresado.
+- Estado: implementado en `feature/structured-cv-complete`; todavia sin release (ver Feature 1 sin publicar mas abajo).
+
 ### UI privada y dashboard operativo
 
 - Sidebar fija para navegar entre Dashboard, CVs, Cartas, Postulaciones, ATS y Documentacion.
@@ -100,6 +107,32 @@ El tracker de postulaciones mantiene una asociacion opcional a CV y cover letter
 
 El servicio ATS analiza presencia de email, telefono, resumen, experiencia, educacion y skills, ademas de una longitud aproximada del CV. Ningun CV con secciones core faltantes puede quedar en estado `Bueno`.
 
+## Feature 1 sin publicar: editor estructurado, JSON schema 2 y render normalizado
+
+El editor estructurado y el schema JSON 2 estan implementados en la rama `feature/structured-cv-complete` y todavia no tienen release: no forman parte de `v0.9.0` ni de ningun tag publicado.
+
+### Editor estructurado por secciones
+
+- Secciones soportadas: datos personales y contacto, titulo profesional, resumen, experiencia, educacion, skills, certificaciones, idiomas, proyectos, links e informacion adicional.
+- Items con alta, quitar y reordenamiento simple `Subir`/`Bajar` con renumeracion densa automatica; sin drag and drop.
+- La validacion es 100% en servidor: envios invalidos, incompletos o fuera de limites se rechazan con errores accionables en espanol y sin escrituras parciales.
+- Un envio fallido (HTTP 422) re-renderiza el formulario conservando los datos ingresados.
+- Texto dinamico sin `innerHTML` (LL-001): bootstrap JSON con `tojson` e insercion DOM por `textContent`/`value`; metadata interna mostrada de solo lectura y re-estampada por el servidor al guardar.
+- Si el CV no es estructurado valido (legacy, invalido, stale o version futura), el editor arranca desde los campos legacy con advertencia explicita; la conversion a estructurado ocurre solo al guardar.
+- Rutas aditivas: `GET/POST /cvs/new/structured` y `GET/POST /cvs/{cv_id}/structured-edit`; boton `Crear CV estructurado` en el listado de CVs y `Editar estructurado` en el detalle. Los flujos plano y legacy siguen intactos.
+
+### Export/import JSON schema 2 con compatibilidad schema 1
+
+- Un CV estructurado valido exporta un envelope schema 2 lossless con `schema_version`, `exported_at`, `source_cv_id` y `cv` con `title` y `structured_payload` completo; el filename usa la variante `cv-schema2`.
+- CVs legacy, con payload invalido, stale o de version futura exportan schema 1 plano desde el snapshot legacy; nunca se mezclan payload y campos planos.
+- El enlace `Descargar JSON plano (schema 1)` fuerza el export plano con query `schema_version=1`; el export schema `2` sobre un CV no estructurado se rechaza (400) y otros valores se rechazan sin downcast.
+- El panel de importacion acepta JSON schema 1 (plano) y schema 2 (estructurado) con limite de `512 KB`: schema 2 crea un CV nuevo estructurado y schema 1 mantiene el flujo legacy; la importacion nunca sobrescribe el CV de origen.
+
+### TEX/PDF y ATS sobre representacion normalizada
+
+- Las 4 plantillas (`Classic`, `Modern`, `Compact`, `Tech`) consumen una representacion normalizada unica: un CV estructurado valido usa el payload completo (incluye secciones solo-estructuradas) y cualquier otro caso usa el camino flat legacy, con TEX legacy byte-identico.
+- El chequeo ATS mantiene los mismos criterios, pesos, topes y umbrales: el texto normalizado incluye el contenido solo-estructurado y excluye la metadata interna; no hay criterios nuevos ni IA.
+
 ## Git Flow usado
 
 1. `main` como rama estable.
@@ -135,6 +168,7 @@ El servicio ATS analiza presencia de email, telefono, resumen, experiencia, educ
 - `docker compose exec app python -m pytest`
 - Validaciones HTTP y visuales sobre dashboard, modulos y exports
 - Verificacion de extraccion PDF con `pdftotext`
+- Validaciones de Feature 1: ver `docs/development/MVP_VALIDATION.md` (seccion T6)
 
 ## Estado release v0.9.0
 
@@ -151,6 +185,7 @@ El servicio ATS analiza presencia de email, telefono, resumen, experiencia, educ
 - Modal ATS compacto disponible.
 - Fix XSS de confirmacion aplicado.
 - Documentacion interna alineada al release.
+- El editor estructurado, el export JSON schema 2 y el render normalizado (Feature 1) no forman parte de este release: quedan sin tag en `feature/structured-cv-complete`.
 
 ## Riesgos conocidos
 
@@ -165,14 +200,13 @@ El servicio ATS analiza presencia de email, telefono, resumen, experiencia, educ
 - Login/auth si el alcance deja de ser local.
 - Migraciones o mayor integridad relacional si la persistencia crece.
 - Mejoras de export ATS y coverage end-to-end.
-- Editor estructurado.
 - Drag and drop.
 - IA asistida.
 - Miniaturas reales de PDF.
 - Paletas visuales.
 
 > [!PENDIENTE] Fuera del alcance actual
-> Editor estructurado, drag and drop, IA, miniaturas reales y paletas funcionales siguen como backlog. No forman parte de `v0.9.0`.
+> Drag and drop, IA, miniaturas reales y paletas funcionales siguen como backlog. El editor estructurado queda implementado sin publicar (ver Feature 1 sin publicar). Ninguno de estos items forma parte de `v0.9.0`.
 
 ## Historial y rollback
 

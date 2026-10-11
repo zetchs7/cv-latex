@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
 from app.models import CV
+from app.services.structured_cv_rendering import build_structured_ats_text
+from app.services.structured_cv_service import resolve_normalized_cv
 
 
 MIN_RECOMMENDED_CV_LENGTH = 280
@@ -41,15 +43,34 @@ class AtsAnalysisResult:
 
 
 def analyze_cv_ats(cv: CV) -> AtsAnalysisResult:
-    normalized_sections = {
-        "email": _normalize_text(cv.email),
-        "phone": _normalize_text(cv.phone),
-        "professional_summary": _normalize_text(cv.professional_summary),
-        "experience_summary": _normalize_text(cv.experience_summary),
-        "education_summary": _normalize_text(cv.education_summary),
-        "skills": _normalize_text(cv.skills),
-    }
-    total_characters = _estimate_cv_length(cv)
+    normalized = resolve_normalized_cv(cv)
+    if normalized.is_structured:
+        # Fuente canonica: el snapshot legacy derivado del payload valido.
+        # Los 7 criterios, pesos, topes y umbrales quedan intactos.
+        snapshot = normalized.legacy_snapshot
+        scoring_fields = {
+            "email": snapshot.email,
+            "phone": snapshot.phone,
+            "professional_summary": snapshot.professional_summary,
+            "experience_summary": snapshot.experience_summary,
+            "education_summary": snapshot.education_summary,
+            "skills": snapshot.skills,
+        }
+        # La extraccion de texto normalizada debe incluir el contenido
+        # solo-estructurado soportado, sin la metadata interna.
+        total_characters = len(_normalize_text(build_structured_ats_text(normalized)))
+    else:
+        scoring_fields = {
+            "email": cv.email,
+            "phone": cv.phone,
+            "professional_summary": cv.professional_summary,
+            "experience_summary": cv.experience_summary,
+            "education_summary": cv.education_summary,
+            "skills": cv.skills,
+        }
+        total_characters = _estimate_cv_length(cv)
+
+    normalized_sections = {key: _normalize_text(value) for key, value in scoring_fields.items()}
     has_experience = bool(normalized_sections["experience_summary"])
     has_education = bool(normalized_sections["education_summary"])
     critical_missing_sections = [

@@ -5,6 +5,8 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from app.models import CV, CoverLetter
 from app.services.file_naming import SAFE_EXPORT_FILENAME_MAX_LENGTH, build_capped_filename, sanitize_filename_component
+from app.services.structured_cv_rendering import build_structured_cv_latex_context
+from app.services.structured_cv_service import resolve_normalized_cv
 from app.validations.latex_sanitizer import sanitize_latex_text, split_sanitized_items
 
 
@@ -59,7 +61,11 @@ def generate_cv_tex_document(
     template = _get_template(template_key)
     environment = _build_environment(CV_TEMPLATE_DIRECTORY)
     renderer = environment.get_template(template.filename)
-    context = _build_cv_context(cv)
+    normalized = resolve_normalized_cv(cv)
+    if normalized.is_structured:
+        context = build_structured_cv_latex_context(normalized)
+    else:
+        context = _build_cv_context(cv)
 
     content = renderer.render(**context).strip() + "\n"
 
@@ -138,13 +144,14 @@ def _build_cv_context(cv: CV) -> dict[str, object]:
 
     skills = split_sanitized_items(cv.skills)
     if skills:
-        sections.append({"title": "Skills", "item_list": skills, "body": ""})
+        sections.append({"title": "Skills", "item_list": skills, "body": "", "entries": [], "keep_with_next": False})
 
     return {
         "full_name": sanitize_latex_text(cv.full_name),
         "title": sanitize_latex_text(cv.title),
         "personal_details": personal_details,
         "sections": [section for section in sections if section is not None],
+        "use_needspace": False,
     }
 
 
@@ -171,6 +178,8 @@ def _build_section(title: str, body: str) -> dict[str, object] | None:
         "title": sanitize_latex_text(title),
         "body": sanitized_body,
         "item_list": [],
+        "entries": [],
+        "keep_with_next": False,
     }
 
 

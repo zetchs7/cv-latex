@@ -63,6 +63,29 @@ class LatexServiceTest(unittest.TestCase):
                 self.assertIn(r"\documentclass", generated_document.content)
                 self.assertIn("Juan Perez", generated_document.content)
 
+    def test_legacy_cv_tex_never_contains_break_macros(self):
+        cv = CV(
+            id=15,
+            title="CV Legacy Largo",
+            full_name="Juan Perez",
+            email="juan@example.com",
+            phone="+54 11 1234 5678",
+            professional_summary="Perfil con un token larguisimo " + "A" * 240,
+            experience_summary="Experiencia",
+            education_summary="Educacion",
+            skills="Python",
+            created_at="2026-06-03 00:00:00",
+            updated_at="2026-06-03 00:00:00",
+            deleted_at=None,
+        )
+
+        for template_key in ["classic", "modern", "compact", "tech"]:
+            with self.subTest(template_key=template_key):
+                generated_document = generate_cv_tex_document(cv, template_key)
+
+                self.assertIn("A" * 240, generated_document.content)
+                self.assertNotIn(r"\allowbreak", generated_document.content)
+
     def test_templates_include_pdf_text_extraction_mapping(self):
         cv = CV(
             id=12,
@@ -86,6 +109,80 @@ class LatexServiceTest(unittest.TestCase):
                 self.assertIn(r"\pdfgentounicode=1", generated_document.content)
                 self.assertIn(r"\usepackage{cmap}", generated_document.content)
                 self.assertIn(r"\usepackage{lmodern}", generated_document.content)
+
+    def test_generates_tex_from_structured_cv_canonical_sections(self):
+        from app.services.structured_cv_service import serialize_structured_payload
+
+        payload = {
+            "schema_version": 2,
+            "personal": {"full_name": "Ana Perez", "headline": "Tech Lead de Plataformas", "location": ""},
+            "contact": {"email": "ana@example.com", "phone": "+54 11 1234 5678", "links": []},
+            "summary": "Perfil estructurado.",
+            "certifications": [
+                {"name": "Certificacion AWS", "issuer": "Amazon Web Services", "date": "2024", "order": 1},
+            ],
+        }
+        cv = CV(
+            id=13,
+            title="CV Estructurado",
+            full_name="SNAPSHOT-LEGACY-OBSOLETO",
+            email="stale@example.com",
+            phone="",
+            professional_summary="SNAPSHOT-LEGACY-OBSOLETO",
+            experience_summary="",
+            education_summary="",
+            skills="",
+            created_at="2026-06-03 00:00:00",
+            updated_at="2026-06-03 00:00:00",
+            deleted_at=None,
+            structured_schema_version=2,
+            structured_payload=serialize_structured_payload(payload),
+            structured_payload_status="valid",
+        )
+
+        generated_document = generate_cv_tex_document(cv, "classic")
+
+        self.assertIn("Ana Perez", generated_document.content)
+        self.assertIn("Tech Lead de Plataformas", generated_document.content)
+        self.assertIn("Certificacion AWS", generated_document.content)
+        self.assertNotIn("SNAPSHOT-LEGACY-OBSOLETO", generated_document.content)
+        self.assertNotIn("stale@example.com", generated_document.content)
+        self.assertNotIn("[[", generated_document.content)
+        self.assertNotIn("Experiencia laboral", generated_document.content)
+
+    def test_generates_tex_from_structured_cv_with_empty_sections(self):
+        from app.services.structured_cv_service import serialize_structured_payload
+
+        payload = {
+            "schema_version": 2,
+            "personal": {"full_name": "Ana Perez", "headline": "", "location": ""},
+            "contact": {"email": "", "phone": "", "links": []},
+            "summary": "",
+        }
+        cv = CV(
+            id=14,
+            title="CV Vacio Estructurado",
+            full_name="SNAPSHOT-LEGACY-OBSOLETO",
+            email="",
+            phone="",
+            professional_summary="",
+            experience_summary="",
+            education_summary="",
+            skills="",
+            created_at="2026-06-03 00:00:00",
+            updated_at="2026-06-03 00:00:00",
+            deleted_at=None,
+            structured_schema_version=2,
+            structured_payload=serialize_structured_payload(payload),
+            structured_payload_status="valid",
+        )
+
+        generated_document = generate_cv_tex_document(cv, "classic")
+
+        self.assertIn("Ana Perez", generated_document.content)
+        self.assertNotIn("Perfil profesional", generated_document.content)
+        self.assertNotIn("Certificaciones", generated_document.content)
+        self.assertNotIn("[[", generated_document.content)
 
     def test_generates_cover_letter_tex_document(self):
         cover_letter = CoverLetter(

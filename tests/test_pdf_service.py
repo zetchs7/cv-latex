@@ -46,6 +46,78 @@ class PdfServiceTest(unittest.TestCase):
         )
         self.assertIn("Undefined control sequence", context.exception.technical_detail)
 
+    def test_generates_pdf_export_for_structured_cv_all_templates(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                with patch("app.services.pdf_service.subprocess.run", side_effect=_successful_pdflatex):
+                    for template_key in ("classic", "modern", "compact", "tech"):
+                        with self.subTest(template_key=template_key):
+                            result = generate_cv_pdf_export(_build_structured_cv(), template_key)
+
+                            self.assertTrue(result.exported_pdf.path.exists())
+                            self.assertEqual(result.exported_pdf.media_type, "application/pdf")
+                            self.assertTrue(result.exported_tex.path.exists())
+                            exported_tex_content = result.exported_tex.path.read_text(encoding="utf-8")
+                            self.assertIn("Tech Lead de Plataformas", exported_tex_content)
+                            self.assertIn("Certificacion AWS Solutions Architect", exported_tex_content)
+                            self.assertIn("Observabilidad Abierta", exported_tex_content)
+                            self.assertNotIn("SNAPSHOT-OBSOLETO", exported_tex_content)
+                            self.assertNotIn("[[", exported_tex_content)
+
+    def test_structured_pdf_export_tex_carries_break_opportunities_for_long_tokens(self):
+        from app.services.structured_cv_service import serialize_structured_payload
+
+        payload = {
+            "schema_version": 2,
+            "personal": {"full_name": "Ana Perez", "headline": "Tech Lead", "location": ""},
+            "contact": {"email": "ana@example.com", "phone": "", "links": []},
+            "summary": "",
+            "experience": [
+                {
+                    "company": "Globex",
+                    "role": "Lider",
+                    "location": "",
+                    "start_date": "2022",
+                    "end_date": "",
+                    "current": True,
+                    "summary": "",
+                    "highlights": ["A" * 240],
+                    "technologies": [],
+                    "order": 1,
+                }
+            ],
+            "links": [{"label": "GitHub", "url": "https://git.example.com/" + "r" * 276, "order": 1}],
+        }
+        cv = CV(
+            id=42,
+            title="CV Estructurado Largo",
+            full_name="SNAPSHOT-OBSOLETO",
+            email="stale@example.com",
+            phone="",
+            professional_summary="",
+            experience_summary="",
+            education_summary="",
+            skills="",
+            created_at="2026-06-04 00:00:00",
+            updated_at="2026-06-04 00:00:00",
+            deleted_at=None,
+            structured_schema_version=2,
+            structured_payload=serialize_structured_payload(payload),
+            structured_payload_status="valid",
+        )
+
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                with patch("app.services.pdf_service.subprocess.run", side_effect=_successful_pdflatex):
+                    result = generate_cv_pdf_export(cv, "modern")
+
+                exported_tex_content = result.exported_tex.path.read_text(encoding="utf-8")
+
+        self.assertIn(r"\allowbreak \hspace{0pt plus 0.06em}", exported_tex_content)
+        self.assertIn("A" * 240, exported_tex_content.replace(r"\allowbreak \hspace{0pt plus 0.06em}", ""))
+        self.assertNotIn("A" * 240, exported_tex_content)
+        self.assertNotIn("SNAPSHOT-OBSOLETO", exported_tex_content)
+
     def test_generates_cover_letter_pdf_export(self):
         with tempfile.TemporaryDirectory() as data_directory:
             with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
@@ -68,6 +140,41 @@ class PdfServiceTest(unittest.TestCase):
                 self.assertLessEqual(len(result.exported_pdf.filename), SAFE_EXPORT_FILENAME_MAX_LENGTH)
                 self.assertLessEqual(len(result.exported_tex.filename), SAFE_EXPORT_FILENAME_MAX_LENGTH)
                 self.assertTrue(result.exported_pdf.filename.startswith("cover-letter-32-"))
+
+
+def _build_structured_cv():
+    from app.services.structured_cv_service import serialize_structured_payload
+
+    payload = {
+        "schema_version": 2,
+        "personal": {"full_name": "Ana Perez", "headline": "Tech Lead de Plataformas", "location": ""},
+        "contact": {"email": "ana@example.com", "phone": "+54 11 1234 5678", "links": []},
+        "summary": "Perfil estructurado con foco en plataformas y calidad.",
+        "skills": [{"label": "Python", "category": "Backend", "level": "Avanzado", "order": 1}],
+        "certifications": [
+            {"name": "Certificacion AWS Solutions Architect", "issuer": "Amazon Web Services", "date": "2024", "order": 1},
+        ],
+        "projects": [
+            {"name": "Observabilidad Abierta", "summary": "Paneles listos para produccion.", "link": "", "technologies": [], "order": 1},
+        ],
+    }
+    return CV(
+        id=41,
+        title="CV Estructurado",
+        full_name="SNAPSHOT-OBSOLETO",
+        email="stale@example.com",
+        phone="",
+        professional_summary="SNAPSHOT-OBSOLETO",
+        experience_summary="",
+        education_summary="",
+        skills="",
+        created_at="2026-06-04 00:00:00",
+        updated_at="2026-06-04 00:00:00",
+        deleted_at=None,
+        structured_schema_version=2,
+        structured_payload=serialize_structured_payload(payload),
+        structured_payload_status="valid",
+    )
 
 
 def _successful_pdflatex(command, cwd, **kwargs):

@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -8,7 +9,7 @@ from fastapi.testclient import TestClient
 from app.database import initialize_database
 from app.main import app
 from app.repositories.cover_letter_repository import create_cover_letter
-from app.repositories.cv_repository import create_cv
+from app.repositories.cv_repository import create_cv, create_structured_cv, get_cv
 from app.schemas import CVFormData, CoverLetterFormData
 
 
@@ -161,6 +162,65 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("<h1>Persona Edit</h1>", response.text)
                 self.assertIn("Editando CV - CV ATS Edit", response.text)
 
+    def test_cv_detail_primary_edit_targets_structured_editor_for_structured_cv(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_structured_cv(
+                    title="CV Con Datos Estructurados",
+                    payload=_build_structured_payload(),
+                    metadata_source="ui_test",
+                )
+
+                with TestClient(app) as client:
+                    response = client.get(f"/cvs/{cv_id}")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(
+                    '<a class="button primary" href="http://testserver/cvs/%d/structured-edit">Editar</a>'
+                    % cv_id,
+                    response.text,
+                )
+                self.assertNotIn(
+                    '<a class="button primary" href="http://testserver/cvs/%d/edit">' % cv_id,
+                    response.text,
+                )
+                self.assertNotIn(
+                    'href="http://testserver/cvs/%d/edit"' % cv_id,
+                    response.text,
+                )
+
+    def test_cv_detail_keeps_legacy_edit_actions_for_legacy_cv(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_cv(
+                    CVFormData(
+                        title="CV Legacy",
+                        full_name="Persona Legacy",
+                        email="legacy@example.com",
+                        phone="",
+                        professional_summary="Perfil",
+                        experience_summary="Experiencia",
+                        education_summary="Educacion",
+                        skills="Python",
+                    )
+                )
+
+                with TestClient(app) as client:
+                    response = client.get(f"/cvs/{cv_id}")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(
+                    '<a class="button primary" href="http://testserver/cvs/%d/edit">' % cv_id,
+                    response.text,
+                )
+                self.assertIn(
+                    '<a class="button" href="http://testserver/cvs/%d/structured-edit">Editar estructurado</a>'
+                    % cv_id,
+                    response.text,
+                )
+
     def test_cv_delete_requires_exact_title_match(self):
         with tempfile.TemporaryDirectory() as data_directory:
             with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
@@ -193,6 +253,19 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("no coincide exactamente", failed_response.text)
                 self.assertEqual(success_response.status_code, 303)
                 self.assertTrue(success_response.headers["location"].endswith("/cvs/?message=CV+eliminado+correctamente."))
+
+    def test_cv_import_panel_documents_supported_json_schemas(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+
+                with TestClient(app) as client:
+                    response = client.get("/cvs/")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("schema 1 (plano)", response.text)
+                self.assertIn("schema 2 (estructurado)", response.text)
+                self.assertIn("La importacion siempre crea un nuevo registro", response.text)
 
     def test_cover_letter_delete_requires_exact_display_name_match(self):
         with tempfile.TemporaryDirectory() as data_directory:
@@ -253,6 +326,166 @@ class UIRoutesTest(unittest.TestCase):
                 self.assertIn("entity-actions-end", response.text)
                 self.assertIn("entity-meta-stack", response.text)
                 self.assertRegex(response.text, r"Actualizada: \d{2}/\d{2}/\d{4} \d{2}:\d{2} hs")
+
+
+    def test_cv_list_action_menu_targets_structured_editor_for_structured_cv(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_structured_cv(
+                    title="CV Con Datos Estructurados",
+                    payload=_build_structured_payload(),
+                    metadata_source="ui_test",
+                )
+
+                with TestClient(app) as client:
+                    response = client.get("/cvs/")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(
+                    '<a class="text-link" href="http://testserver/cvs/%d/structured-edit" role="menuitem">Editar</a>'
+                    % cv_id,
+                    response.text,
+                )
+                self.assertNotIn(
+                    'href="http://testserver/cvs/%d/edit"' % cv_id,
+                    response.text,
+                )
+
+    def test_cv_list_action_menu_targets_legacy_editor_for_legacy_cv(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = _create_legacy_cv("CV Legacy Listado", "Persona Legacy Listado")
+
+                with TestClient(app) as client:
+                    response = client.get("/cvs/")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(
+                    '<a class="text-link" href="http://testserver/cvs/%d/edit" role="menuitem">Editar</a>'
+                    % cv_id,
+                    response.text,
+                )
+
+    def test_ats_views_target_structured_editor_for_structured_cv(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_structured_cv(
+                    title="CV ATS Estructurado",
+                    payload=_build_structured_payload(),
+                    metadata_source="ui_test",
+                )
+
+                with TestClient(app) as client:
+                    analysis_response = client.get(f"/ats/cvs/{cv_id}")
+                    modal_response = client.get(f"/ats/cvs/{cv_id}/modal")
+
+                self.assertEqual(analysis_response.status_code, 200)
+                self.assertEqual(modal_response.status_code, 200)
+                for response in (analysis_response, modal_response):
+                    self.assertIn(
+                        '<a class="button primary" href="http://testserver/cvs/%d/structured-edit">Editar CV</a>'
+                        % cv_id,
+                        response.text,
+                    )
+                    self.assertNotIn(
+                        'href="http://testserver/cvs/%d/edit"' % cv_id,
+                        response.text,
+                    )
+
+    def test_ats_views_target_legacy_editor_for_legacy_cv(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = _create_legacy_cv("CV ATS Legacy", "Persona ATS Legacy")
+
+                with TestClient(app) as client:
+                    analysis_response = client.get(f"/ats/cvs/{cv_id}")
+                    modal_response = client.get(f"/ats/cvs/{cv_id}/modal")
+
+                self.assertEqual(analysis_response.status_code, 200)
+                self.assertEqual(modal_response.status_code, 200)
+                for response in (analysis_response, modal_response):
+                    self.assertIn(
+                        '<a class="button primary" href="http://testserver/cvs/%d/edit">Editar CV</a>'
+                        % cv_id,
+                        response.text,
+                    )
+                    self.assertNotIn(
+                        'href="http://testserver/cvs/%d/structured-edit"' % cv_id,
+                        response.text,
+                    )
+
+    def test_legacy_edit_post_for_structured_cv_keeps_payload_and_sections(self):
+        with tempfile.TemporaryDirectory() as data_directory:
+            with patch.dict(os.environ, {"APP_DATA_DIR": data_directory}):
+                initialize_database()
+                cv_id = create_structured_cv(
+                    title="CV Con Datos Estructurados",
+                    payload=_build_structured_payload(),
+                    metadata_source="ui_test",
+                )
+                stored_before = get_cv(cv_id)
+
+                with TestClient(app) as client:
+                    response = client.post(
+                        f"/cvs/{cv_id}/edit",
+                        data={
+                            "title": "CV Pisado",
+                            "full_name": "Persona Pisada",
+                            "email": "pisado@example.com",
+                            "phone": "",
+                            "professional_summary": "Perfil pisado",
+                            "experience_summary": "Experiencia pisada",
+                            "education_summary": "Educacion pisada",
+                            "skills": "Rust",
+                        },
+                        follow_redirects=False,
+                    )
+
+                self.assertEqual(response.status_code, 303)
+                stored_after = get_cv(cv_id)
+                self.assertEqual(stored_after.title, "CV Con Datos Estructurados")
+                self.assertEqual(stored_after.structured_payload, stored_before.structured_payload)
+                self.assertEqual(
+                    json.loads(stored_after.structured_payload)["certifications"],
+                    [{"name": "AWS SA", "issuer": "Amazon", "date": "2024", "order": 1}],
+                )
+
+
+def _create_legacy_cv(title: str, full_name: str) -> int:
+    return create_cv(
+        CVFormData(
+            title=title,
+            full_name=full_name,
+            email="legacy@example.com",
+            phone="",
+            professional_summary="Perfil",
+            experience_summary="Experiencia",
+            education_summary="Educacion",
+            skills="Python",
+        )
+    )
+
+
+def _build_structured_payload() -> dict:
+    return {
+        "schema_version": 2,
+        "personal": {"full_name": "Persona UI", "headline": "Tech Lead", "location": "Cordoba"},
+        "contact": {"email": "ui@example.com", "phone": "", "links": []},
+        "summary": "Perfil estructurado",
+        "skills": [{"label": "Python", "category": "", "level": "", "order": 1}],
+        "experience": [],
+        "education": [],
+        "certifications": [{"name": "AWS SA", "issuer": "Amazon", "date": "2024", "order": 1}],
+        "languages": [{"name": "Espanol", "level": "Nativo", "order": 1}],
+        "projects": [{"name": "cv-latex", "summary": "App de CVs", "order": 1}],
+        "links": [{"label": "Web", "url": "https://example.com", "order": 1}],
+        "additional_info": [{"title": "Disponibilidad", "content": "Remoto", "order": 1}],
+        "metadata": {"source": "ui_test", "synced_from_legacy_at": ""},
+    }
 
 
 if __name__ == "__main__":

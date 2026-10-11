@@ -1,5 +1,39 @@
 # Changelog General
 
+## Unreleased - Etapa 9.x (rama `feature/structured-cv-complete`, sin publicar)
+
+Editor estructurado de CV. Implementado sobre `a28d1fd` y **no publicado**: sin version, release ni tag asignado.
+
+### Agregado
+
+- Editor estructurado por secciones: datos personales/contacto, titulo profesional, resumen, experiencia, educacion, skills, certificaciones, idiomas, proyectos, links e informacion adicional, mas metadata interna de solo lectura. Items agregables, eliminables y reordenables con botones `Subir`/`Bajar` con renumeracion automatica, sin drag and drop.
+- Rutas aditivas `GET`/`POST /cvs/new/structured` y `GET`/`POST /cvs/{cv_id}/structured-edit`. Las rutas legacy y sus flujos se preservan.
+- `app/validations/structured_cv_validations.py` con validacion estricta de payload schema v2, strings acotados y colecciones acotadas.
+- `app/services/structured_cv_editor_service.py` para bootstrap del editor y parseo del envio.
+- `app/services/structured_cv_rendering.py` con la representacion normalizada compartida por LaTeX/PDF y ATS.
+- Export JSON schema `2` para CVs estructurados, con sobre `schema_version`, `exported_at`, `source_cv_id` y `cv` con `title` y `structured_payload`, y variante de nombre de archivo `cv-schema2`.
+- El import JSON acepta schema `1` y `2` con el limite de `512 KB` y siempre crea un CV nuevo, nunca sobrescribe el origen.
+
+### Cambiado
+
+- `resolve_normalized_cv` devuelve la fuente estructurada completa o un fallback legacy completo; las fuentes nunca se mezclan. Solo se acepta `schema_version` 2 y las versiones desconocidas, futuras, nulas o no enteras se rechazan sin downcast.
+- El ATS pasa a leer la representacion normalizada manteniendo los mismos siete criterios, pesos, topes y umbrales, sin criterio nuevo.
+- Las cuatro plantillas `app/latex_templates/cv/*.tex` aceptan la representacion normalizada. El TEX de los CVs legacy queda sin cambios.
+- La validacion del editor es 100% servidor, con errores accionables en espanol y sin escrituras parciales: un envio fallido responde 422 y preserva exactamente lo que el usuario escribio.
+- Una forma de payload malformada que antes terminaba en excepcion no manejada con HTTP 500 al re-renderizar el formulario ahora devuelve un 422 controlado.
+
+### Corregido
+
+- El formulario plano legacy ya no puede modificar un CV estructurado. Antes, guardar un CV estructurado por la ruta legacy regeneraba el payload desde los campos planos y descartaba silenciosamente todas las secciones que solo existen en schema `2` (certificaciones, proyectos, idiomas, links, headline y ubicacion), mientras el CV seguia apareciendo como estructurado. Ahora se bloquea en tres capas: `StructuredCVLegacyUpdateError` en el repositorio antes de abrir la conexion, redirect con explicacion en espanol en las rutas y accion principal dirigida al editor estructurado en la UI.
+
+### No incluido
+
+- Version, release o tag: la funcionalidad sigue sin publicar.
+- Drag and drop en el editor.
+- Cambios en el scoring, los pesos o los criterios del ATS.
+- Cambios en el TEX de los CVs legacy.
+- IA, thumbnails reales o paletas funcionales.
+
 ## Unreleased - Etapa 8.3
 
 ### Agregado

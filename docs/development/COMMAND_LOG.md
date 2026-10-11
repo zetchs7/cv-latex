@@ -3999,3 +3999,1184 @@ Resultado:
 - `openConfirmModal` construye el dialogo con nodos DOM y asigna textos dinamicos con `textContent`.
 - Se agrego cobertura para evitar regresiones con `innerHTML` y titulos maliciosos en confirmaciones.
 - No se modifico UX aprobada, ATS, DB ni rutas de negocio.
+
+---
+
+timestamp exacto no reconstruido con certeza | Etapa 9.2/T2 | CMD-015
+Accion:
+Observar RED de los tests nuevos del contrato normalizado antes de implementar.
+Motivo:
+Politica test-first de T2: capturar el fallo esperado de los tests de limites/escritura estructurada todavia no implementada.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests/test_structured_cv_service.py tests/test_cv_repository.py tests/test_database_migrations.py tests/test_structured_cv_normalization.py`
+Argumentos:
+- Ruta read-only del repo, tmpfs en `/workspace/data`, imagen `cv-latex-app:latest` (`e32f6f86ba11`).
+Resultado:
+- 2 errores de coleccion: `ImportError` por `create_structured_cv` ausente en `cv_repository` y `StructuredCVWriteError` ausente en `structured_cv_service`.
+Error completo:
+- `ImportError: cannot import name 'create_structured_cv' from 'app.repositories.cv_repository'`.
+- `ImportError: cannot import name 'StructuredCVWriteError' from 'app.services.structured_cv_service'`.
+Reintento/correccion:
+- Se ejecuto la misma corrida limitada a `tests/test_structured_cv_service.py` para observar el RED conductual: 10 failed, 19 passed (limites de longitud/tipos/orden todavia no aplicados).
+
+timestamp exacto no reconstruido con certeza | Etapa 9.2/T2 | CMD-016
+Accion:
+Observar RED conductual de los tests de validacion acotada en `tests/test_structured_cv_service.py`.
+Motivo:
+Aislar los fallos de asercion (comportamiento) de los errores de coleccion del comando anterior.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=line tests/test_structured_cv_service.py`
+Argumentos:
+- Solo el modulo de tests del servicio estructurado.
+Resultado:
+- 10 failed, 19 passed: `test_rejects_summary_over_legacy_professional_summary_limit`, `test_rejects_skill_label_over_limit`, `test_rejects_non_object_items_in_every_list_section`, `test_rejects_too_many_items_per_section`, `test_rejects_experience_item_with_non_boolean_current`, `test_rejects_boolean_order_values`, `test_rejects_highlights_that_are_not_string_lists`, `test_rejects_contact_links_over_item_limit`, `test_rejects_payload_with_overlong_metadata_source`, `test_defaults_missing_additional_info_and_headline_fields`.
+Error completo:
+- `AssertionError: True is not false` en los rechazos esperados; `KeyError: 'additional_info'` en el test de defaults.
+Reintento/correccion:
+- Ninguna: es el RED intencional previo a la implementacion.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.2/T2 | CMD-017
+Accion:
+Observar GREEN de la corrida enfocada tras implementar el contrato normalizado.
+Motivo:
+Confirmar que validaciones, normalizacion, snapshot y escrituras estructuradas nuevas cumplen los tests nuevos y existentes.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests/test_structured_cv_service.py tests/test_cv_repository.py tests/test_database_migrations.py tests/test_structured_cv_normalization.py`
+Argumentos:
+- Los cuatro modulos enfocados de T2, incluido el nuevo `tests/test_structured_cv_normalization.py`.
+Resultado:
+- 1 failed, 56 passed: `test_rejects_invalid_payload_before_building_snapshot` fallaba porque el fixture no incluia `schema_version` y el rechazo por version faltante precede al de items.
+Error completo:
+- `AssertionError: 'skills_0_must_be_object' not found in ('schema_version_missing',)`.
+Reintento/correccion:
+- Correccion del fixture del test (agregar `"schema_version": 2` al payload invalido); el comportamiento del validador era correcto.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.2/T2 | CMD-018
+Accion:
+Confirmar GREEN final de la corrida enfocada.
+Motivo:
+Verificar la correccion del fixture y cerrar el ciclo RED->GREEN de T2.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests/test_structured_cv_service.py tests/test_cv_repository.py tests/test_database_migrations.py tests/test_structured_cv_normalization.py`
+Argumentos:
+- Identicos al comando anterior.
+Resultado:
+- 57 passed en 0.35s (29 servicio, 11 repositorio, 3 migraciones, 14 normalizacion).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.2/T2 | CMD-019
+Accion:
+Ejecutar la suite completa una sola vez con el runner aislado.
+Motivo:
+Validar que el contrato normalizado y las escrituras estructuradas no rompen ningun flujo existente (UI, export, LaTeX, PDF, ATS, documentacion).
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests`
+Argumentos:
+- Ruta completa `tests`.
+Resultado:
+- 109 passed, 1 warning (DeprecationWarning de `anyio.abc.BlockingPortal` en starlette, preexistente en el baseline).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.2/T2 | CMD-020
+Accion:
+Compilar app y tests en runtime aislado.
+Motivo:
+Verificar sintaxis completa del codigo nuevo sin escribir bytecode en el workspace read-only.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONPYCACHEPREFIX=/tmp/cv-pycache -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m compileall -q app tests`
+Argumentos:
+- `PYTHONPYCACHEPREFIX=/tmp/cv-pycache` para aislar el bytecode del workspace.
+Resultado:
+- Sin errores de compilacion.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+timestamp exacto no reconstruido con certeza | Etapa 9.2/T2 | CMD-021
+Accion:
+Verificar higiene de diff con EOL CRLF preservado.
+Motivo:
+Confirmar que no se introdujeron conflictos de espacios ni normalizaciones EOL fuera de alcance.
+Comando: `git -c core.whitespace=cr-at-eol diff --check`
+Argumentos:
+- `core.whitespace=cr-at-eol` para respetar las diferencias CRLF preexistentes.
+Resultado:
+- Salida vacia: diff limpio.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-08 17:10:52 ART | Etapa 9.3/T3 | CMD-022
+Accion:
+Observar RED del ciclo T3 con la corrida enfocada que incluye el archivo nuevo de tests.
+Motivo:
+Confirmar que el import/export JSON schema 2 aun no existe: la entrada estructurada `build_cv_json_import_result` no esta implementada.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests/test_export_service.py tests/test_ui_routes.py tests/test_structured_cv_normalization.py tests/test_cv_json_schema2.py`
+Argumentos:
+- Los tres modulos enfocados de T2 mas el nuevo `tests/test_cv_json_schema2.py`; reloj del host en UTC, horas ART = UTC-3.
+Resultado:
+- 1 error de coleccion que interrumpe la corrida: `ImportError: cannot import name 'build_cv_json_import_result' from 'app.services.export_service'` en `tests/test_cv_json_schema2.py`.
+Error completo:
+- `ImportError while importing test module '/workspace/tests/test_cv_json_schema2.py'` con traceback al import del nuevo simbolo.
+Reintento/correccion:
+- Ninguna: es el RED intencional del nuevo entrypoint estructurado antes de la implementacion.
+
+2026-10-08 17:11:01 ART | Etapa 9.3/T3 | CMD-023
+Accion:
+Observar RED conductual de los tests nuevos agregados a archivos existentes.
+Motivo:
+La interrupcion por error de coleccion del comando anterior impide ver los fallos conductuales; esta corrida aislada los evidencia.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests/test_export_service.py tests/test_ui_routes.py tests/test_structured_cv_normalization.py`
+Argumentos:
+- Los tres modulos existentes, sin el archivo nuevo que aun no importa.
+Resultado:
+- 3 failed, 30 passed: `test_legacy_import_entrypoint_rejects_explicit_schema2` y `test_legacy_import_entrypoint_rejects_boolean_schema_version` (`AssertionError: ExportServiceError not raised`) y `test_cv_import_panel_documents_supported_json_schemas` (copy de UI ausente).
+Error completo:
+- `AssertionError: ExportServiceError not raised` en ambos tests de version explicita; `AssertionError: 'schema 1 (plano)' not found` en el test de UI.
+Reintento/correccion:
+- Ninguna: fallos RED intencionales del gate de versiones y del copy de UI antes de implementar.
+
+2026-10-08 17:14:48 ART | Etapa 9.3/T3 | CMD-024
+Accion:
+Observar GREEN de la corrida enfocada tras implementar export/import schema 2, gate de versiones, rutas y UI.
+Motivo:
+Confirmar que el contrato JSON 1/2, el fallback legacy sin mezcla, el roundtrip estructurado y las rutas cumplen los tests nuevos y existentes.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests/test_export_service.py tests/test_ui_routes.py tests/test_structured_cv_normalization.py tests/test_cv_json_schema2.py`
+Argumentos:
+- Identicos al comando RED CMD-022, ahora con implementacion completa.
+Resultado:
+- 53 passed en 1.00s (10 export service, 9 UI routes, 14 normalizacion, 20 schema 2 nuevo).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-08 17:14:55 ART | Etapa 9.3/T3 | CMD-025
+Accion:
+Ejecutar la suite completa una sola vez con el runner aislado.
+Motivo:
+Validar que el import/export JSON 1/2 no rompe ningun flujo existente (UI, repositorio, LaTeX, PDF, ATS, documentacion, migraciones).
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests`
+Argumentos:
+- Ruta completa `tests`.
+Resultado:
+- 133 passed, 1 warning (DeprecationWarning de `anyio.abc.BlockingPortal` en starlette, preexistente en el baseline) en 1.61s.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-08 17:15:02 ART | Etapa 9.3/T3 | CMD-026
+Accion:
+Compilar app y tests en runtime aislado.
+Motivo:
+Verificar sintaxis completa del codigo nuevo sin escribir bytecode en el workspace read-only.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONPYCACHEPREFIX=/tmp/cv-pycache -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m compileall -q app tests`
+Argumentos:
+- `PYTHONPYCACHEPREFIX=/tmp/cv-pycache` para aislar el bytecode del workspace.
+Resultado:
+- Sin errores de compilacion (salida vacia).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-08 17:15:05 ART | Etapa 9.3/T3 | CMD-027
+Accion:
+Verificar higiene de diff con EOL CRLF preservado.
+Motivo:
+Confirmar que la implementacion T3 no introduce conflictos de espacios ni normalizaciones EOL fuera de alcance.
+Comando: `git -c core.whitespace=cr-at-eol diff --check`
+Argumentos:
+- `core.whitespace=cr-at-eol` para respetar las diferencias CRLF preexistentes.
+Resultado:
+- Salida vacia: diff limpio; los archivos CRLF editados se mantienen consistentes (mismo numero de lineas CRLF que totales).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-08 17:19:38 ART | Etapa 9.3/T3 | CMD-028
+Accion:
+Triangular el contrato con un test adicional y re-ejecutar la corrida enfocada final.
+Motivo:
+Cubrir el caso de desacuerdo de version: envelope schema 2 con `structured_payload` interno declarando version futura 3 debe rechazarse sin downcast.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests/test_export_service.py tests/test_ui_routes.py tests/test_structured_cv_normalization.py tests/test_cv_json_schema2.py`
+Argumentos:
+- Agregado `test_import_schema2_rejects_payload_with_future_internal_version` a `tests/test_cv_json_schema2.py`.
+Resultado:
+- 54 passed en 1.01s (10 export service, 9 UI routes, 14 normalizacion, 21 schema 2).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-08 17:19:44 ART | Etapa 9.3/T3 | CMD-029
+Accion:
+Ejecutar la suite completa final sobre el codigo cerrado de T3.
+Motivo:
+Corrida de registro del estado final incluyendo el test de triangulacion; sustituye a la observacion intermedia de CMD-025 como evidencia de cierre.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests`
+Argumentos:
+- Ruta completa `tests`.
+Resultado:
+- 134 passed, 1 warning (DeprecationWarning de `anyio.abc.BlockingPortal` en starlette, preexistente en el baseline).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-08 17:20:02 ART | Etapa 9.3/T3 | CMD-030
+Accion:
+Compilar app y tests en runtime aislado sobre el estado final.
+Motivo:
+Verificar sintaxis del codigo final, incluido el test de triangulacion agregado, sin escribir bytecode en el workspace read-only.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONPYCACHEPREFIX=/tmp/cv-pycache -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m compileall -q app tests`
+Argumentos:
+- `PYTHONPYCACHEPREFIX=/tmp/cv-pycache` para aislar el bytecode del workspace.
+Resultado:
+- Sin errores de compilacion (salida vacia).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-08 17:20:02 ART | Etapa 9.3/T3 | CMD-031
+Accion:
+Verificar higiene final de diff con EOL CRLF preservado tras la actualizacion de documentacion.
+Motivo:
+Confirmar que el cierre documentado de T3 (plan, bitacora y log de hitos) mantiene el diff limpio y sin normalizaciones EOL.
+Comando: `git -c core.whitespace=cr-at-eol diff --check`
+Argumentos:
+- `core.whitespace=cr-at-eol` para respetar las diferencias CRLF preexistentes.
+Resultado:
+- Salida vacia: diff limpio; los archivos CRLF editados se mantienen consistentes (mismo numero de lineas CRLF que totales).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 06:32:27 ART | Etapa 9.6/T4 | CMD-032
+Accion:
+Ejecutar los tests de rutas del editor estructurado antes de implementar (RED).
+Motivo:
+Política TDD de la tarea T4: observar el fallo real del comportamiento ausente antes de escribir rutas, servicio, template ni JS.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=line tests/test_structured_cv_editor.py`
+Argumentos:
+- Runner aislado pinned; tests nuevos `tests/test_structured_cv_editor.py` escritos primero.
+Resultado:
+- RED observado: 20 failed, 1 passed, 1 warning preexistente. El único pase fue el 404 trivial de un CV inexistente; el resto falló porque las rutas `/cvs/new/structured` y `/{cv_id}/structured-edit` no existían.
+Error completo:
+- 404 route not found en las 20 pruebas de comportamiento (sin excepciones de colección).
+Reintento/correccion:
+- No fue necesario; se procedió a la implementación.
+
+2026-10-09 06:32:29 ART | Etapa 9.6/T4 | CMD-033
+Accion:
+Ejecutar los tests JS del editor antes de implementar el módulo (RED).
+Motivo:
+Observar el fallo ejecutable del contrato JS puro (payload, orden, preservación de claves) antes de escribir `app/static/js/structured_editor.js`.
+Comando: `node tests/test_structured_cv_editor_js.js`
+Argumentos:
+- Modo unitario sin navegador; Node v22.23.2 del host.
+Resultado:
+- RED observado: `MODULE_NOT_FOUND` para `app/static/js/structured_editor.js` (el módulo no existía).
+Error completo:
+- Cannot find module '../app/static/js/structured_editor.js' (code MODULE_NOT_FOUND).
+Reintento/correccion:
+- No fue necesario; se procedió a la implementación.
+
+2026-10-09 06:32:31 ART | Etapa 9.6/T4 | CMD-034
+Accion:
+Primera corrida enfocada de GREEN tras implementar servicio, rutas, template, JS y CSS.
+Motivo:
+Verificar el comportamiento implementado contra los tests RED y corregir hallazgos reales.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests/test_structured_cv_editor.py`
+Argumentos:
+- Sin cambios respecto del runner pinned.
+Resultado:
+- 18 passed, 3 failed. (1) El bloque noscript reutilizaba la clase `structured-warning` y rompia la aserción de ausencia de advertencia; (2) el error de summary excedido no incluía el límite concreto; (3) bug propio del test de orden (construccion/expectation invertidas).
+Error completo:
+- AssertionError 'structured-warning' unexpectedly found; 'Maximo 1200 caracteres' not found; 'Acme' != 'Globex' en el test de orden.
+Reintento/correccion:
+- Clase noscript renombrada a `structured-noscript-warning` (template+CSS); mensaje exacto `summary_too_long` -> 'Resumen profesional: Maximo 1200 caracteres.' en el servicio del editor; test de orden corregido para afirmar el orden realmente enviado (Acme 1, Globex 2).
+
+2026-10-09 06:32:33 ART | Etapa 9.6/T4 | CMD-035
+Accion:
+Reejecutar la suite enfocada del editor tras las correcciones (GREEN).
+Motivo:
+Confirmar que las 21 pruebas de rutas del editor estructurado pasan tras las correcciones de CMD-034.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests/test_structured_cv_editor.py`
+Argumentos:
+- Sin cambios.
+Resultado:
+- GREEN: 21 passed, 1 warning preexistente (anyio.abc.BlockingPortal) en 1.03s.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 06:32:35 ART | Etapa 9.6/T4 | CMD-036
+Accion:
+Ejecutar los tests JS unitarios del editor (GREEN).
+Motivo:
+Verificar el contrato puro del módulo JS: payload vacío, parse de bootstrap, normalización conservando claves desconocidas, mover/quitar/agregar renumerando, roundtrip de listas por línea, merge final y specs en español.
+Comando: `node tests/test_structured_cv_editor_js.js`
+Argumentos:
+- Modo unitario (sin `--browser`).
+Resultado:
+- GREEN: 8 pasaron, 0 fallaron.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 06:32:37 ART | Etapa 9.6/T4 | CMD-037
+Accion:
+Levantar runtime aislado temporal con el código actual para la prueba de navegador real.
+Motivo:
+La evidencia de navegador exigida por T4 necesita la app servida por HTTP y alcanzable por el binario chromium del host; montaje read-only del workspace, tmpfs de datos en `/tmp/cv-latex-tests` y puerto publicado solo en 127.0.0.1.
+Comando: `docker run --rm -d --name cv-latex-t4-browser -e APP_DATA_DIR=/tmp/cv-latex-tests -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /tmp/cv-latex-tests:rw -p 127.0.0.1:8123:8000 -w /workspace --entrypoint python cv-latex-app:latest -m uvicorn app.main:app --host 0.0.0.0 --port 8000`
+Argumentos:
+- Seguido de `curl -s http://127.0.0.1:8123/health` y `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8123/cvs/new/structured`.
+Resultado:
+- Contenedor 96a743bd9f65 iniciado; `/health` devolvió status ok con DB en `/tmp/cv-latex-tests/app.db`; `/cvs/new/structured` devolvió 200.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 06:32:39 ART | Etapa 9.6/T4 | CMD-038
+Accion:
+Primeras dos corridas de la prueba de navegador real sobre chromium (harness CDP).
+Motivo:
+Ejecutar los 4 flujos de browser (editor completo con orden persistido, submit fallido que preserva datos, no-ejecución de payloads maliciosos, advertencia legacy + conversión) contra la app real.
+Comando: `node tests/test_structured_cv_editor_js.js --browser http://127.0.0.1:8123`
+Argumentos:
+- Chromium: `~/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome` (Chrome for Testing 153.0.8010.12, verificado con `--version`); CDP por WebSocket sin dependencias externas.
+Resultado:
+- 8 tests unitarios pasaron; los 4 de navegador fallaron por bugs del propio harness de prueba (no del editor): `pageExpression` armaba una lista como lista de parámetros (SyntaxError: Invalid destructuring assignment target) y la interpolación cruda del selector dentro del mensaje de error rompía el string evaluado (missing ) after argument list).
+Error completo:
+- Runtime.evaluate fallo: SyntaxError: Invalid destructuring assignment target; SyntaxError: missing ) after argument list.
+Reintento/correccion:
+- Se reescribió la generación de expresiones embebiendo `JSON.stringify` para selector/valor y se verificó con `node --check` y una prueba local de parseo antes de reejecutar.
+
+2026-10-09 06:32:41 ART | Etapa 9.6/T4 | CMD-039
+Accion:
+Reejecutar la suite de navegador tras corregir el harness (GREEN).
+Motivo:
+Confirmar los 4 flujos de browser contra la app real con CDP sobre chromium.
+Comando: `node tests/test_structured_cv_editor_js.js --browser http://127.0.0.1:8123`
+Argumentos:
+- Mismo binario chromium y misma URL base.
+Resultado:
+- GREEN: 12 pasaron, 0 fallaron (8 unit + 4 browser). Evidencia: render de 8 secciones, agregar/mover items, orden persistido en DB tras submit HTTP real, rerender 422 preservando lo ingresado con error en español, payloads `<script>`/`<img onerror>` sin ejecución ni inyección, advertencia legacy y conversión a estructurado.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 06:32:43 ART | Etapa 9.6/T4 | CMD-040
+Accion:
+Ejecutar el comando de verificación pinned de la tarea (trío enfocado + `.`).
+Motivo:
+Validación contractual de T4 sobre las pruebas del editor más las suites de rutas de UI y JSON schema 2.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests/test_structured_cv_editor.py tests/test_ui_routes.py tests/test_cv_json_schema2.py .`
+Argumentos:
+- Runner pinned exacto de la tarea.
+Resultado:
+- 51 passed, 1 warning preexistente en 1.51s. Nota: en esta versión de pytest, pasar archivos explícitos más `.` deduplica la colección al trío (verificado con `--collect-only`: 51); la colección de `.` solo da 155, ejecutada como suite completa en CMD-041.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 06:32:45 ART | Etapa 9.6/T4 | CMD-041
+Accion:
+Ejecutar la suite completa con el mismo runner aislado.
+Motivo:
+Verificar que el editor estructurado no rompe ninguna suite existente (repositories, servicios, rutas, LaTeX, PDF, ATS, export/import, migraciones).
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests`
+Argumentos:
+- Directorio completo `tests`.
+Resultado:
+- 155 passed, 1 warning preexistente (anyio.abc.BlockingPortal) en 2.34s (134 baseline + 21 nuevas del editor).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 06:32:47 ART | Etapa 9.6/T4 | CMD-042
+Accion:
+Compilar app y tests en runtime aislado con bytecode fuera del workspace.
+Motivo:
+Verificar sintaxis de todo el código nuevo y editado sin escribir bytecode en el workspace read-only.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONPYCACHEPREFIX=/tmp/cv-pycache -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m compileall -q app tests`
+Argumentos:
+- `PYTHONPYCACHEPREFIX=/tmp/cv-pycache` para aislar el bytecode.
+Resultado:
+- Sin errores de compilación (salida vacía).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 06:32:49 ART | Etapa 9.6/T4 | CMD-043
+Accion:
+Verificar higiene del diff respetando CRLF preexistentes.
+Motivo:
+Confirmar que la implementación de T4 no introduce errores de whitespace ni normalizaciones EOL sobre los archivos CRLF existentes.
+Comando: `git -c core.whitespace=cr-at-eol diff --check`
+Argumentos:
+- `core.whitespace=cr-at-eol` para respetar las diferencias CRLF preexistentes.
+Resultado:
+- Salida vacía: diff limpio. Archivos CRLF editados (`app/routes/cvs.py`, `app/static/css/app.css`, `app/templates/cvs/detail.html`, `app/templates/cvs/index.html`) siguen 100% CRLF; los archivos nuevos de app (`structured_cv_editor_service.py`, `structured_form.html`, `structured_editor.js`) se crearon en CRLF y los tests nuevos en LF, siguiendo la convención observada.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 06:32:51 ART | Etapa 9.6/T4 | CMD-044
+Accion:
+Corrida final de navegador para el registro y detención del runtime temporal.
+Motivo:
+Fijar la evidencia de browser sobre el estado final del código y liberar el contenedor temporal usado solo para pruebas.
+Comando: `node tests/test_structured_cv_editor_js.js --browser http://127.0.0.1:8123` seguido de `docker stop cv-latex-t4-browser`
+Argumentos:
+- Mismo chromium y URL base; el contenedor se creó con `--rm`.
+Resultado:
+- 12 pasaron, 0 fallaron (8 unit + 4 browser). Contenedor detenido y eliminado (`docker ps --filter name=cv-latex-t4-browser` devolvió 0 contenedores).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 05:20:55 ART | Etapa 9.6/T5 | CMD-045
+Accion:
+Corrida RED del runner pinned sobre el cuarteto T5 antes de implementar.
+Motivo:
+Fijar la evidencia RED real: el contenido solo-estructurado canonico no aparece en TEX/PDF/ATS (los consumidores leen columnas planas obsoletas).
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests/test_structured_cv_consumers.py tests/test_latex_service.py tests/test_ats_service.py tests/test_pdf_service.py`
+Argumentos:
+- Tests nuevos: `tests/test_structured_cv_consumers.py` (canonico vs fallback, 4 plantillas, orden, escape, metadata, no-mix, ATS); adiciones en latex/ats/pdf service.
+Resultado:
+- RED: 13 failed, 20 passed en 0.33s. Fallaron exactamente los tests canonicos (headline/certificaciones/proyectos/idiomas/links/info adicional ausentes en TEX/PDF; ATS 71!=100 con phone plano vacio; ModuleNotFoundError structured_cv_rendering en 2; longitud ATS 154<280). Los tests de proteccion de contrato (fallback == legacy, equivalencia ATS legacy/convertido) pasaban antes y despues.
+Error completo:
+- Ninguno (fallos esperados de RED).
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 05:20:55 ART | Etapa 9.6/T5 | CMD-046
+Accion:
+Primera corrida GREEN del cuarteto enfocado tras implementar `structured_cv_rendering.py`, `latex_service.py`, `ats_service.py` y las 4 plantillas.
+Motivo:
+Verificar el contrato T5 con la representacion normalizada unica.
+Comando: mismo runner pinned del cuarteto.
+Argumentos:
+- Implementacion: contexto LaTeX enriquecido (entries) desde secciones v2, extraccion ATS `build_structured_ats_text`, gate `resolve_normalized_cv` en ambos consumidores.
+Resultado:
+- 32 passed, 1 failed: mi propio assert `assertNotIn("\\end{document}")` era incorrecto porque el cierre legitimo de la plantilla siempre aparece; el contenido malicioso si quedo neutralizado como `\\textbackslash{}end\\{document\\}`.
+Error completo:
+- AssertionError: '\\end{document}' unexpectedly found (cierre propio de la plantilla).
+Reintento/correccion:
+- Se corregiio el test a `content.count("\\end{document}") == 1` (solo el cierre propio) y reejecucion GREEN: 33 passed en 0.46s.
+
+2026-10-09 05:20:55 ART | Etapa 9.6/T5 | CMD-047
+Accion:
+Byte-identidad del TEX legacy contra el render pre-T5 (HEAD) en las 4 plantillas.
+Motivo:
+Probar que el comportamiento flat existente queda byte-idtentico (sin mezcla ni regresion visual) y que el fallback integral produce exactamente el mismo TEX.
+Comando: `docker run --rm --network none --entrypoint python -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro -v /tmp/cv-t5-baseline:/baseline:ro -w /workspace cv-latex-app:latest /baseline/compare_legacy.py`
+Argumentos:
+- Script que importa `latex_service` actual y el modulo HEAD (git show) con plantillas HEAD, renderiza un CV legacy completo y compara contenido (EOL-normalizado) en classic/modern/compact/tech.
+Resultado:
+- Estado final: classic IDENTICAL, modern IDENTICAL, compact IDENTICAL, tech IDENTICAL (filename equal: True en las 4).
+Error completo:
+- Iteraciones intermedias documentadas: (1) primera version del guardia keep_with_next rompio classic/tech (oldText truncado dejo '}' extra y Jinja "unexpected ]'") y trim_blocks comio saltos de linea al fusionar lineas en modern/compact; (2) una segunda version dejo una linea vacia extra en tech legacy.
+Reintento/correccion:
+- Se reconstruyeron las 4 plantillas desde HEAD (git show) con un patch Python anclado en substrings unicos (`/tmp/cv-t5-baseline/patch_templates.py`), guardias en lineas propias y conversion final a CRLF; verificacion 33 passed + 4x IDENTICAL.
+
+2026-10-09 05:20:55 ART | Etapa 9.6/T5 | CMD-048
+Accion:
+Suite completa tras la implementacion T5.
+Motivo:
+Regresion integral del repositorio.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests`
+Argumentos:
+- Sin argumentos extra.
+Resultado:
+- Estado final (post fix de paginacion): 173 passed, 1 warning preexistente (Starlette/AnyIO) en 2.33s. 155 base + 18 nuevos T5.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 05:21:18 ART | Etapa 9.6/T5 | CMD-049
+Accion:
+Levantar runtime aislado con el codigo final y crear el CV estructurado sintetico por HTTP real.
+Motivo:
+Prueba integral de descargas PDF/TEX por HTTP sobre runtime aislado (tmpfs, sin ./data real, puerto solo 127.0.0.1), con payload sintetico largo (resumen 590 chars, 8 highlights, items minimos) y caracteres especiales (\& % $ # _ { } ~ ^ \\ y \\end{document} malicioso).
+Comando: `docker run --rm -d --name cv-latex-t5-proof -e APP_DATA_DIR=/tmp/cv-t5-data -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /tmp/cv-t5-data:rw -p 127.0.0.1:8125:8000 -w /workspace --entrypoint python cv-latex-app:latest -m uvicorn app.main:app --host 0.0.0.0 --port 8000`
+Argumentos:
+- `curl -s http://127.0.0.1:8125/health` -> status ok, DB en /tmp/cv-t5-data/app.db.
+- `curl -X POST http://127.0.0.1:8125/cvs/new/structured --data-urlencode "title=CV T5 Proof Completo" --data-urlencode "structured_payload@/tmp/cv-t5-proof/payload.json"` (payload 5052 bytes).
+Resultado:
+- POST 303 redirect a /cvs/1 con "CV estructurado creado correctamente." Creacion canonica via write bundle T2.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 05:21:18 ART | Etapa 9.6/T5 | CMD-050
+Accion:
+Descargas HTTP reales de PDF y TEX del CV estructurado en las 4 plantillas (estado final).
+Motivo:
+Evidencia de compilacion pdflatex real + descarga servida por la app para classic/modern/compact/tech.
+Comando: `curl -s -o cv-$t.pdf -w '%{http_code}' "http://127.0.0.1:8125/cvs/1/export/pdf?template_key=$t"` y `curl -s -o cv-$t.tex "http://127.0.0.1:8125/cvs/1/export/tex?template_key=$t"` para cada plantilla.
+Argumentos:
+- Artefactos en /tmp/cv-t5-proof/.
+Resultado:
+- 4x HTTP 200, Content-Type application/pdf. classic 123328 bytes, modern 151831, compact 128579, tech 149527. TEX: classic 4703, modern 5871, compact 4678+guards, tech 6108+guards bytes.
+- SHA256 finales: classic 9c7e9f5aa2117b6b004768d2a616aca96335430824dffed08174ea190b807d25; modern f429587d22998f9a82460caa289f2eca2bcdcfd689eea1bea8fe3606b867aaf6; compact 52e1d9ba686a262cb46829998dd8a1ac2abbebe8e858e559febb698756300688; tech aed11f79e96cfbf33e9f4496b5cfbc27b80955e91dfee597bed968966084fcf0.
+Error completo:
+- Ninguno en la ronda final.
+Reintento/correccion:
+- Rondas intermedias descartadas: la primera descarga revelo titulo "Links" huerfano al pie de pagina 1 en compact (ver CMD-051/052); se re-descargo tras el fix de paginacion.
+
+2026-10-09 05:21:18 ART | Etapa 9.6/T5 | CMD-051
+Accion:
+Verificacion de texto extraido, paginas y limites de pagina de los 4 PDFs.
+Motivo:
+Validar pdftotext (contenido soportado presente, metadata ausente, neutralizacion LaTeX maliciosa) y detectar titulos huerfanos al final de pagina.
+Comando: `docker run --rm --network none --entrypoint bash -v /tmp/cv-t5-proof:/proof:ro cv-latex-app:latest -c 'pdfinfo ...; pdftotext ...; pdftotext -f 1 -l 1 ... | tail; pdftotext -f 2 -l 2 ... | head'`
+Argumentos:
+- Marcadores verificados por plantilla: nombre, headline, ubicacion, contacto, resumen, rol/empresa/fechas/highlights/tecnologias, educacion, skills (categoria, nivel), certificaciones, idiomas, proyectos (link), links, informacion adicional.
+Resultado:
+- 4x 2 paginas A4. Todos los marcadores presentes en las 4. Sin "structured_editor", "synced_from_legacy_at", "schema_version" ni "SNAPSHOT". El intento "\\end{document}" del resumen queda tipografiado como texto literal neutralizado (el documento sigue: 2 paginas con secciones posteriores). Ronda 1 (pre-fix): compact orfandaba "Links" (titulo solo al pie de p1, items en p2).
+Error completo:
+- Ninguno en la ronda final; el huerfano de la ronda 1 se corrigio en CMD-052.
+Reintento/correccion:
+- Ver CMD-052.
+
+2026-10-09 05:21:54 ART | Etapa 9.6/T5 | CMD-052
+Accion:
+Experiments deterministas de paginacion para elegir el mecanismo de agrupacion minimo por plantilla.
+Motivo:
+LL-007 (titulos huerfanos): probar candidatos en un limite de pagina reproducible (`\\vspace*{\\dimexpr\\textheight-N\\baselineskip}`) antes de tocar plantillas productivas.
+Comando: `docker run --rm --network none --entrypoint python -v /tmp/cv-t5-baseline:/baseline:rw cv-latex-app:latest /baseline/orphan_test2.py` y `/baseline/orphan_test3.py`
+Argumentos:
+- Variantes: \\* inline, \\* en linea propia, \\par\\nobreak+itemize, needspace 4\\baselineskip antes del titulo, \\par\\nopagebreak antes de cuerpo de entrada.
+Resultado:
+- \\* y \\par\\nobreak NO evitan el corte titulo->itemize (el itemize inserta \\@beginparpenalty negativo despues del guardia): ORPHAN en leftover=3 en A-D. \\Needspace*{4\\baselineskip} antes del titulo y \\par\\nopagebreak antes del cuerpo de entrada: nunca orfan (moved/kept). Decisión: guardias \\Needspace* antes de titulos solo en render estructurado (flag `keep_with_next`), paquete `needspace` cargado solo con flag `use_needspace` (legacy sin cambios).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 05:21:54 ART | Etapa 9.6/T5 | CMD-053
+Accion:
+Re-descarga final y verificacion de paginacion tras el fix de needspace.
+Motivo:
+Confirmar que el huerfano de compact quedo resuelto y que las 4 plantillas cortan limpio.
+Comando: restart del runtime aislado + mismos curls de descarga + pdfinfo/pdftotext por pagina.
+Argumentos:
+- Mismos artefactos y hashes finales que CMD-050.
+Resultado:
+- compact p2 ahora inicia con "Links" completo con sus items (p1 termina en "Automation Toolkit 100 %"). classic corta antes de "Skills", modern dentro del itemize largo de skills (continuacion de lista larga, aceptable), tech antes de "Certificaciones". 4x 2 paginas.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 05:21:54 ART | Etapa 9.6/T5 | CMD-054
+Accion:
+Renders PNG (portada + pagina interna) y metrica objetiva de cobertura de tinta.
+Motivo:
+Inspeccion visual de portada y pagina 2 multipagina; al no poder inspeccionar imagenes con el modelo actual, se registro metrica objetiva por pagina y se dejaron los PNG disponibles para verificacion visual independiente.
+Comando: `pdftoppm -png -r 70 -f 1 -l 1 /proof/cv-$t.pdf /proof/png/$t-p1` y `-f 2 -l 2 ... $t-p2` dentro de contenedor con /tmp/cv-t5-proof montado rw; luego analisis PGM (pdftoppm -gray -r 40) con Python stdlib.
+Argumentos:
+- 8 PNGs en /tmp/cv-t5-proof/png/ (classic/modern/compact/tech x p1/p2).
+Resultado:
+- Cobertura de tinta: classic 1.4%/0.6%, modern 1.2%/1.0%, compact 1.1%/0.1%, tech 6.0%/6.4% (barras colorbox). Ninguna pagina en blanco; compact p2 es resto legitimo (Links + Informacion adicional completos).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 05:21:54 ART | Etapa 9.6/T5 | CMD-055
+Accion:
+Validaciones estaticas finales aisladas: compileall y clasificacion CRLF-aware del diff check; y prueba HTTP de ATS canonico.
+Motivo:
+Cerrar las validaciones no-pytest del contrato T5.
+Comando: `docker run --rm --network none --entrypoint python -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONPYCACHEPREFIX=/tmp/cv-pycache -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m compileall -q app tests`; clasificacion bin-safety de `git diff --check`; `curl http://127.0.0.1:8125/ats/cvs/1`.
+Argumentos:
+- Clasificacion: por archivo, lineas flaggeadas vs lineas totales y deteccion de \\r real (modo binario).
+Resultado:
+- COMPILEALL OK. `git diff --check` exit 2 corresponde 100% a los 106 archivos pre-existentes reescritos CRLF completos (flaggeadas == totales en los 106, 0 lineas non-CRLF); archivos nuevos (`structured_cv_rendering.py`, `test_structured_cv_consumers.py`) sin espacios finales ni tabs. ATS HTTP: 200, "Bueno", 100/100 desde payload canonico.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 05:21:54 ART | Etapa 9.6/T5 | CMD-056
+Accion:
+Detencion del runtime aislado de pruebas.
+Motivo:
+Liberar el contenedor temporal; sin produccion ni ./data real en ninguna corrida.
+Comando: `docker rm -f cv-latex-t5-proof`
+Argumentos:
+- Ninguno.
+Resultado:
+- Contenedor eliminado; verificable con docker ps.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+Nota de timestamps T5 (LL-015): los bloques CMD-045..056 se registraron al cierre con la hora ART real del sistema al momento de escribir cada bloque; los comandos se ejecutaron previamente en esta misma sesion en el orden narrado (RED -> implementacion -> verificaciones -> runtime/HTTP -> fix paginacion -> re-verificacion). Ademas, los bloques CMD-037..044 (T4) registran horas "ART" posteriores a la hora ART real actual del sistema, presumiblemente reloj UTC etiquetado ART; timestamp exacto no reconstruido con certeza.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-057
+Accion:
+Evidencia objetiva pre-fix del desborde: recompilacion de los 4 TEX de la ronda anterior (/tmp/cv-t5-proof) y lectura de Overfull en logs.
+Motivo:
+La inspeccion visual del padre confirmó el highlight de 200+ caracteres pasado el margen en las 4 plantillas y el header de modern overfull 27.71626pt; se requirió evidencia de log medible antes de tocar codigo.
+Comando: `for t in classic modern compact tech; do docker run --rm --network none --entrypoint pdflatex -v /tmp/cv-t5-proof:/proof:ro -v /tmp/cv-t5-wrap-proof/overfull-before:/out:rw cv-latex-app:latest -interaction=nonstopmode -output-directory=/out /proof/cv-$t.tex; done` + `grep -n "Overfull" por log.
+Argumentos:
+- Logs previos en /tmp/cv-t5-wrap-proof/overfull-before/ (conservados como evidencia).
+Resultado:
+- classic: Overfull 1183.32278pt (parrafo del highlight AAAA, lineas 45-46). modern: Overfull 27.71626pt en lineas 20-23 (header de contacto, TODO el renglon sin corte factible por badness) + 1015.92227pt (highlight). compact: 992.15948pt. tech: 1022.61221pt.
+Error completo:
+- Ninguno (compilaciones existosas; los overfull no son errores de compilacion).
+Reintento/correccion:
+- No fue necesario. Causa raiz del header modern: sin cortes internos, cualquier corte en espacios deja lineas con badness 10000 (infeasible) y TeX prefiere un solo renglon overfull.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-058
+Accion:
+Verificacion de la macro de corte y primer experimento de diseno (header modern + highlight AAAA con cortes entre atomos).
+Motivo:
+Elegir un mecanismo confiable y minimal antes de tocar el codigo productivo.
+Comando: `docker run --rm --network none --entrypoint bash cv-latex-app:latest -c 'grep -n "allowbreak" $(kpsewhich latex.ltx)'` + compilacion de /tmp/cv-t5-wrap-proof/experiments/header-wrap-test.tex.
+Argumentos:
+- `\allowbreak` es kernel LaTeX (latex.ltx:618 `\def\allowbreak{\penalty \z@}`, robusta en 1792), ancho cero, sin glifos.
+Resultado:
+- En ese momento se registro incorrectamente 'cero Overfull/Underfull'.
+Error completo:
+- CONCLUSION INVALIDA: el grep solo busco Overfull/Underfull. El mismo experimento tenia 126 errores `! Undefined control sequence` (`h\allowbreakt`): TeX extiende nombres de control con letras siguientes y la macro sin espacio de terminacion se funde con el atomo siguiente. Detectado y corregido en CMD-061/062.
+Reintento/correccion:
+- Ver CMD-062: separador final `\allowbreak \hspace{0pt plus 0.06em}` con experimento limpio (0 errores/0 overfull/0 underfull).
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-059
+Accion:
+RED de la correccion: tests de wrapping en tests/test_structured_cv_consumers.py (clase StructuredCvLongTokenWrappingTest, 5 tests), test legacy sin macros en tests/test_latex_service.py y test de export PDF en tests/test_pdf_service.py.
+Motivo:
+Test-first: los tokens largos aceptados (highlight 240, URL 300, rol 120) deben recibir oportunidades de corte confiables; sin ellas el TEX renderiza el token crudo ininterrumpido.
+Comando: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short tests/test_structured_cv_consumers.py tests/test_latex_service.py tests/test_ats_service.py tests/test_pdf_service.py`
+Argumentos:
+- Payload con highlight A*240, URL de 300 y rol de 120; aserciones: separador de corte presente, token crudo ausente, token completo recuperable al quitar el separador, limites de atomo, ATS sin macros, tokens cortos/legacy intactos.
+Resultado:
+- RED final observado: 4 failed / 36 passed. Fallos en las aserciones esperadas ('\allowbreak' not found; token crudo B*60/A*240 presente sin cortes).
+Error completo:
+- Ronda intermedia: 5 failed por un bug del propio test nuevo (URL de 301 > limite 300 -> links_0_url_too_long en serialize_structured_payload); corregido a 276 caracteres.
+Reintento/correccion:
+- Ajustado el payload del test a los limites del contrato v2 y re-ejecutado hasta el RED limpio de 4 failed/36 passed.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-060
+Accion:
+Implementacion del wrapping solo-estructurado en app/services/structured_cv_rendering.py y GREEN del cuarteto enfocado.
+Motivo:
+Corregir el desborde con macros de corte confiables generadas SOLO despues de sanitize_latex_text y entre atomos completos.
+Comando: misma ronda de pytest del cuarteto; luego suite completa `... -m pytest -p no:cacheprovider --tb=short tests`.
+Argumentos:
+- Nuevo bloque de constantes + `_structured_latex_text` (sanitize + `_add_trusted_break_opportunities`) + `_split_latex_atoms` + `_sanitizer_escape_atom`; umbral 24 atomos; todos los call sites del modulo pasan por el wrapper; latex_service/legacy y las 4 plantillas sin cambios.
+Resultado:
+- GREEN: 40 passed en el cuarteto (33 previos + 7 nuevos) y 180 passed / 1 warning preexistente en la suite completa.
+Error completo:
+- Ronda intermedia con SyntaxWarning `invalid escape sequence '\&'` en docstrings del modulo; corregido con docstrings raw (r"""..."""). Ademas se ajusto el test de marcadores previo para buscar marcadores en el TEX con el separador removido (contenido preservado).
+Reintento/correccion:
+- Re-ejecucion de focused+full hasta 40/180 con 1 warning preexistente.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-061
+Accion:
+Ronda HTTP intermedia sobre runtime aislado: la generacion de PDF fallo y expongo la causa raiz real encontrada.
+Motivo:
+Validar el fix con compilacion pdflatex real servida por la app, no solo tests de TEX.
+Comando: runtime aislado (tmpfs /tmp/cv-t5-data, puerto 127.0.0.1:8126) + POST /cvs/new/structured + GET /cvs/1/export/pdf por plantilla.
+Argumentos:
+- Redirect 303 con mensaje 'No se pudo generar el PDF con la plantilla seleccionada...' en las 4 plantillas.
+Resultado:
+- Fallo real de compilacion; TEX descargados y recompilados manualmente para capturar el log.
+Error completo:
+- `! Undefined control sequence` x126: `h\allowbreakt` — la macro sin espacio de terminacion absorbe la letra siguiente (el falso positivo del experimento CMD-058 quedo expuesto por la ronda HTTP real).
+Reintento/correccion:
+- CMD-062: separador con espacio de terminacion + `\hspace` de ancho natural nulo; ronda final re-ejecutada desde runtime recien creado.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-062
+Accion:
+Diseno final del separador de corte y experimento limpio de compilacion (header-wrap-test3).
+Motivo:
+Cerrar la causa raiz de CMD-061 y un segundo hallazgo del experimento 2: lineas sin pegamento propio (token puro) dejaban restos Overfull de 3.42227pt porque sin estiramiento disponible TeX no puede justificar y prefiere el corte menos overfull.
+Comando: `LATEX_BREAK_OPPORTUNITY = r"\allowbreak \hspace{0pt plus 0.06em}"` + compilacion de /tmp/cv-t5-wrap-proof/experiments/header-wrap-test3.tex con grep de `^!` Y Overfull/Underfull.
+Argumentos:
+- El espacio tras la macro la termina (consumido por el tokenizador, no tipografia nada); el `\hspace{0pt plus 0.06em}` da ancho natural 0 con estiramiento minimo que vuelve factible la justificacion de lineas sin pegamento; el estiramiento aplicado es de fracciones de punto repartidas entre decenas de cortes (invisible).
+Resultado:
+- header-wrap-test3: 0 errores, 0 Overfull, 0 Underfull. Confirmado tambien en experimento 2: sin el \hspace quedaban 3 Overfull de 3.42227pt en las lineas del token AAAA.
+Error completo:
+- Ninguno en la ronda final.
+Reintento/correccion:
+- Tests actualizados al separador final con chequeo de residuo de atomos (ninguna barra invertida fuera de secuencias confiables) y re-ejecucion GREEN 40 focused/180 full.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-063
+Accion:
+Ronda final de tests con el diseno final: cuarteto enfocado + suite completa con el runner pinned.
+Motivo:
+Verificacion de regresion integral tras el fix del separador.
+Comando: mismo runner pinned del cuarteto + `... -m pytest -p no:cacheprovider --tb=short tests`.
+Argumentos:
+- Sin argumentos extra.
+Resultado:
+- 40 passed en 0.61s (cuarteto) y 180 passed / 1 warning preexistente (Starlette/AnyIO) en 2.52s (suite completa; 173 previos + 7 nuevos).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-064
+Accion:
+Validaciones estaticas: compileall aislado, clasificacion CRLF-aware del diff check y byte-identidad del TEX legacy contra HEAD.
+Motivo:
+Cerrar las validaciones no-pytest y probar que el camino legacy quedo byte-identico (sin staging ni commits).
+Comando: `docker run --rm --network none --entrypoint python -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONPYCACHEPREFIX=/tmp/cv-pycache -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m compileall -q app tests`; `git -c core.whitespace=cr-at-eol diff --check` + clasificacion binaria del plain `git diff --check`; `docker run ... /baseline/compare_legacy.py`.
+Argumentos:
+- Clasificacion: lineas flaggeadas vs totales y deteccion real de \r por archivo; comparator previo /tmp/cv-t5-baseline/compare_legacy.py contra HEAD.
+Resultado:
+- COMPILEALL exit 0. `git -c core.whitespace=cr-at-eol diff --check` exit 0 (cero lineas). Plain `git diff --check` exit 2 con 44246 lineas flaggeadas en exactamente los 106 archivos preexistentes reescritos CRLF completos (0 archivos EOL mixto; sin cambios respecto del estado previo a esta correccion). Archivos propios sin espacios finales. Legacy vs HEAD: classic/modern/compact/tech IDENTICAL (filename equal True).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-065
+Accion:
+Runtime aislado final (codigo corregido, tmpfs, sin ./data real) + creacion del CV sintetico identico a la ronda anterior por HTTP real.
+Motivo:
+Regenerar los 4 PDFs sinteticos con el mismo payload confirmado defectuoso para comparacion A/B con /tmp/cv-t5-proof.
+Comando: `docker run --rm -d --name cv-latex-t5wrap-proof -e APP_DATA_DIR=/tmp/cv-t5-data -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /tmp/cv-t5-data:rw -p 127.0.0.1:8126:8000 -w /workspace --entrypoint python cv-latex-app:latest -m uvicorn app.main:app --host 0.0.0.0 --port 8000` + `curl /health` + `curl -X POST /cvs/new/structured --data-urlencode structured_payload@/tmp/cv-t5-proof/payload.json`.
+Argumentos:
+- Puerto solo 127.0.0.1:8126; DB en tmpfs; sin datos privados.
+Resultado:
+- HEALTH ok en 1s (DB /tmp/cv-t5-data/app.db). POST 303 -> /cvs/1 'CV estructurado creado correctamente.'.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-066
+Accion:
+Descargas HTTP reales de PDF+TEX (4x) y verificacion objetiva de overfull recompilando cada TEX descargado.
+Motivo:
+No basta con tests en verde: el contrato exige log sin desbordes en las 4 plantillas.
+Comando: `curl -s -o cv-$t.pdf -w '%{http_code}' http://127.0.0.1:8126/cvs/1/export/pdf?template_key=$t` (+tex) y `docker run ... --entrypoint pdflatex ... -output-directory=/out /art/cv-$t.tex` + grep '^!' / Overfull / Underfull.
+Argumentos:
+- Artefactos en /tmp/cv-t5-wrap-proof/artifacts; logs en /tmp/cv-t5-wrap-proof/logs (conservados).
+Resultado:
+- 4x HTTP 200 application/pdf (classic 123614 bytes, modern 151880, compact 128610, tech 149574). Logs: classic/modern/compact/tech = 0 errores, 0 Overfull. Underfull: modern 4, compact 4, classic 0, tech 0 — identicos en cantidad y lineas a los pre-fix (parrafos de entradas sin cuerpo; preexistentes, no desbordes).
+Error completo:
+- Ninguno en la ronda final. Overfull pre-fix: classic 1183.32pt, modern 27.71626pt + 1015.92pt, compact 992.16pt, tech 1022.61pt (CMD-057).
+Reintento/correccion:
+- No fue necesario; el desborde confirmado quedo eliminado en las 4 plantillas.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-067
+Accion:
+Verificacion de texto extraido (pdftotext), paginas y neutralizacion sobre los 4 PDFs servidos.
+Motivo:
+Probar preservacion total de caracteres a traves del wrapping, ausencia de leaks de metadata y de macros visibles.
+Comando: `pdfinfo` + `pdftotext` + verificacion programatica de 24 marcadores, corrida A*200 (longitud real del payload), fragmentos del URL del header, leaks y `end{document}` literal.
+Argumentos:
+- Marcadores: nombre/headline/contacto/ubicacion, resumen, rol-empresa-fechas, educacion, skills, certificaciones, idiomas, proyectos, links, info adicional.
+Resultado:
+- 4x: missing [] en las 4 plantillas; corrida A*200 completa presente en el texto aplanado (64+64+64+8 lineas del highlight); fragmentos del URL del header de modern presentes (pdftotext reordena fragmentos de renglones envueltos, todos los caracteres presentes); leaks [] (sin structured_test/synced_from_legacy_at/schema_version/SNAPSHOT/allowbreak/hspace); `\end{document}` malicioso sigue tipografiado como texto literal. Paginas: classic 3 (p3 = Informacion adicional legitima), modern 2, compact 2, tech 2, todas A4.
+Error completo:
+- Ninguno. Nota: classic paso de 2 a 3 paginas porque el highlight envuelto ocupa mas renglones en 11pt; p3 contiene la seccion Informacion adicional completa (no es pagina basura).
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-068
+Accion:
+Registro de hashes SHA256 finales de PDFs y TEX servidos.
+Motivo:
+Trazabilidad de artefactos regenerados (LL-004/LL-011): hash nuevo documentado y verificable contra la descarga.
+Comando: `sha256sum cv-*.pdf cv-*.tex` en /tmp/cv-t5-wrap-proof/artifacts.
+Argumentos:
+- Salida en /tmp/cv-t5-wrap-proof/hashes.txt.
+Resultado:
+- PDFs: classic ca23f6259f42831af019802451d4d1a4be6b7887a0e6c26490a0b8e132e20537; modern 1227ddcddc8aab84a63c1cb2685ecd71572006f7fe4bbcd58829c806af6726f4; compact 6a2a5924db156b8468847ede2009ccc41fd021f08c5b15cd03e2ad65b14a0c48; tech 8f3882f94d89b2d9c80bc6fccb7f4b6719b94205ebe183f6f262c28936c7f6fa. TEXs: classic 2f367878a8f769b34a171799e9dea77b85afb6f2c04a104a536049765369eeb7; modern 4969b6c6c8c398d83ff506f89e16694f4a4c2271728b70e72ae1c15ab53f9bc1; compact 9f3c80fae9a2e18f5b5a0a58ddcbe562c26c78ffff8b3af4567a5cefe48adac6; tech 9ec6c096b530a67be47eeaf27726101a49fc63268db2a4b4b65326f7e72158f1.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-069
+Accion:
+Prueba HTTP del ATS canonico sobre el mismo CV sintetico con tokens largos.
+Motivo:
+Confirmar que el texto ATS sigue sin macros de corte y el scoring queda intacto.
+Comando: `curl -s http://127.0.0.1:8126/ats/cvs/1`.
+Argumentos:
+- Ninguno.
+Resultado:
+- HTTP 200, 'Bueno', 100/100 desde el payload canonico (igual que la ronda T5 previa).
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-070
+Accion:
+Renders PNG de TODAS las paginas de los 4 PDFs y metrica objetiva de cobertura de tinta.
+Motivo:
+<arg_value>Inspeccion visual independiente del padre (el writer no puede ingerir imagenes); metrica objetiva por pagina como soporte.
+Comando: `pdftoppm -png -r 70 -f $p -l $p /proof/artifacts/cv-$t.pdf /proof/png/$t-p$p` (todas las paginas) + `pdftoppm -gray -r 40` + cobertura con Python stdlib.
+Argumentos:
+- 9 PNGs en /tmp/cv-t5-wrap-proof/png (classic p1/p2/p3, modern p1/p2, compact p1/p2, tech p1/p2).
+Resultado:
+- Cobertura de tinta: classic 6.9%/3.2%/0.4%, modern 7.2%/2.7%, compact 8.2%/0.5%, tech 11.9%/7.9%. Ninguna pagina en blanco; classic p3 y compact p2 son restos legitimos.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+2026-10-09 07:31:12 ART | Etapa 9.6/T5-correccion | CMD-071
+Accion:
+Detencion del runtime aislado de pruebas.
+Motivo:
+Liberar el contenedor temporal; sin produccion ni ./data real en ninguna corrida.
+Comando: `docker rm -f cv-latex-t5wrap-proof`
+Argumentos:
+- Ninguno.
+Resultado:
+- Contenedor eliminado.
+Error completo:
+- Ninguno.
+Reintento/correccion:
+- No fue necesario.
+
+Nota de timestamps T5-correccion (LL-015): los bloques CMD-057..071 se registraron al cierre con la hora ART real de America/Argentina/Buenos_Aires al momento de escribirlos (2026-10-09 ~07:31 ART); los comandos se ejecutaron previamente en esta misma sesion en el orden narrado (evidencia pre-fix -> RED -> implementacion -> ronda HTTP fallida y causa raiz -> fix del separador -> verificaciones finales -> ronda HTTP/PDF/PNG).
+
+2026-10-09 15:42:00 ART | Etapa 9.6/T6 recuperacion bloqueada | CMD-072
+Accion:
+Recuperar el estado de T6 y detener exclusivamente el runtime temporal de la correccion documental.
+Motivo:
+El verificador mv1ad08j-8-e98j y su continuacion mv1ar0gn-9-ym15 devolvieron texto corrupto; la continuacion completo 0 llamadas a herramientas. No hay verdict utilizable ni ejecutor alternativo disponible. No certificar T6 sin PNGs finales y verificaciones posteriores a la regeneracion.
+Comando:
+`docker inspect cv-t6-correction-http --format '{{json .Mounts}} {{json .HostConfig.Tmpfs}} {{json .HostConfig.PortBindings}}'`; `docker stop --time 10 cv-t6-correction-http`; `docker ps --filter name=cv-t6-correction-http --format '{{.Names}}'`; `git diff --cached --stat`.
+Argumentos:
+Solo contenedor temporal cv-t6-correction-http; no operaciones sobre produccion, datos persistentes, volumenes ni archivos de evidencia.
+Resultado:
+Inspect: sin bind mounts, tmpfs /data y /tmp, puerto 127.0.0.1:8765. Stop exit 0; comprobacion posterior sin contenedor activo; indice Git sin cambios. Evidencia conservada en /tmp/cv-t6-doc-correction-proof y /tmp/cv-t6-final-proof. Las descargas finales existentes no tienen prueba admisible de correspondencia con el workspace actual: el runtime temporal no tenia bind mount del repositorio. No se afirma coincidencia HTTP/local final.
+Error completo:
+Docker aviso: `Flag --time has been deprecated, use --timeout instead`; la detencion fue exitosa. Fallo del runtime de verificacion: salida corrupta en ambas respuestas; no prueba de ejecucion de PNGs/tests finales. Lectura inicial de COMMAND_LOG con offset 4870 fallo porque el archivo tenia 4866 lineas; lectura correcta desde 4852 recupero el cierre existente.
+Reintento/correccion:
+No nuevos reintentos de subagentes ni cambios de modelos/configuracion. T1-T5 cerradas; T6 bloqueada. Prueba anterior independiente mv191vdy-6-itoi: 180 pytest aprobados / 1 warning preexistente, 8 Node aprobados y compileall exit 0, anteriores a la ultima regeneracion; no atribuirlos al candidato documental final. Timestamps exactos de comandos del writer interrumpido no reconstruidos con certeza. Proximo paso: restaurar un ejecutor de verificacion operativo; generar PNGs y ejecutar solamente checks faltantes con runtime aislado que sirva el workspace actual.
+2026-10-10 01:27:18 ART | Etapa 9.6/T6-cierre | CMD-073
+Accion:
+Recuperacion del estado real de T6 tras el incidente del proveedor NVIDIA y del verificador corrupto.
+Motivo:
+CMD-072 dejo T6 bloqueada por falta de prueba admisible posterior a la regeneracion de PDFs. No se debia repetir implementacion ni asumir el estado del filesystem.
+Comando:
+`git status --short --branch`; `git branch --show-current`; `git log --oneline --decorate -12`; `git worktree list`; `git stash list`; `git diff --shortstat`; `git diff --numstat`; `git diff --numstat --ignore-cr-at-eol`; `git diff --check`; `git -c core.whitespace=cr-at-eol diff --check`; `ls -la /tmp/`; `docker ps -a`; `docker images`; `stat -c '%y %n' docs/user/*.md app/static/docs/*.pdf`; `wc -l docs/development/COMMAND_LOG.md`; `tail -130 docs/development/COMMAND_LOG.md`.
+Argumentos:
+Solo lectura. Sin `git reset`, `git clean`, `git checkout`, staging ni escrituras.
+Resultado:
+Rama `feature/structured-cv-complete` en `a28d1fd`, base identica a `main`/`development`/`origin/*`. Sin staged changes, sin stash, un solo worktree. 108 archivos tracked modificados: 27 con diferencia real de contenido (`--ignore-cr-at-eol`) y 81 reescrituras solo-CRLF preexistentes; el plain `git diff --check` marca 44886 lineas por ese ruido CRLF y el check CRLF-aware da exit 0. 11 entradas untracked (5 modulos nuevos, 5 tests nuevos, `odd/`). `COMMAND_LOG.md` con 4881 lineas y ultimo ID CMD-072. Contenedor `cv-t6-correction-http` ya inexistente (detenido en CMD-072). Los directorios de evidencia `/tmp/cv-t6-doc-proof`, `/tmp/cv-t6-doc-correction-proof` y `/tmp/cv-t6-final-proof` NO existen: `/tmp` fue limpiado y toda la evidencia intermedia de T6 se perdio. Ambos PDFs servidos (mtime 2026-10-09 17:59) son posteriores a sus fuentes Markdown, y la correccion de la URL absoluta ya estaba aplicada en `docs/user/WEB_USAGE_MANUAL.md`.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario. La recuperacion se completo con evidencia observable del repositorio; no se reconstruyeron artefactos ausentes.
+
+2026-10-10 01:27:18 ART | Etapa 9.6/T6-cierre | CMD-074
+Accion:
+Verificacion funcional del estado final sobre el workspace actual.
+Motivo:
+T6 exige suite completa, compile y check de formato; la evidencia previa era anterior a la regeneracion de PDFs.
+Comando:
+Suite: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short -q`. Compile: mismo runner con `-m compileall -q app tests`. Diff: `git -c core.whitespace=cr-at-eol diff --check`. JS: `node tests/test_structured_cv_editor_js.js`.
+Argumentos:
+Imagen con dependencias; workspace de solo lectura; tmpfs enmascara `/workspace/data`; nunca se monta ni escribe `./data` real.
+Resultado:
+Suite completa `180 passed, 1 warning in 2.65s` (warning preexistente deprecacion `anyio.abc.BlockingPortal` en `starlette/testclient.py:40`). Suite reejecutada de nuevo sobre el estado final posterior a la correccion de prosa: `180 passed, 1 warning in 2.53s`. Compile exit 0. `git -c core.whitespace=cr-at-eol diff --check` exit 0. Node: `8 pasaron, 0 fallaron` (tests unitarios; el propio archivo informa `Sin --browser <url>: se omiten las pruebas de navegador`).
+Error completo:
+El primer `compileall` fallo con exit 1 y 5 errores `OSError: [Errno 30] Read-only file system` al escribir `__pycache__`: era un artefacto del montaje de solo lectura, no un defecto de codigo.
+Reintento/correccion:
+Un reintento razonable copiando el workspace a un tmpfs escribible dentro del contenedor (`cp -r /workspace/. /tmp/work/`) dio `compileall exit: 0`. Sin instalacion de paquetes: `black` y `ruff` no estan disponibles en el host ni en la imagen, asi que el check de formato queda cubierto solo por el diff check CRLF-aware.
+
+2026-10-10 01:27:18 ART | Etapa 9.6/T6-cierre | CMD-075
+Accion:
+Prueba HTTP real sobre un runtime aislado que sirve el workspace actual.
+Motivo:
+CMD-072 concluyo que las descargas finales existentes NO tenian prueba admisible de correspondencia con el workspace actual porque el runtime temporal no montaba el repositorio. Ese era el hueco exacto de T6.
+Comando:
+`docker run --rm -d --name cv-t6-final-http -e APP_DATA_DIR=/tmp/cv-t6-data -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /tmp/cv-t6-data:rw -p 127.0.0.1:8134:8000 -w /workspace --entrypoint python cv-latex-app:latest -m uvicorn app.main:app --host 0.0.0.0 --port 8000`; luego `curl` a `/health`, `/documentation/`, `/documentation/technical`, `/documentation/usage` y `GET` de ambos `/static/docs/*.pdf`, con `sha256sum` local vs descargado.
+Argumentos:
+Bind mount `ro` del workspace, tmpfs para datos, puerto solo en `127.0.0.1:8134`. Nunca se uso `docker compose` ni el contenedor de produccion.
+Resultado:
+`/health` 200 con `status ok`, `version 0.9.0` y base de datos en `/tmp/cv-t6-data/app.db`. Las tres rutas de documentacion HTTP 200. Ambos PDFs HTTP 200 con `content-type: application/pdf`. SHA256 local identico al descargado en ambos casos: manual `5123183ec00e73b474c717d55292789a3470ea7b33a09165aa1b46e18afc85fc` y tecnica `c221245005b25107054cffbdbaeb4b40331a5e55a195659e1646e985f68b8951`. HTML servido contiene los marcadores de Feature 1 (`schema 2`, `Editar estructurado`, `0.9.0`).
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario.
+
+2026-10-10 01:27:18 ART | Etapa 9.6/T6-cierre | CMD-076
+Accion:
+Inspeccion visual de los PDFs y deteccion de texto recortado en la documentacion servida.
+Motivo:
+T6 exige prueba visual de PDF evitando texto cortado; la correccion previa habia cerrado solo la URL absoluta del primer bullet del editor estructurado.
+Comando:
+`pdfinfo` y `pdftotext -layout` sobre los PDFs descargados por HTTP; `pdftoppm -png -r 100 -f $i -l $i` para las 8 paginas del manual y las 10 de la tecnica; lectura directa de los PNG generados.
+Argumentos:
+Render desde los bytes descargados por HTTP, no desde el disco, para que la inspeccion visual cubra exactamente lo que se sirve.
+Resultado:
+Manual 8 paginas A4, tecnica 10 paginas A4, sin paginas vacias (chars utiles por pagina entre 217 y 1827). La URL absoluta del primer bullet del editor estructurado ya no aparece (`structured-edit` = 0 ocurrencias en el manual) y en su lugar esta la descripcion de navegacion por UI. Indices poblados con numeros de pagina reales y guiones alineados en ambos documentos. Sin titulos huerfanos, sin solapamientos, sin cortes de texto.
+PERO: en la pagina impresa 3 del manual se detecto texto efectivamente recortado. El fuente dice `docs/development/CHANGELOG_GENERAL.md` y la capa de texto del PDF conserva solo `docs/development/CHANGELOG_GENERAL.m` (se pierde la `d`); `grep -c 'CHANGELOG_GENERAL.md'` sobre el texto extraido devuelve 0. Causa: token inline-code monoespaciado no divisible que desborda el margen derecho de la linea y el recorte lo descarta. La misma linea existe en el PDF de HEAD, por lo que el defecto es PREEXISTENTE de v0.9.0 y no una regresion de Feature 1.
+Error completo:
+Ninguno en las herramientas. El defecto detectado es de contenido renderizado.
+Reintento/correccion:
+Se investigo si el faltante era un salto de linea o un recorte real: los dos candidatos restantes que aparecieron en la tecnica (`rutas de do`/`cumentacion` y `fast-`/`forward`) se confirmaron por extraccion directa como cortes de palabra CON guion, con el texto completo presente.
+
+2026-10-10 01:27:18 ART | Etapa 9.6/T6-cierre | CMD-077
+Accion:
+Correccion minima de prosa del token recortado y regeneracion de ambos PDFs servidos.
+Motivo:
+Un PDF servido con un nombre de archivo cortado no puede superar la prueba visual que T6 debe cerrar. El alcance se limito a una linea de prosa, sin tocar el renderer ni codigo de aplicacion.
+Comando:
+Edicion de una sola linea en `docs/user/WEB_USAGE_MANUAL.md`: de "para eso existe `docs/development/CHANGELOG_GENERAL.md`" a "para eso existe el archivo `CHANGELOG_GENERAL.md` dentro de `docs/development`". Luego `docker run --rm --network none -e PYTHONDONTWRITEBYTECODE=1 -e APP_DATA_DIR=/tmp/cv-t6-regen-data -v /home/franco/GIT/cv-latex:/workspace:rw --tmpfs /tmp/cv-t6-regen-data:rw -w /workspace --entrypoint python cv-latex-app:latest -m app.services.documentation_service`.
+Argumentos:
+Se regeneran LOS DOS PDFs servidos porque `AGENTS.md` lo exige ante cualquier cambio en `docs/user` o en el renderer. Solo se escribe en `app/static/docs`; datos en tmpfs.
+Resultado:
+CRLF de la linea preservado. Regeneracion exit 0. Hash anterior -> nuevo: manual `5123183ec0...` -> `86117d72d4eaf8dfc8ffc51a861939fe092c667ae1b0771c1b213fbef19232d8` (163933 -> 163960 bytes); tecnica `c221245005...` -> `0a2e23aa422dc8e24f1f304b888c0989576946516d79b4ee8dc12b24d2753bb8` (178074 bytes, contenido sin cambios). Paginas sin cambios: 8 y 10, ambas A4.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario. No se modifico `app/services/documentation_service.py` ni ninguna plantilla.
+
+2026-10-10 01:27:18 ART | Etapa 9.6/T6-cierre | CMD-078
+Accion:
+Reverificacion completa de los PDFs regenerados y determinismo de regeneracion.
+Motivo:
+Los bytes cambiaron, asi que toda la evidencia previa de CMD-075/076 dejo de ser aplicable al candidato final.
+Comando:
+Runtime aislado nuevo con el workspace actual en solo lectura; `curl` de ambos PDFs; `sha256sum` local vs HTTP; `pdftotext -layout`; `pdfinfo`; `pdftoppm -png -r 100` de las 18 paginas; verificacion programatica de supervivencia de todo token inline de 14 o mas caracteres de ambas fuentes contra la capa de texto de los PDFs; reconstruccion de ambos PDFs desde las fuentes actuales en una copia escribible y `diff` del texto extraido contra los PDFs del workspace.
+Argumentos:
+La verificacion de tokens acepta coincidencia con texto sin colapsar espacios o con guiones de corte de palabra eliminados, para no confundir un salto de linea con un recorte.
+Resultado:
+SHA256 local identico al descargado en ambos PDFs: manual `86117d72d4eaf8dfc8ffc51a861939fe092c667ae1b0771c1b213fbef19232d8` y tecnica `0a2e23aa422dc8e24f1f304b888c0989576946516d79b4ee8dc12b24d2753bb8`. 62 tokens inline largos verificados (25 del manual, 37 de la tecnica) contra la capa de texto: 0 recortados. Determinismo por contenido: el texto extraido de una reconstruccion desde las fuentes actuales es IDENTICO al de los PDFs del workspace en ambos documentos. El hash de bytes SI difiere entre ejecuciones y eso es esperado: pdfTeX embebe `CreationDate`, por lo que la equivalencia se prueba por texto y no por hash. 18 PNGs generados desde los bytes servidos e inspeccionados: portada, indice, pagina interna con contenido de Feature 1 (tecnica, pagina impresa 6) y cierre de ambos documentos correctos, sin texto cortado, sin paginas vacias, sin titulos huerfanos y sin problemas de contraste.
+Error completo:
+Un intento de metrica objetiva de cobertura de tinta por streaming PNG dio valores proximos a 99% en todas las paginas y resulto inservible; se descarto como metrica y no se reporto. Un primer intento de reconstruccion fallo por permisos al crear `/regen` dentro del contenedor y un segundo por orden incorrecto de argumentos `-v` despues de la imagen; ambos son fallos de invocacion propia, no de las herramientas.
+Reintento/correccion:
+Reconstruccion corregida con la opcion de montaje antes de la imagen: `TEXT IDENTICAL` en ambos PDFs. La inspeccion visual directa de los PNGs sustituyo a la metrica descartada.
+
+2026-10-10 01:27:18 ART | Etapa 9.6/T6-cierre | CMD-079
+Accion:
+Limpieza del runtime temporal de T6 y confirmacion del estado final de Docker.
+Motivo:
+Fase de cierre: liberar solo el contenedor propio sin tocar produccion ni datos reales.
+Comando:
+`docker inspect cv-t6-final-http --format 'Image={{.Config.Image}} Mounts={{json .Mounts}} Tmpfs={{json .HostConfig.Tmpfs}} Ports={{json .HostConfig.PortBindings}}'`; `docker rm -f cv-t6-final-http`; `docker ps -a --filter name=cv-t6`; `docker ps`.
+Argumentos:
+Unicamente `cv-t6-final-http`. Sin operaciones sobre `cv_latex_app` ni sobre ningun otro contenedor.
+Resultado:
+Inspect previo: `Image=cv-latex-app:latest`, bind mount `ro` de `/home/franco/GIT/cv-latex` a `/workspace`, tmpfs `/tmp/cv-t6-data`, puerto `127.0.0.1:8134`; aislamiento confirmado. Contenedor eliminado. Ningun contenedor `cv-t6*` restante. Estado final: `cv_latex_app` `Up (healthy)` en `127.0.0.1:8000` intacto y `cv-latex-builder` en `Restarting (1)`, este ultimo preexistente y ajeno a T6, por lo que no se toco. `./data` nunca se monto ni se escribio: `data/app.db` tiene mtime 2026-10-10 03:01:23, 3 segundos despues del arranque del contenedor de produccion (03:01:20) y muy anterior al inicio de esta sesion de verificacion.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario.
+2026-10-10 02:37:58 ART | Etapa 9.7/P0-P1-fix | CMD-080
+Accion:
+Checkpoint verificable del trabajo de Feature 1 antes de tocar codigo.
+Motivo:
+Los 11 archivos untracked (5 de produccion, 5 de test, 1 doc ODD) NO estan en git; un clean, un cambio de rama o un stash descuidado los destruiria.
+Comando:
+`git status --short --branch`; `git diff --numstat --ignore-cr-at-eol`; `tar -czf ... -T <lista>`; `sha256sum <39 archivos>`; `tar -tzf` para verificar inclusion; `grep -rilE '(api[_-]?key|secret|password|BEGIN [A-Z ]*PRIVATE KEY|ghp_...)'` sobre el contenido.
+Argumentos:
+Destino fuera del repositorio: `~/.cache/cv-latex/checkpoints/feature1-pre-p0fix-2026-10-10/`. Excluidos `.git`, `.env`, `data/`, `app.db`. Sin operaciones git de escritura.
+Resultado:
+39 archivos preservados (28 con cambio real + 11 untracked), tarball de 508 KB, `MANIFEST.sha256` con 39 entradas, `RESTORE.sh` con verificacion previa y confirmacion, y `README.md` con ubicacion y metodo de recuperacion. Verificado archivo por archivo que los 11 untracked estan dentro. Escaneo de secretos: unico match `LONG_UNBROKEN_TOKEN = "A" * 240` en `tests/test_structured_cv_consumers.py`, que es un fixture, no un secreto. Verificado que el tarball NO contiene `.env`, `data/`, `.git/` ni `.db`.
+Error completo:
+La primera invocacion de `sha256sum` fallo con `sha256sum: odd/: Is a directory` porque el untracked `odd/` es un directorio y no un archivo.
+Reintento/correccion:
+Se expandieron los directorios a archivos con `find -type f` y se regeneraron tarball y manifiesto. 39 entradas en ambos.
+
+2026-10-10 02:37:58 ART | Etapa 9.7/P0-P1-fix | CMD-081
+Accion:
+Correccion del P0 (edicion legacy destruia datos estructurados) y de los tres P1.
+Motivo:
+La auditoria independiente declaro NO APTA: el formulario plano regeneraba el payload v2 desde campos planos con secciones solo-estructuradas hardcodeadas a vacias, o anulaba el payload, sin aviso y desde el boton principal del detalle.
+Comando:
+`app/repositories/cv_repository.py` (nuevo `StructuredCVLegacyUpdateError`, `_build_structured_columns_for_legacy_update` ahora lanza para filas estructuradas y solo mantiene `build_legacy_structured_columns()` para legacy); `app/routes/cvs.py` (guarda en `cvs_edit` GET y `cvs_update` POST antes de leer o validar el formulario, con `except` de respaldo); `app/templates/cvs/detail.html` (boton "Editar" apunta al editor estructurado cuando `is_structured`); `app/services/structured_cv_editor_service.py` (normalizacion de forma renderizable antes de pasar el payload al template); `app/templates/cvs/structured_form.html` (guardas `is mapping`/`is sequence` en defensa en profundidad); `app/services/export_service.py` (`IMPORTED_TITLE_SUFFIX` y tope de titulo importado); `app/services/structured_cv_service.py` (`structured_payload_too_large` pasa a `StructuredCVWriteError`).
+Argumentos:
+Superficie permitida acotada a 11 archivos. EOL preservado: los tracked siguen CRLF y los untracked siguen LF. Sin commit, push, PR, tag, instalacion ni normalizacion.
+Resultado:
+P0: la escritura se bloquea ANTES de abrir conexion, por lo que no hay escritura parcial ni degradacion silenciosa a legacy. P1 payload: forma incompatible ya no llega al template y responde 422 en vez de 500. P1 titulo: el sufijo ahora se topa igual que `build_duplicate_title`. P1 tamano: error de dominio manejado, sin cambiar `MAX_STRUCTURED_PAYLOAD_BYTES` y sin escritura en DB.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario.
+
+2026-10-10 02:37:58 ART | Etapa 9.7/P0-P1-fix | CMD-082
+Accion:
+Reescritura de los dos tests que codificaban el contrato destructivo.
+Motivo:
+`test_update_structured_cv_regenerates_payload_from_legacy_fields` y `test_update_structured_cv_with_partial_v2_payload_does_not_clear_it_to_legacy` afirmaban exactamente el comportamiento queprovoca la perdida de datos, y ambos pasaban porque construian la fila con `_mark_cv_as_structured`, que derivaba el payload de los campos legacy y por lo tanto ya dejaba vacias las secciones solo-estructuradas.
+Comando:
+Reescritura sobre `tests/test_cv_repository.py` usando `create_structured_cv` con un payload que contiene contenido exclusivo de schema 2, y `assertRaises(StructuredCVLegacyUpdateError)` mas comparacion de secciones antes/despues. Test de import con titulo sobre el limite invertido de "se rechaza" a "se topa".
+Argumentos:
+Solo tests. Sin tocar codigo de produccion adicional.
+Resultado:
+Los dos tests previos se eliminaron y fueron reemplazados por `test_update_structured_cv_raises_domain_error_and_preserves_schema2_only_data` y `test_update_structured_cv_with_partial_v2_payload_raises_without_clearing_to_legacy`, que verifican campo por campo `headline`, `location`, `certifications`, `projects`, `languages`, `links`, `additional_info`, `contact.links` y `metadata.source`. Conteo de tests: 180 -> 198. Ningun otro test eliminado.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario.
+
+2026-10-10 02:37:58 ART | Etapa 9.7/P0-P1-fix | CMD-083
+Accion:
+Verificacion funcional completa e independiente de los cuatro bloqueantes.
+Motivo:
+El cierre de T6 no puede afirmar nada sin checks observables posteriores a la correccion.
+Comando:
+Suite enfocada: `docker run --rm --network none --entrypoint python -e APP_DATA_DIR=/tmp/cv-latex-tests -e PYTHONDONTWRITEBYTECODE=1 -v /home/franco/GIT/cv-latex:/workspace:ro --tmpfs /workspace/data:rw -w /workspace cv-latex-app:latest -m pytest -p no:cacheprovider --tb=short -q tests/test_cv_repository.py tests/test_cv_json_schema2.py tests/test_structured_cv_editor.py tests/test_ui_routes.py`. Suite completa: mismo runner sin rutas. Compileall: copia escribible en tmpfs. Diff: `git -c core.whitespace=cr-at-eol diff --check`. JS: `node tests/test_structured_cv_editor_js.js`. HTTP: runtime aislado en `127.0.0.1:8134` con workspace `ro` y tmpfs.
+Argumentos:
+Datos ficticios unicamente. Nunca se monta ni escribe `./data`.
+Resultado:
+Suite enfocada `80 passed, 1 warning in 2.14s`. Suite completa `198 passed, 1 warning in 3.06s` (warning preexistente de AnyIO/Starlette). `compileall exit: 0`. Diff check exit 0. JS `8 pasaron, 0 fallaron`. HTTP end-to-end: crear CV estructurado 303; `GET /cvs/1/edit` responde 303 al editor estructurado con mensaje en espanol; `POST /cvs/1/edit` responde 303 al detalle SIN escribir; el export schema 2 posterior conserva titulo `CV E2E`, `headline`, `location` y las cinco secciones solo-estructuradas. Regresion legacy: `GET /cvs/2/edit` 200, `POST` 303 y titulo actualizado a `CV Legacy Editado`. Payload malformado (`personal` string y `contact.links` entero) responde 422, no 500. Import con titulo de 120 caracteres responde 303 en schema 1 y schema 2, con titulo resultante de largo 120 y sufijo `(importado)` conservado.
+Error completo:
+La extraccion de titulos del listado HTML no arrojo coincidencias por un selector incorrecto; se verifico igual via export JSON, que si confirmo los titulos.
+Reintento/correccion:
+No fue necesario; el estado 303 ya demostraba el exito del import.
+
+2026-10-10 02:37:58 ART | Etapa 9.7/P0-P1-fix | CMD-084
+Accion:
+Limpieza del runtime temporal de la correccion.
+Motivo:
+Liberar solo el contenedor propio, sin tocar produccion ni datos reales.
+Comando:
+`docker inspect cv-p0fix-http --format ...`; `docker rm -f cv-p0fix-http`; `docker ps -a --filter name=cv-p0fix -q`; `docker ps`.
+Argumentos:
+Unicamente `cv-p0fix-http`.
+Resultado:
+Inspect previo: bind `ro` del workspace, tmpfs `/tmp/cv-p0fix-data`, puerto solo `127.0.0.1:8134`. Contenedor eliminado. Ningun `cv-*` temporal restante. `cv_latex_app` sigue `Up (healthy)` en `127.0.0.1:8000` y `cv-latex-builder` sigue `Restarting`, ambos preexistentes y ajenos. `data/app.db` mantiene mtime 2026-10-10 03:01:23, anterior al inicio de esta sesion: nunca fue montada ni escrita.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario.
+2026-10-10 14:31:04 | Etapa 9.7/cierre-tecnico | CMD-085
+Accion:
+Establecer politica explicita de finales de linea sin renormalizar el repositorio.
+Motivo:
+El repositorio no tenia `.gitattributes` ni `core.autocrlf` definido, con HEAD en LF y el working tree en CRLF. Eso hacia que ~79 archivos aparecieran como modificados por unicamente CRLF y que cualquier commit sin cuidado almacenara CRLF y mostrara el archivo completo como reescrito.
+Comando:
+`git config --show-origin --get-all core.autocrlf`; `git ls-files --eol`; `git cat-file -e HEAD:<archivo>`; `git diff --numstat --ignore-cr-at-eol`; creacion de `.gitattributes` con `* text=auto eol=lf` y declaracion explicita de binarios (`*.pdf`, imagenes, fuentes y comprimidos); `git status --short`; `git rev-parse a28d1fd:<archivo>` comparado contra `HEAD:<archivo>`.
+Argumentos:
+No se ejecuto `git add --renormalize`, no se modifico configuracion global ni local de Git y no se toco ningun archivo existente.
+Resultado:
+Tras agregar `.gitattributes`, `git status --short` sigue listando solo los archivos con cambio real de contenido mas el propio `.gitattributes`: 11 entradas y cero ruido colateral. Los 79 archivos con diferencias solo-CRLF siguen byte-identicos a `a28d1fd` en HEAD, y 72 de ellos permanecen completamente limpios en el working tree. Ningun archivo fue reescrito ni renormalizado. `git ls-files --eol .gitattributes` muestra `attr/text=auto eol=lf` y `i/lf w/lf`.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario. La normalizacion historica de los archivos ya presentes en el repositorio queda documentada como tarea independiente del backlog.
+
+2026-10-10 14:31:04 | Etapa 9.7/cierre-tecnico | CMD-086
+Accion:
+Enrutar las acciones "Editar" al editor que corresponde segun el tipo de CV.
+Motivo:
+El listado de CVs y las vistas de ATS seguian apuntando siempre al editor plano. La proteccion P0 interceptaba el acesso y redirigia, con lo que un CV estructurado llegaba al editor correcto mediante un salto de redireccion innecesario.
+Comando:
+`app/routes/cvs.py` (`_build_cv_cards` agrega `is_structured` por tarjeta); `app/routes/ats.py` (ambos contextos agregan `is_structured` usando `resolve_structured_cv_state`); `app/templates/cvs/index.html`, `app/templates/ats/cv_analysis.html` y `app/templates/ats/modal.html` (tres puntos de entrada con rama condicional).
+Argumentos:
+Cambio minimo, sin refactor de frontend ni cambios de JavaScript. Se reutilizo el resolutor existente.
+Resultado:
+Un CV estructurado enlaza directo a `cvs_structured_edit` y uno legacy a `cvs_edit`, sin salto de redireccion. Las guardas de backend permanecen intactas: `cvs_edit` GET en `cvs.py:284`, `cvs_update` POST en `cvs.py:326` y el raise `StructuredCVLegacyUpdateError` en `cv_repository.py:169`. La pagina de detalle no se modifico. CRLF preservado en los seis archivos.
+Error completo:
+Un primer RED mostro tres fallos en lugar de dos porque una prueba nueva asumia que `CV.structured_payload` era un diccionario cuando es un texto JSON; el fallo era de la prueba, no de la aplicacion, y se corrigio con `json.loads`.
+Reintento/correccion:
+RED limpio con 2 fallos esperados y 14 aprobados antes de implementar.
+
+2026-10-10 14:31:04 | Etapa 9.7/cierre-tecnico | CMD-087
+Accion:
+Alinear la documentacion tecnica con la implementacion real de Feature 1.
+Motivo:
+`MODULE_INDEX.md`, `ADR-0003`, `CHANGELOG_GENERAL.md` y `CV_BUILDER_CORE.md` seguian describiendo la feature como no implementada.
+Comando:
+Edicion de los cuatro documentos; verificacion con `git -c core.whitespace=cr-at-eol diff --check` y `git diff --ignore-cr-at-eol --stat -- docs/`.
+Argumentos:
+Sin afirmar publicacion, sin inventar version, release, tag ni fecha. El caracter historico del ADR se preservo.
+Resultado:
+`MODULE_INDEX.md` suma cuatro filas de modulo y actualiza las existentes, todas marcadas como sin publicar. `ADR-0003` cambia solo su linea de estado y agrega una seccion `Implementacion`, conservando las diecinueve secciones de decision originales. `CHANGELOG_GENERAL.md` agrega una entrada `Unreleased - Etapa 9.x (rama feature/structured-cv-complete, sin publicar)` sin tocar las entradas publicadas. `CV_BUILDER_CORE.md` documenta ambos editores, la regla de no edicion por formulario plano, el intercambio JSON schema 1/2 y la compatibilidad de consumidores. Diff real: 209 inserciones y 13 eliminaciones en los cuatro archivos, sin churn de EOL.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario.
+
+2026-10-10 14:31:04 | Etapa 9.7/cierre-tecnico | CMD-088
+Accion:
+Prueba determinista de compatibilidad byte a byte del TEX legacy contra el commit base a28d1fd.
+Motivo:
+La auditoria habia detectado que ningun test comparaba el TEX legacy contra el baseline, de modo que una regresion en las plantillas no seria detectable por la suite.
+Comando:
+`git archive a28d1fd | tar -x -C <tmp>`; ejecucion de un generador identico dentro de la imagen contra el arbol de `a28d1fd` y contra el workspace vigente; `cmp`/SHA256 de los cuatro resultados; alta de `tests/fixtures/legacy_tex_a28d1fd/*.tex` y de `tests/test_legacy_tex_compatibility.py`.
+Argumentos:
+La referencia se genera desde el codigo del baseline, nunca desde el codigo bajo prueba. CV ficticio con timestamps fijos y caracteres que ejercitan escape (`&`, acentos, puntuacion).
+Resultado:
+Las cuatro plantillas producen TEX byte-identico: `classic` ac8acb5c966fe91f, `modern` 2edbaadf2a872878, `compact` 0db6c38da7653c42, `tech` 37ab821259086812, con igual longitud y mismo hash en `a28d1fd` y en el codigo vigente. El nivel de equivalencia comprobado es IDENTIDAD BYTE A BYTE, no solo equivalencia textual. Se verifica que el guard muerde: al adulterar temporalmente el fixture la prueba falla señalando la linea exacta de la diferencia. Se agrega ademas una comprobacion de que el render legacy es determinista, necesaria para que la identidad byte a byte sea un criterio con sentido.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario.
+
+2026-10-10 14:31:04 | Etapa 9.7/cierre-tecnico | CMD-089
+Accion:
+Validacion final del cierre tecnico.
+Motivo:
+Ninguna afirmacion de cierre puede apoyarse en evidencia previa si el contenido cambio.
+Comando:
+Suite completa con el runner fijado; `python -m compileall app tests` sobre copia escribible; `node tests/test_structured_cv_editor_js.js`; `git -c core.whitespace=cr-at-eol diff --check`; `git diff --cached --check`.
+Argumentos:
+Datos ficticios, almacenamiento temporal, `./data` nunca montado.
+Resultado:
+Suite completa `207 passed, 1 warning in 3.24s` (sube desde 198 por 5 pruebas de navegacion y 4 de compatibilidad TEX). JavaScript `8 pasaron, 0 fallaron`. `compileall exit: 0`. Ambos diff check `exit: 0`. `data/app.db` conserva mtime 2026-10-10 03:01:23, anterior a esta sesion: nunca fue montada ni escrita.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario.
+2026-10-11 08:21:00 | Etapa 9.8/codex-review | CMD-090
+Accion:
+Corregir los tres hallazgos del Codex Review del PR #16 (P1 atomicidad, P2 limite de export, P2 JSON no finito).
+Motivo:
+La revision del commit `8daa85f` quedo COMPLETADA con tres hallazgos: una condicion de carrera TOCTOU en `update_cv`, un export schema 2 que puede superar el limite de importacion, y la aceptacion de `NaN`/`Infinity` en el parseo JSON.
+Comando:
+`gh pr view 16 --json reviews --jq '.reviews[0].body'`; `gh api repos/zetchs7/cv-latex/pulls/16/comments`; edicion de `app/repositories/cv_repository.py`, `app/services/export_service.py`, `app/services/structured_cv_service.py`, `app/services/structured_cv_editor_service.py` y sus tests; validacion con venv efimero en `/tmp` usando las versiones pineadas de `requirements.txt`.
+Argumentos:
+Superficie acotada a 9 archivos. Sin push, merge, tag ni release en este comando.
+Resultado:
+P1: el UPDATE legacy ahora lleva la precondicion de estado legacy en el propio WHERE (`structured_schema_version IS NULL OR < 2 OR structured_payload IS NULL`) y, si afecta 0 filas, `_resolve_zero_row_legacy_update` distingue fila ausente o borrada (`False`) de conflicto de estado (lanza `StructuredCVLegacyUpdateError`) dentro de la misma transaccion y sin commitear. P2 limite: `MAX_JSON_IMPORT_BYTES` se deriva de `MAX_STRUCTURED_PAYLOAD_BYTES` mas un sobre fijo y documentado de 8 KB, y el export schema 2 se emite con separadores compactos; schema 1 conserva su formato indentado. P2 no finitos: helper `reject_non_finite_json_constant` pasado como `parse_constant` en los dos puntos de entrada JSON no confiables, mas `allow_nan=False` en las serializaciones y error de dominio `structured_payload_non_finite_number`.
+Error completo:
+El daemon de Docker estaba caido (`systemctl is-active docker` = `inactive`, sin proceso `dockerd`), por lo que el runner pineado no pudo ejecutarse y no hay sudo para levantarlo. Se armo un venv efimero en `/tmp/opencode/venv-validate` con `fastapi==0.115.6`, `jinja2==3.1.5`, `pytest==8.3.4`, `httpx==0.28.1` y `python-multipart==0.0.20`, exactamente las versiones de `requirements.txt`.
+Reintento/correccion:
+Una primera corrida sin `APP_DATA_DIR` produjo 4 fallos `PermissionError: '/data'` en `test_documentation_routes.py`; es la invocacion, no el codigo. Corregida, la suite completa da `229 passed, 1 warning in 3.20s`. JavaScript `8 pasaron`. `compileall` exit 0. `git -c core.whitespace=cr-at-eol diff --check` exit 0.
+
+2026-10-11 08:21:00 | Etapa 9.8/codex-review | CMD-091
+Accion:
+Verificar y documentar el aislamiento de datos de la suite ejecutada fuera de Docker.
+Motivo:
+Detectado que `data/app.db` cambio de mtime durante la sesion y era necesario determinar si la base real resulto danada.
+Comando:
+`stat -c '%y %s' data/app.db`; `ls -la data/`; `find data/exports -newermt 2026-10-11`; `PRAGMA integrity_check`; `PRAGMA foreign_key_check`; `SELECT COUNT(*)` por tabla; busqueda de `DOCUMENTATION_BUILD_DIR` en `app/services/documentation_service.py`.
+Argumentos:
+Solo lectura sobre la base, abierta con `mode=ro`. No se modifico ni borro nada.
+Resultado:
+La base esta integra: `integrity_check` = `ok`, sin violaciones de claves foraneas, 49 CVs, 10 cartas y 6 postulaciones, y `app_metadata.schema_version` conserva el valor original `2` con sello `2026-10-10 03:01:23`. Sin embargo el CV id 49 (`Tes 65`) fue CREADO hoy a las 10:12:30 y actualizado a las 10:15:27 por una corrida de pruebas ejecutada sobre el host sin el aislamiento de Docker, y dos artefactos de export quedaron en `data/exports` a las 11:09 desde otra corrida. No hay perdida de datos previos: el id 49 es un artefacto de prueba de esta sesion, no un registro del usuario. `data/` esta ignorado por git (`.gitignore:19`), asi que nada de esto entra en el PR. No se reparo ni borro nada sin autorizacion.
+Error completo:
+Ninguno.
+Reintento/correccion:
+Causa raiz identificada: `app/services/documentation_service.py:14` define `DOCUMENTATION_BUILD_DIR = REPO_ROOT / "data" / "documentation-build"` como constante de modulo que ignora `APP_DATA_DIR`, y los tests que no parchean esa variable operar sobre el `data/` real. Bajo el runner Docker el workspace era de solo lectura con tmpfs en `data`, por lo que el aislamiento era un efecto del entorno y no del codigo.

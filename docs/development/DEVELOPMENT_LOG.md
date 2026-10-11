@@ -1,5 +1,158 @@
 # Development Log
 
+
+## Cierre tecnico previo al PR - politica EOL, navegacion del editor, documentacion y compatibilidad TEX
+
+- Fecha: 2026-10-10
+- Rama: `feature/structured-cv-complete` (commits locales, sin push ni PR)
+- Objetivo: cerrar los pendientes P2 detectados tras la auditoria y la correccion P0/P1, y agregar la prueba de compatibilidad que faltaba.
+- Alcance ejecutado:
+  - Politica de finales de linea: nuevo `.gitattributes` con `* text=auto eol=lf` y binarios declarados. Sin renormalizar el historico y sin tocar la configuracion de Git. Los 79 archivos con diferencias solo-CRLF quedan fuera y siguen byte-identicos a `a28d1fd`.
+  - Navegacion: las acciones "Editar" del listado de CVs y de las vistas de ATS apuntan al editor estructurado o al legacy segun el tipo de CV, sin saltos de redireccion. Las guardas de backend y la proteccion P0 quedan intactas.
+  - Documentacion: `MODULE_INDEX.md`, `ADR-0003`, `CHANGELOG_GENERAL.md` y `CV_BUILDER_CORE.md` alineados con la implementacion real, siempre como feature no publicada. El ADR conserva sus decisiones originales y solo cambia su estado.
+  - Compatibilidad TEX legacy: fixtures generados desde `a28d1fd` y prueba de identidad byte a byte en las cuatro plantillas, con verificacion de que el guard detecta una diferencia real.
+- Evidencia (CMD-085 a CMD-089): suite completa `207 passed, 1 warning`, JavaScript `8 pasan`, `compileall exit 0`, ambos diff check en `exit 0`, y hashes TEX identicos entre baseline y codigo vigente en las cuatro plantillas.
+- Pendientes que no se tocaron: enlaces de edicion en `ats/index.html` y cualquier construccion de URLs en `app/static/js/app.js` (fuera de alcance, sin impacto en datos porque las guardas de backend siguen activas); normalizacion historica de EOL como tarea independiente; y la revision independiente de la feature, que sigue sin realizarse.
+
+## Cierre T6 - verificacion funcional, documental y de integracion de Feature 1
+
+- Fecha: 2026-10-10
+- Rama: `feature/structured-cv-complete` (sin commits por restriccion explicita del usuario)
+- Contexto: T6 quedo inconclusa porque el proveedor NVIDIA fallo por desconexiones y el verificador `gentle-ai-verify` devolvio salida corrupta sin ejecutar herramientas. CMD-072 determino que las descargas finales existentes NO tenian prueba admisible de correspondencia con el workspace actual. La sesion de cierre ejecuto los checks faltantes directamente, sin repetir ninguna tarea cerrada.
+- Modulos afectados en este cierre: `docs/user/WEB_USAGE_MANUAL.md` (una linea de prosa), `app/static/docs/*.pdf` (regeneracion), `docs/development/COMMAND_LOG.md`, `docs/development/MVP_VALIDATION.md` y el documento ODD. Sin cambios en codigo de aplicacion, renderer ni plantillas.
+- Alcance ejecutado:
+  - Recuperacion de estado: rama en `a28d1fd` sin staged changes, 108 archivos tracked modificados (27 con diferencia real de contenido y 81 reescrituras solo-CRLF preexistentes), 11 untracked. La evidencia intermedia en `/tmp` se habia perdido por limpieza de `/tmp`; el contenedor `cv-t6-correction-http` ya no existia.
+  - Verificacion funcional sobre el estado final: suite completa `180 passed, 1 warning in 2.65s` y reejecutada tras la correccion final con `180 passed, 1 warning in 2.53s`; `compileall` exit 0; `git -c core.whitespace=cr-at-eol diff --check` exit 0; tests unitarios Node del editor `8 pasaron, 0 fallaron`.
+  - Prueba HTTP admisible: runtime aislado con el workspace montado en solo lectura, tmpfs de datos y puerto `127.0.0.1:8134`. `/health`, las tres rutas de documentacion y ambos PDFs respondieron 200, y el SHA256 de cada PDF descargado fue IDENTICO al del archivo en disco. Esto cierra el hueco explicitamente declarado en CMD-072.
+  - Determinismo por contenido: reconstruir ambos PDFs desde las fuentes actuales produce texto extraido IDENTICO al de los PDFs del workspace. El hash de bytes difiere entre ejecuciones porque pdfTeX embebe `CreationDate`; la equivalencia se prueba por texto, nunca por hash.
+  - Defecto preexistente detectado y corregido: el token inline-code `docs/development/CHANGELOG_GENERAL.md` se renderizaba como `docs/development/CHANGELOG_GENERAL.m` (se perdia la `d`) por desbordar el margen derecho. El mismo recorte existe en el PDF de HEAD, por lo que era preexistente de v0.9.0 y no una regresion de Feature 1. Correccion minima de una linea de prosa que separa el nombre de archivo de su carpeta, sin tocar el renderer.
+  - Prueba de no-truncamiento: los 62 tokens inline de 14 o mas caracteres de ambas fuentes (25 del manual, 37 de la tecnica) aparecen completos en la capa de texto de los PDFs; 0 recortados.
+  - Prueba visual: 18 PNGs generados con `pdftoppm -png -r 100` desde los bytes servidos por HTTP e inspeccionados directamente: portadas, indices poblados, pagina interna con contenido de Feature 1 y cierre de ambos documentos. Sin texto cortado, sin paginas vacias, sin titulos huerfanos, sin solapamientos y sin problemas de contraste.
+  - Limpieza: eliminado unicamente `cv-t6-final-http`. `cv_latex_app` quedo `healthy` e intacto; `cv-latex-builder` en `Restarting` es preexistente y ajeno a T6. `./data` nunca se monto ni se escribio.
+- Evidencia (CMD-073 a CMD-079).
+- Criterio de aceptacion:
+  - Suite completa, compile y diff check en verde sobre el estado final; PDFs servidos identicos byte a byte a los del workspace; correspondencia de contenido con las fuentes Markdown probada; documentacion servida sin texto recortado ni paginas defectuosas.
+- Pendientes:
+  - `black` y `ruff` no estan disponibles en host ni en la imagen: el check de formato queda cubierto solo por el diff check CRLF-aware, sin instalar paquetes.
+  - Los flujos de navegador real del editor (4 flujos CDP sobre Chromium) no se reejecutaron: `app/static/js/structured_editor.js` no fue modificado (mtime 2026-10-09 06:20, anterior a todo el trabajo documental de T6) y T6 no altera el comportamiento del editor. La evidencia de T4 sigue siendo aplicable.
+  - Commits, push, PR, merge, tag y release siguen diferidos hasta autorizacion explicita.
+
+
+## Correccion T5 - wrapping de tokens largos ininterrumpidos en renders estructurados
+
+- Fecha: 2026-10-09
+- Rama: `feature/structured-cv-complete` (sin commits por restriccion explicita del usuario)
+- Objetivo: corregir el desborde del margen derecho en los 4 CV PDF templates con texto estructurado aceptado de tokens largos ininterrumpidos (highlight de 240, URL de 300, rol de 120, etc.), incluyendo el overfull confirmado de 27.71626pt en el header de contacto de modern.
+- Modulos afectados: `app/services/structured_cv_rendering.py`, `tests/test_structured_cv_consumers.py`, `tests/test_latex_service.py`, `tests/test_pdf_service.py` y documentacion de desarrollo. Plantillas LaTeX y `latex_service.py` SIN cambios (TEX legacy byte-identico verificado contra HEAD en las 4 plantillas).
+- Alcance ejecutado:
+  - Wrapping solo-estructurado en `structured_cv_rendering`: `_structured_latex_text` sanitiza con `sanitize_latex_text` y luego interpola el separador confiable `\allowbreak \hspace{0pt plus 0.06em}` SOLO entre atomos ya sanitizados de tokens con 24+ atomos (secuencias de escape TeX cuentan 1 atomo; palabras normales quedan intactas con su silabeo).
+  - Seguridad: la sanitizacion es siempre previa; las macros se generan solo desde codigo confiable; `_split_latex_atoms` consume cada secuencia de escape completa (longest match, nunca por dentro), por lo que ninguna macro de corte parte una secuencia TeX ni expone LaTeX crudo del usuario; contenido 100% preservado (el separador no agrega glifos: la macro es penalty de ancho cero, su espacio se consume al tokenizar y el \hspace tiene ancho natural nulo).
+  - Dos causas raiz encontradas y cerradas con compilacion real: (1) sin espacio de terminacion la macro absorbe letras siguientes (`\allowbreakt` -> Undefined control sequence, 126 errores en ronda HTTP intermedia; el primer experimento con solo grep de Overfull fue invalido y se documento); (2) lineas sin pegamento propio (token puro) no pueden justificarse sin estiramiento y dejaban restos Overfull de 3.42227pt; el \hspace con estiramiento minimo vuelve factible el corte y el estiramiento aplicado es invisible.
+  - Cobertura: nombre, titulo/headline, detalles de contacto, resumen, experiencia (rol/empresa/fechas/ubicacion/resumen/bullets/tecnologias), educacion, skills, certificaciones, idiomas, proyectos, links e informacion adicional; ATS sin macros de corte (scoring intacto); unknown payload sigue sin renderizarse.
+- Evidencia (CMD-057 a CMD-071):
+  - RED: 4 failed/36 passed en el cuarteto (tokens largos sin oportunidades de corte confiable; token crudo presente) + evidencia objetiva pre-fix de logs pdflatex: Overfull classic 1183.32pt, modern 27.71626pt (header) + 1015.92pt, compact 992.16pt, tech 1022.61pt.
+  - GREEN: 40 passed cuarteto enfocado (33 previos + 7 nuevos) y 180 passed / 1 warning preexistente en la suite completa; compileall aislado OK; diff check CRLF-aware exit 0 (44246 lineas flaggeadas del plain check = 106 archivos CRLF preexistentes, 0 mixto); TEX legacy byte-identico contra HEAD.
+  - PDFs reales por HTTP en runtime aislado (tmpfs, 127.0.0.1:8126, mismo payload sintetico confirmado defectuoso): 4x HTTP 200 application/pdf; logs de recompilacion: 0 errores, 0 Overfull en las 4 plantillas (Underfull 4/4/0/0 preexistentes identicos al estado previo); pdftotext: 24 marcadores presentes, corrida A*200 completa preservada a traves del wrapping, sin leaks de metadata ni macros visibles, `\end{document}` malicioso neutralizado; ATS HTTP 200 Bueno 100/100; SHA256 registrados; 9 PNGs (todas las paginas) en /tmp/cv-t5-wrap-proof/png con cobertura de tinta (classic 3 paginas: p3 es resto legitimo de Informacion adicional).
+- Criterio de aceptacion:
+  - Tokens largos aceptados envuelven dentro del margen en las 4 plantillas sin truncar, sin achicar fuentes y sin tocar el camino legacy; preservacion total de caracteres probada por TEX (reconstruccion) y PDF (pdftotext aplanado); seguridad de atomos probada por test de residuo.
+- Pendientes: inspeccion visual independiente del padre sobre los 9 PNGs nuevos (el writer no puede ingerir imagenes); verificacion independiente de T5 (checkbox ODD sin marcar); T6 bloqueado hasta ese cierre; commits diferidos hasta autorizacion explicita.
+
+## Etapa T5 - representacion normalizada compartida en LaTeX/PDF y ATS
+
+- Fecha: 2026-10-09
+- Rama: `feature/structured-cv-complete` (sin commits por restriccion explicita del usuario)
+- Objetivo: integrar la representacion normalizada unica (`resolve_normalized_cv`) en TEX/PDF (4 plantillas) y ATS basico, con fallback legacy integral sin mezcla, orden consistente, escape LaTeX robusto y scoring ATS exactamente igual al existente.
+- Modulos afectados: `app/services/structured_cv_rendering.py` (nuevo), `app/services/latex_service.py`, `app/services/ats_service.py`, `app/latex_templates/cv/{classic,modern,compact,tech}.tex`, `tests/test_structured_cv_consumers.py` (nuevo), `tests/test_latex_service.py`, `tests/test_ats_service.py`, `tests/test_pdf_service.py` y documentacion de desarrollo.
+- Alcance ejecutado:
+  - `latex_service.generate_cv_tex_document` resuelve la fuente canonica con `resolve_normalized_cv`: CV estructurado valido renderiza un contexto enriquecido desde las secciones del payload (aun si el snapshot legacy quedo obsoleto); legacy/invalido/stale/futuro usa el camino flat exactamente igual que antes (byte-identidad verificada contra HEAD en las 4 plantillas).
+  - Contexto estructurado: nombre, headline (o titulo interno como fallback), email/telefono/ubicacion/links de contacto, resumen, experiencia (rol - empresa, fechas con Presente, ubicacion, resumen, bullets, Tecnologias), educacion (titulo - institucion, fechas, Campo, resumen), skills (label (categoria, nivel)), certificaciones, idiomas, proyectos (link, Tecnologias), links e informacion adicional; metadata interna y claves desconocidas nunca se renderizan (persistencia intacta).
+  - Listados ordenados consistentemente por `(order, posicion)` con la misma semantica que el snapshot T2; campos opcionales robustos (items minimos no generan secciones vacias ni entradas huerfanas).
+  - Plantillas: rama `entries` (headline/meta/cuerpo/bullets) identica conceptualmente en las 4 con variacion minima de estilo; guardias de agrupacion solo para renders estructurados (`keep_with_next`, `use_needspace`): `\Needspace*{4\baselineskip}` antes de titulos en compact/modern/tech y `\par\nopagebreak` post-colorbox en tech; el TEX legacy queda byte-identico (paquete `needspace` cargado solo en renders estructurados).
+  - ATS: `analyze_cv_ats` consume la misma fuente canonica; los 6 campos de scoring derivan del snapshot legacy proyectado (equivalencia canonica exacta con el CV legacy equivalente) y `total_characters` usa la extraccion normalizada completa `build_structured_ats_text` que incluye todo el contenido soportado (incluye solo-estructurados, excluye metadata). Los 7 criterios, pesos, topes, umbrales, estados y resultados legacy quedan intactos.
+  - Escape: todo texto estructurado pasa por `sanitize_latex_text`; `\end{document}` malicioso queda tipografiado como texto literal neutralizado y el PDF compila completo.
+- Evidencia (CMD-045 a CMD-056):
+  - RED: 13 failed/20 passed en el cuarteto enfocado (contenido solo-estructurado ausente en TEX/PDF/ATS; ATS leia columnas planas obsoletas).
+  - GREEN: 33 passed cuarteto enfocado; suite completa 173 passed (155 base + 18 nuevas), 1 warning preexistente; compileall aislado OK; `git diff --check` CRLF-aware: 106 archivos pre-existentes CRLF completos, 0 lineas non-CRLF, archivos nuevos limpios.
+  - PDFs reales por HTTP en runtime aislado (tmpfs, 127.0.0.1:8125): 4x HTTP 200 application/pdf, 2 paginas A4 cada uno, pdftotext con todos los marcadores y sin leaks de metadata; SHA256 registrados en COMMAND_LOG; PNGs de portada y pagina interna en /tmp/cv-t5-proof/png con cobertura de tinta registrada.
+  - Paginacion: huérfano real de titulo "Links" en compact detectado en la primera ronda; experimentos deterministas demostraron que `\\*` y `\par\nobreak` no evitan el corte titulo->itemize (`\@beginparpenalty`) y que `\Needspace*` si; tras el fix las 4 plantillas cortan limpio (verificado por texto por pagina).
+- Criterio de aceptacion:
+  - CV estructurado valido renderiza todo el contenido soportado desde el payload canonico en las 4 plantillas; legacy y fallbacks producen exactamente el TEX/ATS previo; ATS equivalente legacy vs estructurado convertido; sin criterios de scoring nuevos.
+- Pendientes: verificacion independiente del padre (visual de PNGs incluida, el modelo de este writer no puede inspeccionar imagenes); T6 (cierre, docs, integracion); commits diferidos hasta autorizacion explicita.
+
+## Etapa T4 - editor estructurado completo con orden de items
+
+- Fecha: 2026-10-09
+- Rama: `feature/structured-cv-complete` (sin commits por restriccion explicita del usuario)
+- Objetivo: implementar el editor estructurado completo (creacion y edicion aditivas) con CRUD y orden de items, validacion 100% servidor, bootstrap seguro y conversion legacy explicita, sin drag/drop, IA, live preview ni cambios de scoring.
+- Modulos afectados: `app/services/structured_cv_editor_service.py` (nuevo), `app/routes/cvs.py`, `app/templates/cvs/structured_form.html` (nuevo), `app/templates/cvs/detail.html`, `app/templates/cvs/index.html`, `app/static/js/structured_editor.js` (nuevo), `app/static/css/app.css`, `tests/test_structured_cv_editor.py` (nuevo), `tests/test_structured_cv_editor_js.js` (nuevo) y documentacion de desarrollo.
+- Alcance ejecutado:
+  - Rutas aditivas `GET/POST /cvs/new/structured` y `GET/POST /cvs/{cv_id}/structured-edit` declaradas antes de las rutas dinamicas; los flujos legacy quedan intactos y verificados.
+  - Bootstrap canonico via `resolve_normalized_cv`: un CV estructurado valido se edita desde su payload (nunca se regenera desde campos planos); legacy/invalido/stale/futuro bootstrapea integramente desde campos legacy con advertencia explicita de conversion y limites por campo.
+  - Contrato de envio unico: `title` + `structured_payload` (JSON). El servidor rechaza payload ausente (mensaje de JavaScript requerido), no-JSON, no-objeto o mayor a 512 KB; valida con el contrato v2 y el write bundle T2 y persiste atomicamente; sin validacion solo-cliente y sin escrituras parciales.
+  - Preservacion total de claves desconocidas de payload, secciones e items a traves de ediciones, ordenes y envios fallidos; el rerender 422 conserva exactamente lo ingresado con errores accionables en espanol (codigos v2 traducidos y errores de snapshot con etiquetas en espanol).
+  - Metadata server-owned mostrada como informacion interna y re-estampada deliberadamente (`structured_editor`) al guardar; nunca oculta ni destruida.
+  - UI 100% espanol con datos personales/contacto, titulo profesional, resumen, experiencia, educacion, skills, certificaciones, idiomas, proyectos, links, informacion adicional e informacion interna; items con agregar/quitar/subir/bajar, orden denso 1..n persistido, checkbox de trabajo actual y listas por linea (logros, tecnologias, links de contacto).
+  - Seguridad: bootstrap serializado con `| tojson` de Jinja dentro de `<script type="application/json">`; todo el contenido dinamico del cliente se inserta con nodos DOM y `textContent`/`value`, nunca `innerHTML` con datos del usuario (regla LL-001).
+- Evidencia (CMD-032 a CMD-044):
+  - RED: 20/21 pruebas de rutas fallando por ausencia de comportamiento (solo paso el 404 trivial) y modulo JS con MODULE_NOT_FOUND.
+  - GREEN servidor: 21 passed enfocadas; suite completa 155 passed (134 baseline + 21 nuevas) con 1 warning preexistente; compileall aislado sin errores; `git diff --check` CRLF-aware limpio.
+  - GREEN JS/navegador: 8 tests unitarios en Node y 4 flujos reales de browser con chromium headless (Chrome for Testing 153.0.8010.12) via CDP contra un runtime Docker temporal en 127.0.0.1:8123 con tmpfs de datos: flujo completo con orden persistido, submit fallido preservando lo ingresado, no-ejecucion de payloads maliciosos y conversion legacy con advertencia.
+- Criterio de aceptacion:
+  - Editor usable sin drag/drop; guardar no pierde campos legacy ni contenido solo-estructurado; los CVs legacy siguen operativos y solo se convierten por accion explicita del usuario al guardar.
+  - Bad inputs accionables sin escrituras parciales; sin downcast de versiones futuras; rutas legacy compatibles.
+- Pendientes: verificacion independiente del contrato de persistencia de alto riesgo acordada con el padre; T5 (consumidores LaTeX/PDF/ATS normalizados) y T6 (cierre, docs, integracion); commits diferidos hasta autorizacion explicita.
+
+## Etapa T3 - import/export JSON schema 2 con compatibilidad schema 1
+
+- Fecha: 2026-10-08
+- Rama: `feature/structured-cv-complete` (sin commits por restriccion explicita del usuario)
+- Objetivo: implementar el export/import JSON schema 2 lossless con compatibilidad total de schema 1, reutilizando el contrato normalizado y las escrituras estructuradas verificadas de T2, sin tocar editor, LaTeX/PDF, ATS ni IA.
+- Modulos afectados: `app/services/export_service.py`, `app/routes/cvs.py`, `app/templates/cvs/detail.html`, `app/templates/cvs/index.html`, `tests/test_cv_json_schema2.py` (nuevo), `tests/test_export_service.py`, `tests/test_ui_routes.py` y documentacion de desarrollo (plan, bitacora de comandos).
+- Alcance ejecutado:
+  - Export canonico via `resolve_normalized_cv`: CV estructurado valido exporta envelope schema 2 lossless (`cv.title` + `cv.structured_payload` con secciones, claves extra, `order` y `metadata` preservados); legacy/invalido/stale/futuro exporta schema 1 plano desde el snapshot legacy, sin mezclar fuentes.
+  - Descarga explicita schema 1 para CV estructurado via query `?schema_version=1` mas enlace aditivo en el detalle; `schema_version=2` sobre CV no estructurado y valores no soportados/booleanos se rechazan con error accionable, sin downcast.
+  - Import con gate estricto: version ausente o 1 mantiene el flujo legacy (CV nuevo legacy canonico via `create_cv`); version 2 explicita valida con el contrato unico v2, traduce errores a espanol y crea un CV NUEVO estructurado via `create_structured_cv(metadata_source="json_import")` preservando el payload completo; jamas sobrescribe el CV de origen ni deja escrituras parciales.
+  - `build_cv_form_data_from_json` se conserva para callers legacy y rechaza schema 2 explicito en lugar de aplanarlo; nuevo entrypoint `build_cv_json_import_result` -> `CVJsonImportResult`.
+  - Limite de 512 KB por streaming antes del parseo para ambos schemas; payload serializado limitado por `MAX_STRUCTURED_PAYLOAD_BYTES` en la escritura T2.
+  - Panel de import del listado documenta schemas 1/2 y que siempre crea un registro nuevo.
+- Validaciones ejecutadas (imagen `cv-latex-app:latest`, workspace read-only, tmpfs en `/workspace/data`; CMD-022 a CMD-031):
+  - RED observado: error de coleccion por `ImportError` del nuevo entrypoint `build_cv_json_import_result` (CMD-022) y 3 fallos conductuales de gate de versiones/copy de UI con 30 preexistentes en verde (CMD-023).
+  - GREEN enfocado final: 54 passed en `test_export_service.py`, `test_ui_routes.py`, `test_structured_cv_normalization.py` y `test_cv_json_schema2.py`, incluido el test de triangulacion que rechaza un payload interno con version futura 3 bajo envelope schema 2.
+  - Suite completa final: 134 passed, 1 warning preexistente (`anyio.abc.BlockingPortal`).
+  - `python -m compileall -q app tests` sin errores; `git -c core.whitespace=cr-at-eol diff --check` limpio con CRLF preservado.
+- Criterio de aceptacion:
+  - Roundtrip estructurado export -> import -> nuevo CV estructurado conserva secciones, claves extra, `order` y metadata (salvo `metadata.source` reestampado a `json_import` por el contrato de escritura T2).
+  - Imports corruptos, de version no soportada/no entera/booleana o con payload invalido fallan antes de escribir, con mensajes en espanol por la UI existente.
+  - Schema 1 sigue siendo backward compatible, incluidos payloads planos sin version.
+- Pendientes: T4 (editor estructurado), T5 (consumidores LaTeX/PDF/ATS normalizados), T6 (cierre, docs e integracion); commits diferidos hasta autorizacion explicita.
+
+## Etapa T2 - contrato normalizado v2 y escritura estructurada atomica
+
+- Fecha: 2026-10-08
+- Rama: `feature/structured-cv-complete` (sin commits por restriccion explicita del usuario)
+- Objetivo: completar el contrato normalizado unico, la validacion estricta del schema 2 soportado y las rutas de escritura estructurada del repositorio, base para editor, JSON y consumidores LaTeX/PDF/ATS de T3-T5.
+- Estado previo confirmado: baseline `a28d1fd` en `main`, imagen `cv-latex-app:latest` `e32f6f86ba11`, 78 tests baseline pasando en corridas enfocadas con tmpfs.
+- Modulos afectados: `app/validations/structured_cv_validations.py` (nuevo), `app/services/structured_cv_service.py`, `app/repositories/cv_repository.py`, `tests/test_structured_cv_service.py`, `tests/test_cv_repository.py`, `tests/test_structured_cv_normalization.py` (nuevo) y documentacion de desarrollo.
+- Alcance ejecutado:
+  - Se crea `structured_cv_validations.py` como contrato unico de validacion/normalizacion v2; el servicio delega y reexporta su API publica.
+  - Se agrega `resolve_normalized_cv(cv)` que devuelve `NormalizedCV` (modo, `sections` completos, `legacy_snapshot`) como representacion unica para todos los consumidores futuros.
+  - Solo schema 2 explicito con estado `valid` y payload validado es canonico estructurado; versiones futuras o invalidas caen 100% a legacy.
+  - Se conserva la compatibilidad 9.2: payloads parciales con defaults, payload sin `schema_version` interno con version de fila 2, y rechazo de tipos incorrectos.
+  - Se amplian las secciones master: `headline` (titulo profesional), `additional_info`, items completos de `experience`/`education` y validacion acotada de tipos/longitudes/orden en todas las secciones, con tope de items y de 512 KB del payload serializado; las claves extra se preservan.
+  - Se agregan `build_structured_cv_write_bundle` y las operaciones `create_structured_cv`/`update_structured_cv` que persisten snapshot legacy y columnas estructuradas en una sola sentencia atomica, rechazando con `StructuredCVWriteError` antes de cualquier escritura parcial.
+  - El snapshot legacy derivado nunca trunca contenido: si excede los limites legacy, la escritura se rechaza con error por campo.
+  - No se tocan UI, rutas visibles, templates, LaTeX/PDF, export/import JSON visible, ATS scoring, DB ni migraciones.
+- Validaciones ejecutadas (imagen `e32f6f86ba11`, workspace read-only, tmpfs en `/workspace/data`):
+  - RED observado: 2 errores de coleccion (API inexistente) y 10 fallos conductuales de limites en `tests/test_structured_cv_service.py`.
+  - GREEN enfocado: 57 passed (`test_structured_cv_service.py`, `test_cv_repository.py`, `test_database_migrations.py`, `test_structured_cv_normalization.py`).
+  - Suite completa: 109 passed, 1 warning preexistente.
+  - `python -m compileall -q app tests` sin errores; `git diff --check` limpio (CRLF-aware).
+- Criterio de aceptacion:
+  - Escrituras estructuradas invalidas no dejan cambios parciales persistidos.
+  - Duplicate/update legacy/import schema 1 conservan las reglas 9.2 vigentes.
+  - Todos los tests de regresion existentes siguen pasando.
+- Pendientes: T3 (JSON schema 2), T4 (editor), T5 (consumidores normalizados), T6 (cierre); commits diferidos hasta autorizacion explicita.
+
 ## Etapa 9.2 - servicios de CV estructurado y escritura segura
 
 - Fecha: 2026-06-14

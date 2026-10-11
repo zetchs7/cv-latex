@@ -27,7 +27,27 @@
 
 [% for section in sections %]
 \section*{[[ section.title ]]}
-[% if section.item_list %]
+[% if section.keep_with_next %]\nopagebreak
+[% endif %][% if section.entries %]
+[% for entry in section.entries %]
+[% if entry.headline %]
+\textbf{[[ entry.headline ]]}[% if entry.meta %] {\small [[ entry.meta ]]}[% endif %]\par
+\nopagebreak
+[% endif %]
+[% if entry.body %]
+[[ entry.body ]]
+
+[% endif %]
+[% if entry.highlights %]
+\begin{itemize}
+[% for highlight in entry.highlights %]
+  \item [[ highlight ]]
+[% endfor %]
+\end{itemize}
+[% endif %]
+
+[% endfor %]
+[% elif section.item_list %]
 \begin{itemize}
 [% for item in section.item_list %]
   \item [[ item ]]

@@ -189,3 +189,63 @@ Consolidar errores reales detectados durante `cv-latex`, su causa raiz, la corre
 - Validacion que lo confirmo: el historial del PR quedo coherente y el cierre fue auditable.
 - Regla futura para evitarlo: si el hallazgo corrige el mismo entregable, mantenerlo en la misma rama y PR.
 - Instruccion sugerida para proximos prompts: "No abras un PR nuevo para un fix menor del mismo alcance; corrige en la rama abierta y vuelve a pedir review."
+
+## LL-019 - Un test que codifica el contrato defectuoso pasa mientras el bug existe
+
+- Problema detectado: el formulario plano de edicion destruia silenciosamente todas las secciones que solo existen en schema 2 (certificaciones, proyectos, idiomas, links, headline, location) al guardar un CV estructurado, y el CV seguia apareciendo como estructurado porque el payload vacio revalidaba como valido.
+- Causa raiz: los dos tests que cubrian esa ruta afirmaban literalmente el comportamiento destructivo (`test_update_structured_cv_regenerates_payload_from_legacy_fields` esperaba `metadata.source == "legacy_edit"`). Ademas construian la fila con `_mark_cv_as_structured`, que deriva el payload de los campos legacy y por lo tanto ya dejaba vacias las secciones solo-estructuradas antes de editar. El test era verde y no podia detectar la perdida: no existia ningun caso con contenido exclusivo de schema 2 en la ruta legacy.
+- Impacto/riesgo: perdida irreversible de datos del usuario alcanzable desde el boton principal del detalle, con el CV aun etiquetado como estructurado y sin warning. La suite completa en verde no cubria el escenario.
+- Como se corrigio: se elimino el contrato destructivo en tres capas: la escritura (`_build_structured_columns_for_legacy_update` lanza `StructuredCVLegacyUpdateError` para filas estructuradas, antes de abrir conexion, en lugar de regenerar o anular), las rutas (`cvs_edit` y `cvs_update` redirigen con mensaje en espanol) y la vista (el boton "Editar" apunta al editor estructurado cuando `is_structured`). Se reescribieron los dos tests para construir el CV con `create_structured_cv` y contenido exclusivo de schema 2, y comparar seccion por seccion antes y despues.
+- Validacion que lo confirmo: `assertRaises(StructuredCVLegacyUpdateError)` mas igualdad de `sections` antes/despues incluyendo `headline`, `location`, `certifications`, `projects`, `languages`, `links`, `additional_info`, `contact.links` y `metadata.source`. Suite enfocada `80 passed`, suite completa `198 passed`. Prueba HTTP end-to-end: `POST /cvs/1/edit` devolvio 303 sin escribir y el export schema 2 posterior conservo el titulo y las cinco secciones.
+- Regla futura para evitarlo: un test de ruta destructiva debe construir el fixture con el metodo de escritura real del dominio (por ejemplo `create_structured_cv` con contenido exclusivo del schema nuevo), nunca con un helper que derive el estado desde la forma vieja. Si un test afirma un comportamiento que un usuario perderia datos por sufrir, ese test esta codificando el bug.
+- Instruccion sugerida para proximos prompts: "Antes de confiar en un test verde de migracion de datos, verifica que el fixture contiene datos que SOLO existen en el formato nuevo."
+
+## LL-020 - Un limite de longitud sin tope en el sufijo rompe el round-trip
+
+- Problema detectado: un CV exportado con un titulo de 110 a 120 caracteres no podia reimportarse, porque `_build_imported_title` agregaba el sufijo `(importado)` sin respetar `FIELD_LIMITS["title"] = 120`.
+- Causa raiz: la logica de sufijo estaba duplicada. `build_duplicate_title` si truncaba la base para dejar lugar al sufijo; `_build_imported_title` no. El contrato "lo que exporto se puede importar" no estaba verificado en ninguna prueba.
+- Impacto/riesgo: perdida funcional en round-trip y mensajes de error que apuntan al JSON del usuario cuando el problema es del propio importador. Se agrava con cualquier sufijo agregado por el sistema.
+- Como se corrigio: `IMPORTED_TITLE_SUFFIX` mas truncado de la base y `rstrip`, con guarda para base vacia y disponible menor o igual a cero. Se cubrieron 109, 110, 119 y 120 caracteres en schema 1 y schema 2.
+- Validacion que lo confirmo: import HTTP con titulo de 120 caracteres responde 303 en ambos esquemas y el titulo resultante queda en 120 conservando `(importado)`.
+- Regla futura para evitarlo: todo sufijo o prefijo agregado por el sistema debe respectar el mismo `FIELD_LIMITS` del campo que modifica, y la prueba de round-trip debe usar el valor limite exacto.
+- Instruccion sugerida para proximos prompts: "Si el sistema agrega texto a un campo persistido, verifica el limite DESPUES de agregar, no antes."
+
+## LL-021 - La referencia de una prueba de compatibilidad debe salir del baseline
+
+- Problema detectado: la suite afirmaba que el TEX legacy quedaba intacto, pero ningun test lo comparaba contra el codigo anterior a la feature. Una regresion en las cuatro plantillas habria pasado inadvertida.
+- Causa raiz: los tests existentes comparan un CV legacy contra variantes de fallback generadas dentro de la misma corrida, es decir con el mismo `_build_cv_context` y las mismas plantillas modificadas. Ese tipo de comparacion no puede detectar una regresion introducida por el propio diff.
+- Impacto/riesgo: la garantia de compatibilidad legacy era una afirmacion sin respaldo mecanico, justamente en el punto mas sensible de una migracion de formato de datos.
+- Como se corrigio: se extrajo el arbol de `a28d1fd` con `git archive`, se ejecuto el MISMO generador dentro de la imagen contra ese arbol y contra el workspace vigente, y se guardo la salida del baseline como fixture en `tests/fixtures/legacy_tex_a28d1fd`. La prueba `tests/test_legacy_tex_compatibility.py` reconstruye el mismo CV ficticio y exige identidad byte a byte en las cuatro plantillas. Se documento explicitamente que el nivel comprobado es identidad byte a byte y no solo equivalencia textual.
+- Validacion que lo confirmo: las cuatro plantillas coinciden en longitud y SHA256 entre `a28d1fd` y el codigo vigente. Y el guard se provoco: al adulterar el fixture la prueba fallo indicando la linea exacta de la diferencia. Una prueba de identidad que nunca se hizo fallar no demuestra nada.
+- Regla futura para evitarlo: una prueba de compatibilidad con una version anterior debe generar su referencia desde esa version anterior, nunca desde el codigo bajo prueba. Y antes de confiar en ella, hay que verificar que falla cuando el resultado esperado se altera.
+- Instruccion sugerida para proximos prompts: "Si la garantia es 'no cambia el comportamiento anterior', genera el golden fixture desde el commit base y demuestra que el test detecta una diferencia."
+
+## LL-022 - Declarar la politica de finales de linea en vez de normalizar el historico
+
+- Problema detectado: alrededor de 79 archivos aparecian como modificados por unicamente CRLF porque HEAD guardaba LF y el working tree tenia CRLF, sin `.gitattributes` y con `core.autocrlf` sin definir. Un `git add` corriente almacenaba CRLF y producia commits donde cada archivo se leia como reescritura completa.
+- Causa raiz: la politica de EOL nunca estuvo declarada, de modo que cada parte del equipo y cada herramienta decide por su cuenta. Cuando WSL y Windows comparten el repositorio, eso se traduce en ruido permanente y en commits ilegibles.
+- Impacto/riesgo: reviews que parecen masivos y no lo son, riesgo de versionar CRLF por accidente y dificultad para distinguir un cambio real de un cambio de terminador de linea.
+- Como se corrigio: se agrego un `.gitattributes` minimo con `* text=auto eol=lf` y declaracion explicita de binarios. No se ejecuto `git add --renormalize` ni se modifico la configuracion global. El indice de HEAD ya contenia todo archivo de texto en LF, con lo que la politica es compatible con el historial existente y no produce ningun cambio colateral.
+- Validacion que lo confirmo: despues de agregar el archivo, `git status --short` sigue listando solo los archivos con cambio real mas el propio `.gitattributes`, y los 79 archivos con diferencias solo-CRLF siguen byte-identicos a `a28d1fd`. Setenta y dos de ellos permanecen limpios en el working tree; los siete restantes son precisamente los que recibieron cambios de contenido reales en esta etapa.
+- Regla futura para evitarlo: al agregar contenido en este repositorio, agregar tambien las rutas en la misma operacion y verificar con `git diff --ignore-cr-at-eol` que el diff es real. La normalizacion historica de los archivos ya presentes es una decision aparte y debe hacerse de forma explicita, nunca como efecto secundario de un commit de funcionalidad.
+- Instruccion sugerida para proximos prompts: "Antes de commitear, confirma que `git diff --ignore-cr-at-eol` muestra solo cambios reales y que ningun archivo se incorpore solo por CRLF."
+
+## LL-023 - El aislamiento de datos de la suite depende del entorno, no del codigo
+
+- Problema detectado: al ejecutar la suite fuera de Docker, pruebas creaon el CV id 49 dentro de la base de datos real y dejaron artefactos de exportacion en `data/exports` y `data/documentation-build`.
+- Causa raiz: `app/database.py` resuelve el directorio con `Path(os.getenv("APP_DATA_DIR", "/data"))`. Bajo el runner Docker el workspace se montaba en solo lectura y `/workspace/data` era un tmpfs, asi que cualquier escritura fallaba o se descartaba. Eso ocultaba el hecho de que varios tests dependen de que la variable este parcheada en vez de aislar el dato por si mismos. A eso se suma `DOCUMENTATION_BUILD_DIR` en `app/services/documentation_service.py`, que es constante de modulo y no respeta `APP_DATA_DIR`.
+- Impacto/riesgo: datos personales del usuario pueden ser creados, modificados o borrados por una corrida de pruebas si se ejecuta en el host o en un entorno sin tmpfs. Es un riesgo de integridad de datos, no solo de ruido.
+- Como se corrigio en esta sesion: se verifico la integridad con `PRAGMA integrity_check` y `foreign_key_check`, se documento el incidente en CMD-090 y CMD-091 y no se toco ni borro nada sin autorizacion. La correccion de fondo del aislamiento de pruebas queda como tarea independiente.
+- Validacion que lo confirmo: `integrity_check` = `ok`, 49 CVs, 10 cartas, 6 postulaciones y `app_metadata.schema_version` con el sello original. El id 49 resulto ser un artefacto creado hoy por las propias pruebas, no un registro previo del usuario.
+- Regla futura para evitarlo: no ejecutar la suite en el host ni en ningun entorno sin `APP_DATA_DIR` apuntando a un temporal. La variable debe exportarse explicitamente antes de cualquier `pytest` o `unittest`. A futuro, los tests deben aislar su propio directorio de datos y `DOCUMENTATION_BUILD_DIR` debería derivarse de `get_data_dir()` en lugar de una constante de modulo.
+- Instruccion sugerida para proximos prompts: "Nunca ejecutes la suite sin `APP_DATA_DIR` en un temporal: el aislamiento actual lo da el tmpfs del contenedor, no el codigo."
+
+## LL-024 - Una referencia de compatibilidad debe generarse desde el baseline y probarse en fallo
+
+- Problema detectado: la suite afirmaba que el TEX legacy no habia cambiado, pero ningun test lo comparaba contra el codigo previo a la feature.
+- Causa raiz: los tests comparaban un CV legacy contra variantes de fallback generadas en la misma corrida, es decir con el mismo `_build_cv_context` y las mismas plantillas ya modificadas. Ese tipo de comparacion no puede detectar una regresion introducida por el propio diff.
+- Impacto/riesgo: la garantia de compatibilidad legacy era una afirmacion sin respaldo mecanico en el punto mas sensible de una migracion de formato de datos.
+- Como se corrigio: se extrajo el arbol de `a28d1fd` con `git archive`, se ejecuto el mismo generador contra ese arbol y contra el workspace vigente, y la salida del baseline quedo como fixture en `tests/fixtures/legacy_tex_a28d1fd`. La prueba reconstruye el mismo CV ficticio y exige identidad byte a byte en las cuatro plantillas.
+- Validacion que lo confirmo: las cuatro coinciden en longitud y SHA256, y el guard se provoco: al adulterar un fixture la prueba fallo indicando la linea exacta de la diferencia. Una prueba que nunca se hizo fallar no demuestra nada.
+- Regla futura para evitarlo: toda prueba de compatibilidad con una version anterior debe generar su referencia desde esa version, nunca desde el codigo bajo prueba, y debe verificarse en fallo al menos una vez.
+- Instruccion sugerida para proximos prompts: "Si la garantia es 'no cambia el comportamiento anterior', genera el golden fixture desde el commit base y demuestra que el test detecta una diferencia."

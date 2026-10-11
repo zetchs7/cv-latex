@@ -12,7 +12,11 @@
   <div class="action-row">
     <a class="button" href="{{ url_for('ats_index') }}">Listado ATS</a>
     <a class="button" href="{{ url_for('cvs_detail', cv_id=cv.id) }}">Volver al CV</a>
+    {% if is_structured %}
+    <a class="button primary" href="{{ url_for('cvs_structured_edit', cv_id=cv.id) }}">Editar CV</a>
+    {% else %}
     <a class="button primary" href="{{ url_for('cvs_edit', cv_id=cv.id) }}">Editar CV</a>
+    {% endif %}
   </div>
 </section>
 
