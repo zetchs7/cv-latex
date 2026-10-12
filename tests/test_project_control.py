@@ -404,12 +404,12 @@ def test_control_center_links_in_documents_resolve(document):
     """Toda referencia relativa a un archivo del Control Center debe resolver."""
 
     text = (REPOSITORY_ROOT / document).read_text(encoding="utf-8")
-    broken = []
-    for match in re.finditer(r"\]\((docs/[^)]+|tools/[^)]+)\)", text):
-        target = REPOSITORY_ROOT / match.group(1)
-        if not target.exists():
-            broken.append(match.group(1))
-    assert broken == [], f"{document} referencia rutas inexistentes: {sorted(set(broken))}"
+    # Tanto enlaces Markdown como rutas entre backticks, que es como este
+    # repositorio referencia archivos en tablas y prosa.
+    candidates = set(re.findall(r"\]\((docs/[^)]+|tools/[^)]+)\)", text))
+    candidates |= set(re.findall(r"`(docs/[^`\n]+|tools/[^`\n]+)`", text))
+    broken = sorted(name for name in candidates if not (REPOSITORY_ROOT / name).exists())
+    assert broken == [], f"{document} referencia rutas inexistentes: {broken}"
 
 
 def test_catalog_readme_documents_every_required_field():
