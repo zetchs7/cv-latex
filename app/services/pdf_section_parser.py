@@ -689,12 +689,13 @@ def _build_experience_item(block: list[str]) -> StagedItem:
 
     separated = _split_role_and_company(remainder)
     if separated is not None:
-        values["role"], values["company"] = separated
+        values["role"] = separated[0][:120]
+        values["company"] = separated[1][:120]
         notes.append("Verificar que empresa y cargo no esten invertidos")
         confidence = CONFIDENCE_MEDIUM
         reason = "Cargo y empresa separados por un delimitador entre dos fechas."
     elif remainder:
-        values["role"] = remainder.strip()[:160]
+        values["role"] = remainder.strip()[:120]
         notes.append("No se pudo separar empresa y cargo con certeza")
         confidence = CONFIDENCE_LOW
         reason = "Hay fecha pero el encabezado no permite distinguir empresa de cargo con seguridad."
@@ -818,8 +819,8 @@ def _build_education_item(block: list[str]) -> StagedItem:
 
     remainder = _strip_date_range(block[0])
     if remainder:
-        values["degree"] = remainder[:160]
-        values["institution"] = block[1][:160] if len(block) > 1 else ""
+        values["degree"] = remainder[:120]
+        values["institution"] = block[1][:120] if len(block) > 1 else ""
         confidence = CONFIDENCE_MEDIUM
         reason = "Formacion con rango de fechas. Verificar que el titulo y la institucion no esten invertidos."
     else:

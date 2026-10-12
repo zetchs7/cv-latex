@@ -69,7 +69,7 @@
     <h2>1. Datos del CV</h2>
     <label>
       <span>Titulo del CV (obligatorio)</span>
-      <input type="text" name="cv_title" value="" placeholder="Se completa con el nombre detectado si lo dejas vacio" maxlength="160">
+      <input type="text" name="cv_title" value="{{ draft.proposed_title or '' }}" placeholder="Se completa con el nombre detectado si lo dejas vacio" maxlength="160">
     </label>
   </section>
 
@@ -125,7 +125,11 @@
       Confirmalos, conservalos o descartalos explicitamente.
     </p>
 
-    {% set doubtful = draft.entries | selectattr('confidence', 'in', ['low', 'medium']) | list %}
+    {#- Campos dudosos, pero solo si no se renderizaron arriba. Duplicar el
+        input produce dos campos con el mismo `name`: el navegador envia el
+        primero y el segundo queda como decoracion enganosa. -#}
+    {% set rendered = draft.entries | selectattr('confidence', 'in', ['high']) | map(attribute='key') | list %}
+    {% set doubtful = draft.entries | rejectattr('key', 'in', rendered) | list %}
     {% if not doubtful %}
     <p><small>No se detectaron datos dudosos.</small></p>
     {% endif %}

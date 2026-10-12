@@ -517,3 +517,86 @@ def test_list_fields_are_lists_not_comma_strings():
             assert isinstance(item["technologies"], list)
         if "highlights" in item:
             assert isinstance(item["highlights"], list)
+
+# --- Regresion de los hallazgos del review --------------------------------
+
+
+def test_kept_unclassified_text_reaches_the_section_it_was_assigned_to():
+    """Conservar y asignar no puede terminar descartando el bloque en silencio."""
+
+    from app.services import import_staging_service as st
+
+    parsed = parse_cv_text(
+        "DATOS PERSONALES\nNombre: Ana Perez\n"
+        "Texto suelto sobre una certificacion que el PDF no etiquetó\n"
+    )
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+    assert draft.unclassified, "el texto sin clasificar debe llegar a revision"
+
+    decisions = {entry.key: st.STATUS_CONFIRMED for entry in draft.entries}
+    assignments = {}
+    for item in draft.unclassified:
+        decisions[item.key] = st.STATUS_KEPT
+        assignments[item.key] = "certifications"
+
+    draft = st.apply_review(
+        draft, values={}, decisions=decisions, unclassified_assignments=assignments, title="CV"
+    )
+    payload = st.confirm_draft(draft, title="CV")
+
+    names = " ".join(item.get("name", "") for item in payload["certifications"])
+    assert "certificacion" in names.lower(), payload["certifications"]
+
+
+def test_kept_unclassified_text_can_be_routed_to_skills():
+    from app.services import import_staging_service as st
+
+    parsed = parse_cv_text(
+        "DATOS PERSONALES\nNombre: Ana Perez\nMeteorologia y ceramica\n"
+    )
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+    assert draft.unclassified
+
+    item = draft.unclassified[0]
+    draft = st.apply_review(
+        draft,
+        values={},
+        decisions={**{entry.key: st.STATUS_CONFIRMED for entry in draft.entries}, item.key: st.STATUS_KEPT},
+        unclassified_assignments={item.key: "skills"},
+    )
+    payload = st.confirm_draft(draft, title="CV")
+    assert payload["skills"], "el texto asignado a skills debe llegar al CV"
+
+
+def test_symlinked_drafts_directory_is_rejected():
+    """En produccion `ensure_isolated_path` no protege nada: hace falta el chequeo."""
+
+    from app.services import import_staging_service as st
+
+    directory = st.drafts_directory()
+    elsewhere = directory.parent / "drafts-elsewhere"
+    elsewhere.mkdir(exist_ok=True)
+
+    # Se mueve el directorio real y se lo reemplaza por un enlace simbolico.
+    backup = directory.parent / "drafts-backup"
+    directory.rename(backup)
+    directory.symlink_to(elsewhere, target_is_directory=True)
+
+    try:
+        with pytest.raises(st.ImportStagingError) as error:
+            st.drafts_directory()
+        assert error.value.code == "drafts_directory_symlinked"
+    finally:
+        directory.unlink()
+        backup.rename(directory)
+        elsewhere.rmdir()
+
+
+def test_proposed_title_survives_a_failed_submission():
+    from app.services import import_staging_service as st
+
+    draft = _make_draft()
+    updated = st.apply_review(
+        draft, values={}, decisions={}, unclassified_assignments={}, title="Mi titulo largo"
+    )
+    assert st.load_draft(updated.draft_id).proposed_title == "Mi titulo largo"

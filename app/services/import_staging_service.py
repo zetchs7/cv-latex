@@ -108,6 +108,9 @@ class ImportDraft:
     conflicts: list[dict] = field(default_factory=list)
     version: int = 1
     finalized_cv_id: int | None = None
+    # El titulo se guarda en el borrador: sin esto, un error de validacion
+    # re-pinta la pantalla y la persona pierde lo que escribio ahi.
+    proposed_title: str = ""
 
     def pending_entries(self) -> list[StagedEntry]:
         return [entry for entry in self.entries if entry.status == STATUS_PENDING]
@@ -136,6 +139,7 @@ class ImportDraft:
             "unclassified": [asdict(item) for item in self.unclassified],
             "conflicts": self.conflicts,
             "finalized_cv_id": self.finalized_cv_id,
+            "proposed_title": self.proposed_title,
         }
 
     @classmethod
@@ -151,6 +155,7 @@ class ImportDraft:
             conflicts=list(payload.get("conflicts", [])),
             version=int(payload.get("version", 1)),
             finalized_cv_id=payload.get("finalized_cv_id"),
+            proposed_title=payload.get("proposed_title", ""),
         )
 
 
@@ -163,6 +168,17 @@ def drafts_directory() -> Path:
     directory = get_data_dir() / DRAFTS_DIRECTORY_NAME
     ensure_isolated_path(directory, "El directorio de borradores de importacion")
     directory.mkdir(parents=True, exist_ok=True)
+
+    # `ensure_isolated_path` no hace nada fuera de una corrida de pruebas, asi
+    # que en produccion un `import-drafts` que sea un enlace simbolico se
+    # aceptaria en silencio y los borradores se escribirian donde apunte. Un
+    # enlace alli no es un caso esperable y si aparece es un montaje incorrecto.
+    if directory.is_symlink():
+        raise ImportStagingError(
+            "drafts_directory_symlinked",
+            "El almacenamiento de importaciones no esta disponible. Contacta al administrador.",
+        )
+
     return directory
 
 
@@ -292,6 +308,10 @@ def create_draft(parsed: ParsedCvDocument, *, source_filename: str, page_count: 
     draft.conflicts = [asdict(conflict) for conflict in parsed.conflicts]
 
     save_draft(draft)
+    # El tope se aplica tambien aqui: `purge_expired_drafts` solo corre cuando
+    # alguien visita el formulario, y un cliente que suba PDFs seguidos sin
+    # pasar por el formulario lo evitaria.
+    _enforce_draft_cap(drafts_directory())
     return draft
 
 
@@ -308,7 +328,17 @@ def save_draft(draft: ImportDraft) -> ImportDraft:
     path = _draft_path(draft.draft_id)
     draft.updated_at = _now().isoformat()
     serialized = json.dumps(draft.to_json(), ensure_ascii=False, indent=2)
-    path.write_text(serialized, encoding="utf-8")
+
+    # Se escribe a un temporal y se renombra: `write_text` trunca el archivo
+    # destino antes de escribir, y un disco lleno o un proceso interrumpido
+    # dejarian un borrador corrupto en lugar del anterior intacto.
+    temporary_path = path.with_suffix(".json.tmp")
+    try:
+        temporary_path.write_text(serialized, encoding="utf-8")
+        temporary_path.replace(path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
     return draft
 
 
@@ -348,6 +378,7 @@ def apply_review(
     values: dict[str, str],
     decisions: dict[str, str],
     unclassified_assignments: dict[str, str],
+    title: str = "",
 ) -> ImportDraft:
     """Aplica las correcciones y decisiones de la pantalla de revision.
 
@@ -386,6 +417,9 @@ def apply_review(
 
         if entry.key in decisions:
             entry.status = decisions[entry.key]
+
+    if title:
+        draft.proposed_title = title[:160]
 
     for item in draft.unclassified:
         if item.key in decisions:
@@ -442,10 +476,11 @@ def build_schema2_payload(draft: ImportDraft, *, title: str) -> dict:
         "summary": summary,
         "experience": _collect_items(confirmed, "experience"),
         "education": _collect_items(confirmed, "education"),
-        "skills": _collect_items(confirmed, "skills"),
+        "skills": _collect_items(confirmed, "skills") + _build_assigned_unclassified(draft)["skills"],
         "languages": _collect_items(confirmed, "languages"),
-        "certifications": _collect_items(confirmed, "certifications"),
-        "projects": _collect_items(confirmed, "projects"),
+        "certifications": _collect_items(confirmed, "certifications")
+        + _build_assigned_unclassified(draft)["certifications"],
+        "projects": _collect_items(confirmed, "projects") + _build_assigned_unclassified(draft)["projects"],
         "links": links,
         "additional_info": _build_additional_info(draft),
     }
@@ -483,6 +518,43 @@ def _collect_items(confirmed: list[StagedEntry], section: str) -> list[dict]:
         if values:
             collected.append(values)
     return collected
+
+
+def _build_assigned_unclassified(draft: ImportDraft) -> dict[str, list[dict]]:
+    """Texto sin clasificar conservado y asignado a una seccion concreta.
+
+    Ignorarlo seria perdida silenciosa: la persona eligio conservar el bloque y
+    ademas destino, y el bloque desaparecia del CV.
+    """
+
+    assigned: dict[str, list[dict]] = {"skills": [], "certifications": [], "projects": []}
+
+    for item in draft.unclassified:
+        if item.status != STATUS_KEPT or item.assigned_section not in assigned:
+            continue
+        text = item.text.strip()
+        if not text:
+            continue
+
+        if item.assigned_section == "skills":
+            label, _, category = text.partition(":")
+            if not category.strip() and len(label) > 60:
+                label, category = text, ""
+            assigned["skills"].append({"label": label.strip()[:60], "category": category.strip()[:60]})
+        elif item.assigned_section == "certifications":
+            assigned["certifications"].append({"name": text[:160], "issuer": "", "date": ""})
+        else:
+            name, separator, rest = text.partition(" - ")
+            assigned["projects"].append(
+                {
+                    "name": (name if separator else text).strip()[:160],
+                    "summary": rest.strip()[:1000],
+                    "link": "",
+                    "technologies": [],
+                }
+            )
+
+    return assigned
 
 
 def _build_additional_info(draft: ImportDraft) -> list[dict[str, str]]:

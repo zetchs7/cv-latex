@@ -135,6 +135,7 @@ async def pdf_import_save(request: Request, draft_id: str) -> HTMLResponse:
             values=form["values"],
             decisions=form["decisions"],
             unclassified_assignments=form["assignments"],
+            title=form["title"],
         )
     except ImportStagingError as error:
         # El borrador NO se toco: apply_review valida antes de aplicar. Se
@@ -159,12 +160,13 @@ async def pdf_import_confirm(request: Request, draft_id: str) -> HTMLResponse:
             values=form["values"],
             decisions=form["decisions"],
             unclassified_assignments=form["assignments"],
+            title=form["title"],
         )
     except ImportStagingError as error:
         return _render_review(request, draft, error_message=error.user_message, status=422, submitted=form)
 
     default_title = _suggest_title(draft)
-    title = (form["title"] or "").strip() or default_title
+    title = (form["title"] or "").strip() or draft.proposed_title or default_title
 
     try:
         payload = confirm_draft(draft, title=title)
@@ -300,6 +302,7 @@ def _with_submitted(draft: ImportDraft, submitted: dict) -> ImportDraft:
         conflicts=list(draft.conflicts),
         version=draft.version,
         finalized_cv_id=draft.finalized_cv_id,
+        proposed_title=draft.proposed_title,
     )
 
     for entry in clone.entries:
