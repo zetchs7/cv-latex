@@ -4,13 +4,19 @@ Aplicacion web local, pequena y portable para construir CVs, cartas de presentac
 
 ## Estado actual
 
-- Version: `0.9.0`
-- Ultimo tag estable publicado: `v0.8.0`
-- Commit base estable: `eab9556 fix(docs): render documentation as html with pdf downloads`
-- Release en preparacion: `8.2 - Release cleanup v0.9.0`
+- Version declarada: `0.9.0`
+- Ultimo tag estable publicado: `v0.9.0` (commit `cbd10fa`)
+- Rama estable: `main`. Contiene la release v0.9.0.
+- Rama de integracion: `development`. Esta **2 commits adelante** de `main`: el editor
+  estructurado de CV y el aislamiento de pruebas ya estan integrados ahi, pero **no estan
+  publicados**, porque `main` todavia no recibio un release que los incluya.
 - Dashboard local: `http://localhost:8000`
 - Persistencia: `./data` en el host, montado como `/data` dentro del contenedor
 - Exportaciones: `/data/exports` dentro del contenedor, visible en `./data/exports` en el host
+
+> Para el estado completo y verificable del proyecto, con la diferencia entre lo implementado,
+> lo probado, lo integrado en `development` y lo publicado en `main`, ver
+> `docs/development/PROJECT_STATUS.md`.
 
 ## Incluye en v0.9.0
 
@@ -24,6 +30,31 @@ Aplicacion web local, pequena y portable para construir CVs, cartas de presentac
 - Confirmaciones seguras para duplicar y eliminar.
 - Fix XSS del modal de confirmacion.
 - Versionado de assets CSS/JS para evitar cache obsoleto.
+
+## Gobierno del proyecto
+
+El estado de `cv-latex` se gobierna desde un catálogo canónico en version, no desde la
+memoria ni desde documentos sueltos.
+
+| Documento | Para qué sirve |
+| --- | --- |
+| [`docs/development/PROJECT_STATUS.md`](docs/development/PROJECT_STATUS.md) | Estado verificable del proyecto y riesgos abiertos |
+| [`docs/development/BACKLOG.md`](docs/development/BACKLOG.md) | Backlog con prioridad, dependencias y aceptación |
+| [`docs/development/ROADMAP.md`](docs/development/ROADMAP.md) | Roadmap por dependencias y criterio de cierre del MVP |
+| [`docs/development/GITHUB_ISSUES_PROJECTS_GUIDE.md`](docs/development/GITHUB_ISSUES_PROJECTS_GUIDE.md) | Cómo se registran y concilian Issues y Projects |
+
+Los tres primeros se **generan** desde
+`docs/development/project_control/catalog.json`. Si cambia el backlog, se edita el catálogo y
+se regenera:
+
+```bash
+python3 tools/project_control.py validate   # estructura, IDs, dependencias, ciclos
+python3 tools/project_control.py render     # regenera el Markdown derivado
+python3 tools/project_control.py check      # detecta deriva; no escribe nada
+```
+
+Este sistema gobierna el **desarrollo del proyecto**. No es una funcionalidad de la aplicación
+y no aparece en el dashboard.
 
 ## Stack
 

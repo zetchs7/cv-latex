@@ -1,5 +1,13 @@
 # Module Index
 
+Mapa del **codigo**: que modulo existe, donde vive y de que depende.
+
+El estado del proyecto —que esta implementado, que esta probado, que llego a `development` y
+que llego a `main`— tiene su fuente canonica en
+`docs/development/project_control/catalog.json` y se muestra en `PROJECT_STATUS.md`. Si las
+dos tablas discrepan sobre el estado de un modulo, **manda `PROJECT_STATUS.md`**; este archivo
+no se actualiza a mano en ese campo.
+
 | Modulo | Ruta | Objetivo | Version | Estado | Dependencias | Documentacion relacionada |
 | --- | --- | --- | --- | --- | --- | --- |
 | App | `app/main.py`, `app/template_utils.py` | Crear instancia FastAPI, montar estaticos, registrar rutas, exponer healthcheck, versionar assets CSS/JS para evitar cache obsoleta y compartir filtros de templates para fechas/estados. | 0.9.0 | Activo release - Etapa 8.2 | FastAPI | `README.md`, `docs/development/DEVELOPMENT_LOG.md` |
@@ -30,3 +38,6 @@
 | Lessons Learned | `docs/development/LESSONS_LEARNED.md` | Consolidar errores reales del proyecto, su causa raiz, la correccion aplicada, la validacion que los detecto y la regla futura para no repetirlos. | 0.9.0 | Activo release - Etapa 8.4 | Markdown | `AGENTS.md`, `docs/development/PROJECT_PLAYBOOK.md`, `docs/development/COMMAND_LOG.md` |
 | Project Playbook | `docs/development/PROJECT_PLAYBOOK.md` | Definir el flujo operativo reusable para iniciar etapas, elegir configuracion, validar cambios, trabajar con Git Flow, Code Review, PRs, merge y releases. | 0.9.0 | Activo release - Etapa 8.4 | Markdown | `AGENTS.md`, `docs/development/LESSONS_LEARNED.md`, `docs/development/MVP_VALIDATION.md` |
 | Docs | `AGENTS.md`, `docs/development/`, `docs/adr/` | Registrar instrucciones persistentes del repo, decisiones, comandos con formato nuevo, versionado, rollback, Prompt IDs externos a Codex, lessons learned y playbook operativo reusable. | 0.9.0 | Activo release - Etapa 8.4 | Markdown | `docs/development/COMMAND_LOG.md`, `docs/development/MVP_VALIDATION.md`, `docs/development/PROJECT_HISTORY_ROLLBACK.md`, `docs/development/LESSONS_LEARNED.md`, `docs/development/PROJECT_PLAYBOOK.md` |
+| Project Control | `tools/project_control.py`, `docs/development/project_control/catalog.json` | Catálogo canónico de backlog, riesgos y estado; herramienta de validación con Python standard library que detecta IDs duplicados, dependencias rotas, ciclos y documentación desactualizada. Cuatro verbos: `validate`, `status`, `render` y `check`; solo `render` escribe. | 0.9.0 | En desarrollo, sin publicar | Python stdlib | `docs/adr/ADR-0005-project-control-center.md`, `docs/development/PROJECT_STATUS.md`, `docs/development/BACKLOG.md`, `docs/development/ROADMAP.md` |
+| Project Control Docs | `docs/development/PROJECT_STATUS.md`, `docs/development/BACKLOG.md`, `docs/development/ROADMAP.md`, `docs/development/GITHUB_ISSUES_PROJECTS_GUIDE.md` | Estado verificable del proyecto, backlog estructurado, roadmap por dependencias y política de gobernanza de Issues y Projects. Los tres primeros se generan desde el catálogo; la guía es escrita a mano. | 0.9.0 | En desarrollo, sin publicar | Markdown | `docs/development/project_control/catalog.json`, ``docs/development/GITHUB_ISSUES_PROPUESTAS.md`, `docs/development/IMPORT_PDF_DESIGN_PROPOSAL.md`` |
+| Issue Templates | `.github/ISSUE_TEMPLATE/` | Plantillas de bug, feature y deuda técnica, con Issues en blanco habilitados para capturar ideas rápido desde el móvil. | 0.9.0 | En desarrollo, sin publicar | Markdown | `docs/development/GITHUB_ISSUES_PROJECTS_GUIDE.md` |

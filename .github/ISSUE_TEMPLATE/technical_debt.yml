@@ -1,0 +1,42 @@
+---
+name: Technical debt
+description: Deuda técnica, riesgo o trabajo de mantenimiento
+title: "[debt] "
+labels: "tipo:debt"
+body: |
+  ## Qué deuda es
+
+  Nombre corto del problema estructural, no del síntoma.
+
+  ## Dónde vive
+
+  Ruta y línea, o archivo completo.
+
+  ## Cómo se manifiesta
+
+  Concreto. "Cuando se agrega una migración nueva, hay que tocar tres lugares"
+  es mejor que "el código es acoplado".
+
+  ## Por qué importa ahora
+
+  Qué se rompe o qué se encarece. Si solo es feo, decilo: la prioridad baja.
+
+  ## Evidencia
+
+  Salida de un comando, conteo, cita del código o del documento.
+
+  ## Alternativas
+
+  Qué otras opciones se consideraron y por qué esta.
+
+  ## Riesgo de no hacerlo
+
+  Qué pasa si queda así seis meses más.
+
+  ## Origen
+
+  Recomendación técnica / deuda ya documentada / acordada con Franco
+
+  ## Prioridad propuesta
+
+  P0 / P1 / P2 / P3

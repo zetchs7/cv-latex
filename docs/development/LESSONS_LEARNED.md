@@ -259,3 +259,33 @@ Consolidar errores reales detectados durante `cv-latex`, su causa raiz, la corre
 - Validacion que lo confirmo: la suite completa corre **sin `APP_DATA_DIR` en el entorno** y da 240 passed. El manifiesto recursivo de `data/` (ruta, tamano y mtime de los 175 archivos) es **byte a byte identico antes y despues** de la corrida, y no queda ningun temporal huerfanos. La guardia se provoco: apuntar `APP_DATA_DIR` al `data/` del repositorio, en absoluto y en relativo, aborta con `RuntimeError`; sin marcador, `get_data_dir()` conserva su comportamiento normal.
 - Regla futura para evitarlo: ningun test debe depender de que alguien recuerde exportar una variable. Si un recurso escribible se resuelve desde una constante de modulo en lugar de la funcion de datos, ese recurso queda fuera del aislamiento y hay que corregirlo en el codigo. La regla de LL-023 queda SUPERADA por esta.
 - Instruccion sugerida para proximos prompts: "Un aislamiento que depende del comando de ejecucion no es aislamiento: va en `conftest.py` y con una proteccion que aborte."
+
+## LL-026 - Una afirmacion de backlog sin verificar es peor que no tener backlog
+
+- Problema detectado: al construir el catálogo inicial, se registró `OPS-001` como "sin procedimiento de backup ni restauracion". El README ya tenia las secciones "Backup basico" y "Restore basico" en `README.md:112-151`.
+- Causa raiz: el hallazgo se formulo a partir del resumen de otra fuente, sin abrir el archivo que lo contradecia. Un inventario se relleno desde memoria de etapa en vez de contra la fuente primaria.
+- Impacto/riesgo: el backlog necesitaba una tarea mas para un problema que no existia, mientras el problema real —que el procedimiento documentado copia la base con `cp` mientras la app escribe— pasaba inadvertido. Un backlog con entradas falsas pierde credibilidad y hace que se deje de mirar.
+- Como se corrigio: se abrio `README.md:112-151` antes de publicar el catálogo. `OPS-001` quedo reformulada como "procedimiento documentado pero inseguro y sin verificar", con el riesgo real: `cp data/app.db` con la aplicación escribiendo puede capturar un estado a medio escribir, y no hay verificación de restauración.
+- Validacion que lo confirmo: `README.md:112-151` contiene literalmente los bloques de backup y restore. La aceptación de la tarea reformulada exige copia consistente de SQLite y `PRAGMA integrity_check` sobre la copia restaurada.
+- Regla futura para evitarlo: ningún ítem entra al backlog por resumen. Antes de registrar, abrir la fuente primaria y citar la línea. Si la evidencia dice `README.md:112-151`, el backlog tiene que poder mostrar ese número.
+- Instruccion sugerida para proximos prompts: "Antes de agregar una tarea, verificar que el problema exista abriendo el archivo. Un backlog inventado cuesta más que uno incompleto."
+
+## LL-027 - GitHub re-ancla el commit de un comentario inline al moverse el diff
+
+- Problema detectado: al consultar los comentarios inline del PR #17 filtrando por `commit_id` igual a `35d1c23`, GitHub devolvió 4 comentarios, dos de ellos creados casi una hora antes para los commits `ce46cfc` y `ae64a2b`.
+- Causa raiz: cuando el head de un PR avanza y la línea de anclaje sigue existiendo, GitHub reescribe `commit_id` del comentario existente. El campo inmutable es `original_commit_id`.
+- Impacto/riesgo: se reporteó como "dos hallazgos P1 nuevos sin resolver" sobre el commit actual. Era falso. El riesgo real es tomar una decision de merge o de alcance sobre evidencia mal atribuida.
+- Como se corrigio: el filtro paso a usar `original_commit_id`. Con ese filtro, los cuatro comentarios pertenecen a `ce46cfc` (3) y `ae64a2b` (1), y contra `35d1c23` no hay ninguno. El commit actual habia sido revisado con resultado "Didn't find any major issues".
+- Validacion que lo confirmo: `original_commit_id` devuelve los SHA originales de cada comentario y no cambia al avanzar el head. Ademas, un comentario que referencia `AGENTS.md` anclado a un blob de un commit viejo es señal de que el hallazgo puede estar desactualizado y conviene reproducirlo antes de actuar.
+- Regla futura para evitarlo: para distinguir hallazgos nuevos de arrastrados, filtrar siempre por `original_commit_id`, nunca por `commit_id`. Y cuando un hallazgo se reporte dos veces con el mismo texto, reproducirlo contra el árbol actual antes de tratarlo como abierto.
+- Instruccion sugerida para proximos prompts: "Los comentarios inline de GitHub se atribuyen con `original_commit_id`; `commit_id` se re-ancla."
+
+## LL-030 - Corregir instancias de un defecto no ensena el patron: hay que barrer el campo
+
+- Problema detectado: el review del PR #20 encontro tres recortes silenciosos mas en el camino de importacion, despues de que yo ya hubiera "corregido" tres. Mismo defecto, mismo archivo, otra ronda.
+- Causa raiz: corregí tres casos concretos (`[:40]` de bloques, `[:300]` por linea, `[:160]` de certificaciones) uno por uno, y trate cada uno como un hallazgo aislado. No busque cuantos `[:N]` habia en total. Cuando finalmente los conte, habia unos sesenta.
+- Impacto/riesgo: tres rondas de review, tres commits y tres informes para un problema que un solo `grep` habria dimensionado de entrada. Ademas, cada ronda dejaba la sensacion de estar cerrado cuando no lo estaba.
+- Como se corrigio: un barrido sistematico de todos los recortes del camino de valores, con una regla unica: los valores se guardan enteros y la validacion ocurre contra el limite real del schema al confirmar. Sesenta recortes relevados, los que acortaban contenido eliminados, los que solo acotaban metadatos conservados.
+- Validacion que lo confirmo: `grep -nE '\[:[0-9]+\]'` sobre los cuatro modulos del camino de importacion como barrido de referencia, y tres tests que afirman el invariante directamente: un valor editado sobrevive entero, un resumen demasiado largo se rechaza al confirmar en vez de guardarse cortado, y el contenido de informacion adicional se valida.
+- Regla futura para evitarlo: cuando el mismo defecto aparece dos veces, dejar de corregir instancias y enumerar la clase entera. Un `grep` del patron sobre el campo completo es mas barato que otra ronda de review.
+- Instruccion sugerida para proximos prompts: "Si un defecto se repite, no corrijas la instancia: lista todas las ocurrencias del patron en el campo y decide una regla unica."

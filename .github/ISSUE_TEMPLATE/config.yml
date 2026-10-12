@@ -1,0 +1,7 @@
+# Los Issues en blanco siguen habilitados a proposito.
+#
+# La guia de gobernanza pide que una idea capturada desde el movil pueda
+# registrarse en un minuto, sin elegir plantilla ni completar campos. Si se
+# obligara a elegir una, la gente dejaria de reportar, que es peor que aceptar
+# Issues vagos que luego se ordenan en el catalogo.
+blank_issues_enabled: true
