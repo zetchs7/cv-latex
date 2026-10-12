@@ -1,5 +1,13 @@
 # Module Index
 
+Mapa del **codigo**: que modulo existe, donde vive y de que depende.
+
+El estado del proyecto —que esta implementado, que esta probado, que llego a `development` y
+que llego a `main`— tiene su fuente canonica en
+`docs/development/project_control/catalog.json` y se muestra en `PROJECT_STATUS.md`. Si las
+dos tablas discrepan sobre el estado de un modulo, **manda `PROJECT_STATUS.md`**; este archivo
+no se actualiza a mano en ese campo.
+
 | Modulo | Ruta | Objetivo | Version | Estado | Dependencias | Documentacion relacionada |
 | --- | --- | --- | --- | --- | --- | --- |
 | App | `app/main.py`, `app/template_utils.py` | Crear instancia FastAPI, montar estaticos, registrar rutas, exponer healthcheck, versionar assets CSS/JS para evitar cache obsoleta y compartir filtros de templates para fechas/estados. | 0.9.0 | Activo release - Etapa 8.2 | FastAPI | `README.md`, `docs/development/DEVELOPMENT_LOG.md` |
@@ -35,3 +43,6 @@
 | PDF CV Import - Staging | `app/services/import_staging_service.py` | Borrador en disco con vencimiento que separa la propuesta revisable del modelo persistente, y mapeo a payload schema 2 plano al confirmar. Identificadores impredecibles revalidados al leer. | 0.9.0 | En desarrollo, sin publicar | Python stdlib, sqlite3 (via repositorio) | `docs/adr/ADR-0006-pdf-cv-import.md` |
 | PDF CV Import - Rutas y UI | `app/routes/pdf_import.py`, `app/templates/cvs/import_form.html`, `app/templates/cvs/import_review.html` | Flujo obligatorio del Issue #14: subir, validar, extraer, interpretar, clasificar, revisar, corregir, confirmar y guardar. Pantalla "Resultado de la importacion del CV" con las dos secciones obligatorias. | 0.9.0 | En desarrollo, sin publicar | FastAPI, Jinja2 | `docs/development/PDF_CV_IMPORT.md` |
 | PDF CV Import - Fixtures | `tests/fixtures/pdf_import/` | PDFs sinteticos deterministas y versionados: validos en espanol e ingles, ambiguo, multipagina, sin texto, corrupto, cifrado y de 21 paginas. Regenerables con `generate.py` sin dependencias externas. | 0.9.0 | En desarrollo, sin publicar | Python stdlib | `tests/test_pdf_import_flow.py`, `tests/test_pdf_import_services.py` |
+| Project Control | `tools/project_control.py`, `docs/development/project_control/catalog.json` | Catálogo canónico de backlog, riesgos y estado; herramienta de validación con Python standard library que detecta IDs duplicados, dependencias rotas, ciclos y documentación desactualizada. Cuatro verbos: `validate`, `status`, `render` y `check`; solo `render` escribe. | 0.9.0 | En desarrollo, sin publicar | Python stdlib | `docs/adr/ADR-0005-project-control-center.md`, `docs/development/PROJECT_STATUS.md`, `docs/development/BACKLOG.md`, `docs/development/ROADMAP.md` |
+| Project Control Docs | `docs/development/PROJECT_STATUS.md`, `docs/development/BACKLOG.md`, `docs/development/ROADMAP.md`, `docs/development/GITHUB_ISSUES_PROJECTS_GUIDE.md` | Estado verificable del proyecto, backlog estructurado, roadmap por dependencias y política de gobernanza de Issues y Projects. Los tres primeros se generan desde el catálogo; la guía es escrita a mano. | 0.9.0 | En desarrollo, sin publicar | Markdown | `docs/development/project_control/catalog.json`, ``docs/development/GITHUB_ISSUES_PROPUESTAS.md`, `docs/development/IMPORT_PDF_DESIGN_PROPOSAL.md`` |
+| Issue Templates | `.github/ISSUE_TEMPLATE/` | Plantillas de bug, feature y deuda técnica, con Issues en blanco habilitados para capturar ideas rápido desde el móvil. | 0.9.0 | En desarrollo, sin publicar | Markdown | `docs/development/GITHUB_ISSUES_PROJECTS_GUIDE.md` |

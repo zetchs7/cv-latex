@@ -1,0 +1,626 @@
+{
+  "meta": {
+    "schema_version": 1,
+    "generated_by": "tools/project_control.py",
+    "purpose": "Fuente canonica del estado del proyecto. Los documentos PROJECT_STATUS.md, BACKLOG.md y ROADMAP.md se generan desde aqui. Editar este archivo y ejecutar `python3 tools/project_control.py render`."
+  },
+  "project": {
+    "name": "CV LaTeX Builder",
+    "stable_version": "0.9.0",
+    "main_branch": "main",
+    "development_branch": "development",
+    "last_verified_on": "2026-10-12",
+    "last_verification_evidence": "`development` en `9ddaf25`; `main` en `a28d1fd`, sin ancestry de los commits de desarrollo: `97e2577` y `e19ea5a` son alcanzables solo desde `development`. Suite Python 322 passed en host y en Docker con rootfs de solo lectura y sin red; 8 tests JavaScript; `project_control.py validate` y `check` en verde; GitHub Actions en verde sobre cada PR hacia `development`.",
+    "mvp_criteria": [
+      "Los modulos core — CV Builder, editor estructurado, ATS, cartas, tracker, dashboard, exportaciones y documentacion — estan integrados en `development` con suite verde.",
+      "Todo backlog con prioridad P0 esta cerrado o cuenta con decision explicita de Franco.",
+      "El riesgo de exposicion de red esta resuelto o documentado como limitacion aceptada.",
+      "Existe un criterio verificable para importar un CV existente, no solo crear uno de cero.",
+      "La documentacion de usuario describe el comportamiento real y sus PDFs fueron validados."
+    ],
+    "expanded_vision": [
+      "Importacion de CV existente (PDF) con revision humana antes de guardar.",
+      "Exportaciones e importaciones mas amplias que JSON (DOCX, Markdown).",
+      "Mejoras de UX residuals del modulo ATS.",
+      "Integraciones asistidas por IA, si Franco define alcance y limites.",
+      "Estrategia de autenticacion si la aplicacion deja de ser estrictamente local."
+    ],
+    "release_policy": [
+      "Los tags se crean solo con autorizacion explicita.",
+      "Publicar en `main` exige: suite verde, artefactos de documentacion regenerados si cambiaron sus fuentes, changelog actualizado y decision humana.",
+      "`main` nunca se modifica sin autorizacion explicita."
+    ]
+  },
+  "modules": [
+    {
+      "id": "dashboard",
+      "name": "Dashboard privado",
+      "routes": "`app/routes/dashboard.py`, `app/templates/`",
+      "state": "in_main",
+      "in_development": true,
+      "in_main": true,
+      "verified_by": "tests/test_ui_routes.py (16 tests)",
+      "evidence": "Release v0.9.0 en `cbd10fa`; integrado en `main` via `a28d1fd`."
+    },
+    {
+      "id": "documentation",
+      "name": "Centro de documentacion",
+      "routes": "`app/routes/documentation.py`, `app/services/documentation_service.py`",
+      "state": "in_main",
+      "in_development": true,
+      "in_main": true,
+      "verified_by": "tests/test_documentation_routes.py (7 tests)",
+      "evidence": "Fuentes en `docs/user/` (2) y PDFs servidos en `app/static/docs/` (2) coinciden 1:1 y estan versionados."
+    },
+    {
+      "id": "cv_builder_legacy",
+      "name": "CV Builder (editor legacy)",
+      "routes": "`app/routes/cvs.py`, `app/repositories/cv_repository.py`",
+      "state": "in_main",
+      "in_development": true,
+      "in_main": true,
+      "verified_by": "tests/test_cv_repository.py (16 tests)",
+      "evidence": "CRUD completo, soft delete con confirmacion por coincidencia exacta de titulo (`cvs.py:458-466`)."
+    },
+    {
+      "id": "structured_cv",
+      "name": "Editor estructurado de CV (schema 2)",
+      "routes": "`app/routes/cvs.py:71,367`, `app/services/structured_cv_*.py`, `app/validations/structured_cv_validations.py`",
+      "state": "in_development",
+      "in_development": true,
+      "in_main": false,
+      "verified_by": "tests/test_structured_cv_editor.py (35), test_cv_json_schema2.py (34), test_structured_cv_service.py (31), test_structured_cv_consumers.py (17), test_structured_cv_normalization.py (14)",
+      "evidence": "PR #16 squash-mergeado en `97e2577`. Sin version, release ni tag: no publicado. ADR-0003 lo declara 'implementada sin publicar'."
+    },
+    {
+      "id": "ats",
+      "name": "Chequeo ATS basico",
+      "routes": "`app/routes/ats.py`, `app/services/ats_service.py`",
+      "state": "in_main",
+      "in_development": true,
+      "in_main": true,
+      "verified_by": "tests/test_ats_service.py (8), test_ats_routes.py (3)",
+      "evidence": "Score heuristico de 7 criterios, topes 100/84/59 (`ats_service.py:11-12`). Consume la representacion normalizada del CV estructurado."
+    },
+    {
+      "id": "cover_letters",
+      "name": "Cartas de presentacion",
+      "routes": "`app/routes/cover_letters.py`, `app/repositories/cover_letter_repository.py`",
+      "state": "in_main",
+      "in_development": true,
+      "in_main": true,
+      "verified_by": "tests/test_cover_letter_repository.py, test_confirmation_modal_security.py",
+      "evidence": "CRUD con exportacion TEX/PDF. Sin exportacion JSON y sin editor estructurado, a diferencia de los CVs."
+    },
+    {
+      "id": "applications",
+      "name": "Application Tracker",
+      "routes": "`app/routes/applications.py`, `app/repositories/application_repository.py`",
+      "state": "in_main",
+      "in_development": true,
+      "in_main": true,
+      "verified_by": "test_application_repository.py, test_application_validations.py",
+      "evidence": "CRUD con pipeline de 6 estados. La confirmacion destructiva usa el token fijo `confirm_delete == 'yes'` (`applications.py:201`), mas debil que el criterio de texto exacto de CVs y cartas."
+    },
+    {
+      "id": "exports",
+      "name": "Exportaciones PDF/TEX/JSON",
+      "routes": "`app/services/export_service.py`, `app/services/pdf_service.py`, `app/services/latex_service.py`",
+      "state": "in_main",
+      "in_development": true,
+      "in_main": true,
+      "verified_by": "tests/test_export_service.py (14), test_pdf_service.py (7), test_latex_service.py (8), test_legacy_tex_compatibility.py (4)",
+      "evidence": "Golden fixtures en `tests/fixtures/legacy_tex_a28d1fd/` prueban identidad byte a byte del TEX legacy contra el baseline `a28d1fd`. Path traversal bloqueado (`export_service.py:379`)."
+    },
+    {
+      "id": "imports_json",
+      "name": "Importacion JSON de CVs",
+      "routes": "`app/routes/cvs.py:160`, `app/services/export_service.py`",
+      "state": "in_main",
+      "in_development": true,
+      "in_main": true,
+      "verified_by": "tests/test_cv_json_schema2.py (34)",
+      "evidence": "Acepta schema 1 y 2, limite de 520 KB en dos capas (streaming por chunks `export_service.py:68` y guard de tamano `:265`). No existe importacion de PDF, DOCX, LaTeX ni Markdown."
+    },
+    {
+      "id": "test_isolation",
+      "name": "Aislamiento de la suite de pruebas",
+      "routes": "`tests/conftest.py`, `app/database.py`, `tests/test_test_isolation.py`",
+      "state": "in_development",
+      "in_development": true,
+      "in_main": false,
+      "verified_by": "tests/test_test_isolation.py (19 tests)",
+      "evidence": "PR #17 squash-mergeado en `e19ea5a`. Aislamiento fail-closed en codigo con manifiesto `(size, mtime_ns)` comparado en `pytest_sessionfinish`."
+    },
+    {
+      "id": "project_control",
+      "name": "Project Control Center",
+      "routes": "`tools/project_control.py`, `docs/development/project_control/catalog.json`",
+      "state": "in_development_branch",
+      "in_development": false,
+      "in_main": false,
+      "verified_by": "tests/test_project_control.py",
+      "evidence": "Rama `feature/project-control-center`, sin publicar por instruccion explicita. Diseno en `docs/adr/ADR-0005-project-control-center.md`."
+    }
+  ],
+  "risks": [
+    {
+      "id": "RSK-001",
+      "title": "14 endpoints POST forjables desde cualquier sitio web",
+      "severity": "high",
+      "status": "open",
+      "mitigation": "Ver SEC-001 (P0). Propuesta completa en `docs/development/SECURITY_HARDENING_PROPOSAL.md`.",
+      "evidence": "Cero `add_middleware` en `app/main.py:26-39`. Un POST con `Form(...)` es una simple request: sin preflight, el navegador lo envia y la app lo ejecuta. IDs secuenciales permiten iterarlos."
+    },
+    {
+      "id": "RSK-002",
+      "title": "Drift entre la documentacion y el estado real del repositorio",
+      "severity": "medium",
+      "status": "open",
+      "mitigation": "`tools/project_control.py check` detecta la deriva del backlog. La deriva en README e historial requiere correccion manual: DOC-001.",
+      "evidence": "`README.md:8` declara `v0.8.0` como ultimo tag cuando existe `v0.9.0` en `cbd10fa`; `PROJECT_HISTORY_ROLLBACK.md:61` afirma que `main` y `development` estan en `cbd10fa` y `development` esta en `e19ea5a`; `README.md:240-251` lista 11 de los 22 archivos de test."
+    },
+    {
+      "id": "RSK-003",
+      "title": "La suite de 248 pruebas solo corre localmente",
+      "severity": "medium",
+      "status": "open",
+      "mitigation": "Pipeline que ejecute la suite en la imagen del proyecto. Ver QLT-001.",
+      "evidence": "No existe `.github/`, ni `pytest.ini`, ni `pyproject.toml`. La unica via automatizada es `docker compose exec app python -m pytest`."
+    },
+    {
+      "id": "RSK-004",
+      "title": "`development` esta 2 commits adelante de `main`: la etapa 9.x no esta publicada",
+      "severity": "medium",
+      "status": "open",
+      "mitigation": "Decidir y ejecutar el release. Ver REL-001.",
+      "evidence": "`git rev-list --count main..development` = 2 (`97e2577`, `e19ea5a`). `main` sigue en `a28d1fd` y solo contiene la release v0.9.0."
+    },
+    {
+      "id": "RSK-005",
+      "title": "`CURRENT_SCHEMA_VERSION` es un rotulo, no un control de flujo de migraciones",
+      "severity": "medium",
+      "status": "open",
+      "mitigation": "Esquema de migraciones por pasos cuando la proxima migracion no sea una simple columna. Ver DBV-001.",
+      "evidence": "`app/database.py:157-163` concentra toda la migracion en `migrate_cvs_table()`, idempotente por diseno pero sin historial ni orden. La version se sobreescribe en `app_metadata` (`database.py:182-191`)."
+    },
+    {
+      "id": "RSK-006",
+      "title": "La version de release de la documentacion esta fijada por constante",
+      "severity": "low",
+      "status": "open",
+      "mitigation": "Derivar la constante de `VERSION` o de `APP_VERSION`. Ver DOC-002.",
+      "evidence": "`documentation_service.py:19` fija `DOCUMENTATION_RELEASE_VERSION = 'v0.9.0'` y la fecha en `:21`; un cambio de version no las actualiza."
+    },
+    {
+      "id": "RSK-007",
+      "title": "Sin formatters disponibles: el control de formato es solo el diff check",
+      "severity": "low",
+      "status": "open",
+      "mitigation": "Adoptar `black` y `ruff` como dependencias de desarrollo. Ver QLT-003.",
+      "evidence": "`DEVELOPMENT_LOG.md:36-38`: 'black y ruff no estan disponibles en host ni en la imagen'."
+    },
+    {
+      "id": "RSK-008",
+      "title": "Backup documentado puede producir una copia inconsistente",
+      "severity": "medium",
+      "status": "open",
+      "mitigation": "Usar `sqlite3 data/app.db \".backup\"` o detener la app antes de copiar. Ver OPS-001/SEC-003.",
+      "evidence": "`README.md:149` y `docs/user/WEB_USAGE_MANUAL.md` hacen `cp data/app.db` con la app corriendo."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "PCC-001",
+      "title": "Project Control Center v1",
+      "description": "Sistema interno de gobierno del proyecto: catalogo canonico en JSON, herramienta de validacion con Python standard library, documentos centrales generados y guia de gobernanza de GitHub. Es una herramienta para gobernar el desarrollo, no una funcionalidad del producto final.",
+      "origin": "franco",
+      "priority": "P1",
+      "status": "in_progress",
+      "module": "project_control",
+      "depends_on": [],
+      "acceptance": [
+        "`python3 tools/project_control.py validate` pasa sin errores ni advertencias",
+        "`python3 tools/project_control.py check` no modifica ningun archivo y falla ante deriva",
+        "El catalogo detecta IDs duplicados, dependencias inexistentes, ciclos, estados y prioridades invalidas",
+        "PROJECT_STATUS.md, BACKLOG.md y ROADMAP.md se generan de forma determinista desde el catalogo",
+        "Los documentos distinguen requisito aprobado de propuesta de ingenieria",
+        "Los tests nuevos pasan y no escriben en `data/` ni en `app/static/docs/`"
+      ],
+      "evidence": "`docs/adr/ADR-0005-project-control-center.md`, rama `feature/project-control-center`.",
+      "github_issue": null,
+      "next_action": "Completar inventario del backlog, plantillas de issues, tests e integracion documental; cerrar con commits locales sin publicar.",
+      "approved": true
+    },
+    {
+      "id": "CV-001",
+      "title": "Importar Curriculum Vitae desde PDF",
+      "description": "Permitir subir un CV en PDF, extraer e interpretar su contenido y cargarlo en el modelo interno del proyecto. El PDF es fuente de datos, nunca documento final: se muestra una pantalla de revision editable y el CV se genera con las plantillas propias. El sistema no debe inventar datos ni descartar silenciosamente informacion que no pudo clasificar.",
+      "origin": "franco",
+      "priority": "P1",
+      "status": "backlog",
+      "module": "imports_json",
+      "depends_on": [],
+      "acceptance": [
+        "Existe el boton 'Importar CV desde PDF' en la seccion Curriculum Vitae",
+        "El usuario sube un PDF y la app valida formato, tamano y legibilidad",
+        "Se extrae texto correctamente de un PDF con texto seleccionable",
+        "Se detectan y estructuran datos personales, experiencia, educacion, skills y resumen",
+        "La informacion se mapea al modelo interno del CV",
+        "Existe una pantalla de revision antes de guardar, con campos editables",
+        "Existe la seccion visible 'Campos con dudas o informacion incompleta'",
+        "Existe la seccion visible 'Informacion no clasificada'",
+        "El usuario puede corregir, completar, mover, descartar o confirmar campos dudosos",
+        "La app no inventa informacion faltante ni elimina informacion sin mostrar",
+        "El CV final se genera con las plantillas propias del proyecto",
+        "Hay validaciones para PDF vacio, corrupto, protegido por contrasena y escaneado sin OCR",
+        "Los temporales del archivo subido se eliminan tras el procesamiento",
+        "Existen tests para el flujo y para casos ambiguos o incompletos",
+        "La funcionalidad queda documentada"
+      ],
+      "evidence": "GitHub Issue #14, creado por `zetchs7` el 2026-06-13. Requisitos transcritos sin alterar.",
+      "github_issue": 14,
+      "next_action": "Aprobar la propuesta de arquitectura y el alcance de OCR antes de implementar.",
+      "approved": true
+    },
+    {
+      "id": "SEC-001",
+      "title": "TrustedHostMiddleware y proteccion contra DNS rebinding",
+      "description": "La app no registra ningun middleware: cero add_middleware en todo el repo. Sus 14 endpoints POST son ejecutables mediante request forgery desde cualquier sitio web, porque un POST con Form(...) o urlencoded es una simple request que no dispara preflight y el navegador la envia. El atacante obtiene creacion y modificacion arbitraria de CVs, cartas y postulaciones; los ids son enteros secuenciales, asi que puede iterar /cvs/1/edit, /cvs/2/edit sin leer nada. El borrado queda protegido por la coincidencia exacta de texto, que un atacante ciego no conoce.",
+      "origin": "engineering",
+      "priority": "P0",
+      "status": "ready",
+      "module": "dashboard",
+      "depends_on": [],
+      "acceptance": [
+        "La app valida el encabezado `Host` y rechaza hosts no permitidos",
+        "Existe un test de regresion que demuestra que un host ajeno es rechazado",
+        "El bind por defecto sigue siendo `127.0.0.1`",
+        "La limitacion esta documentada en README y en la documentacion de usuario"
+      ],
+      "evidence": "Informe de amenazas 2026-10-12: `app/main.py:26-39` sin add_middleware; 14 rutas POST listadas en `app/routes/`; cero tokens CSRF en ninguna de las 8 plantillas con method=post; AUTOINCREMENT en `app/database.py:195`.",
+      "github_issue": null,
+      "next_action": "Decidir si se agrega CSRF en la misma entrega; ver SEC-002.",
+      "approved": false
+    },
+    {
+      "id": "SEC-002",
+      "title": "Proteccion CSRF para formularios POST",
+      "description": "Sin TrustedHostMiddleware, un DNS rebinding da lectura total de la app: el atacante controla el DNS de su dominio con TTL bajo, la victima visita el sitio, el JS rebindea a 127.0.0.1, y el navegador conecta desde la maquina de la victima a su propia loopback. El bind 127.0.0.1 NO protege: la restriccion de interfaz no controla peticiones que el propio navegador origina localmente. La SOP se pasa de largo porque el origin sigue siendo el dominio del atacante, que ahora resuelve a loopback, y el JS puede leer las respuestas: exfiltracion de CVs completos.",
+      "origin": "engineering",
+      "priority": "P1",
+      "status": "ready",
+      "module": "dashboard",
+      "depends_on": [
+        "SEC-001"
+      ],
+      "acceptance": [
+        "Toda ruta POST exige un token CSRF valido",
+        "Los formularios incluyen el token",
+        "Un POST sin token o con token invalido devuelve 403",
+        "Existen tests de regresion para POST legitimo, POST sin token y POST con token ajeno"
+      ],
+      "evidence": "Grep de `csrf|Depends(|Security(|middleware` sobre `app/**/*.py` no devuelve resultados.",
+      "github_issue": null,
+      "next_action": "Confirmar con Franco si el modelo de uso sigue siendo estrictamente local antes de implementar.",
+      "approved": false
+    },
+    {
+      "id": "SEC-003",
+      "title": "Estrategia de autenticacion si la app se expone fuera de localhost",
+      "description": "OPS-001 cubria el riesgo de backup inconsistente: el procedimiento documentado copia `data/app.db` con `cp` mientras la app corre, y SQLite en journal mode default puede producir una copia a medio escribir. El RESTORE si es consistente porque exige detener la app; el backup no. La forma correcta es `sqlite3 data/app.db \".backup\"` o detener la app antes de copiar.",
+      "origin": "engineering",
+      "priority": "P1",
+      "status": "backlog",
+      "module": "dashboard",
+      "depends_on": [
+        "SEC-002"
+      ],
+      "acceptance": [
+        "Existe una decision registrada sobre si la app puede exponerse fuera de localhost",
+        "Si se expone, el plan de autenticacion esta escrito y aprobado antes de tocar el bind"
+      ],
+      "evidence": "`AGENTS.md` declara el uso local sin login y prohibe exponer fuera de localhost sin revisar auth, permisos, CSRF, CORS, headers y rate limits.",
+      "github_issue": null,
+      "next_action": "Solo se activa si Franco decide cambiar el modelo de despliegue.",
+      "approved": false
+    },
+    {
+      "id": "SEC-004",
+      "title": "Unificar la confirmacion destructiva del tracker con el criterio de los demas modulos",
+      "description": "CVs y cartas exigen confirmacion por coincidencia exacta del texto a eliminar. El Application Tracker acepta un token fijo, que es mas debil y facil de disparar por error.",
+      "origin": "engineering",
+      "priority": "P2",
+      "status": "ready",
+      "module": "applications",
+      "depends_on": [],
+      "acceptance": [
+        "El tracker exige confirmar con la misma coincidencia exacta que CVs y cartas",
+        "Un POST con un token fijo deja de eliminar el registro",
+        "Existe test de regresion para el caso negativo"
+      ],
+      "evidence": "`applications.py:201` compara contra `confirm_delete == 'yes'`; `cvs.py:458-466` y `cover_letters.py:178` exigen coincidencia exacta.",
+      "github_issue": null,
+      "next_action": "Implementar siguiendo el patron ya establecido en `tests/test_confirmation_modal_security.py`.",
+      "approved": false
+    },
+    {
+      "id": "REL-001",
+      "title": "Publicar v0.10.0 con la etapa 9.x",
+      "description": "`development` esta 2 commits adelante de `main`: el editor estructurado y el aislamiento de pruebas estan integrados pero sin version, release ni tag. Un usuario que solo use `main` no ve ninguna de las dos mejoras.",
+      "origin": "engineering",
+      "priority": "P1",
+      "status": "ready",
+      "module": "docs",
+      "depends_on": [
+        "DOC-001"
+      ],
+      "acceptance": [
+        "Version alineada en `VERSION`, `app/main.py`, `Dockerfile`, `docker-compose.yml`, `.env.example` y README",
+        "Suite completa en verde sobre el commit a publicar",
+        "PDFs de documentacion regenerados si cambio su fuente o su renderer",
+        "CHANGELOG_GENERAL actualizado con la entrada del release",
+        "`main` y `development` sincronizadas segun la estrategia acordada",
+        "Tag creado solo con autorizacion explicita"
+      ],
+      "evidence": "`git rev-list --count main..development` = 2 (`97e2577`, `e19ea5a`). `VERSION` sigue en `0.9.0` y `main` en `a28d1fd`.",
+      "github_issue": null,
+      "next_action": "Franco debe decidir la version objetivo y si el release incluye tambien el Project Control Center.",
+      "approved": false
+    },
+    {
+      "id": "DOC-001",
+      "title": "Corregir el drift de README y del historial de rollback",
+      "description": "El bloque 'Estado actual' del README ya fue corregido durante la instalacion del Project Control Center, y ahora declara el tag real y la diferencia entre `main` y `development`. Queda corregir el arbol de archivos de test y la afirmacion de sincronizacion del historial de rollback.",
+      "origin": "debt",
+      "priority": "P2",
+      "status": "in_progress",
+      "module": "docs",
+      "depends_on": [],
+      "acceptance": [
+        "El bloque 'Estado actual' del README declara el ultimo tag estable real y la diferencia entre `main` y `development`",
+        "El README enlaza al `PROJECT_STATUS.md` como fuente del estado completo",
+        "El arbol de archivos de test esta completo o se reemplaza por una referencia al directorio",
+        "`PROJECT_HISTORY_ROLLBACK.md` no afirma sincronizacion donde no la hay",
+        "No se reescribe historia: se corrigen afirmaciones obsoletas y se conservan las que tienen valor de auditoria"
+      ],
+      "evidence": "Corregido: `README.md` bloque 'Estado actual' (antes declaraba `v0.8.0` como ultimo tag y un release en preparacion ya cerrado) y nueva seccion 'Gobierno del proyecto'. Pendiente: `README.md:240-251` lista 11 de los 22 archivos de test, y `PROJECT_HISTORY_ROLLBACK.md:61` afirma que `main` y `development` estan en `cbd10fa`.",
+      "github_issue": null,
+      "next_action": "Corregir el arbol de archivos de test y la afirmacion de sincronizacion del historial de rollback.",
+      "approved": false
+    },
+    {
+      "id": "DOC-002",
+      "title": "Derivar la version de release de la documentacion de la version del proyecto",
+      "description": "`DOCUMENTATION_RELEASE_VERSION` y su fecha estan fijadas por constante y no se actualizan al cambiar la version del proyecto, lo que puede rotular PDFs servidos con una version vieja.",
+      "origin": "engineering",
+      "priority": "P3",
+      "status": "backlog",
+      "module": "documentation",
+      "depends_on": [],
+      "acceptance": [
+        "La version mostrada en la documentacion deriva de una fuente unica",
+        "Cambiar la version del proyecto actualiza la documentacion sin editar dos lugares",
+        "Existe test que detecta la desincronizacion"
+      ],
+      "evidence": "`app/services/documentation_service.py:19-21`.",
+      "github_issue": null,
+      "next_action": "Resolver junto con REL-001 para no tocar dos veces la misma constante.",
+      "approved": false
+    },
+    {
+      "id": "QLT-001",
+      "title": "Pipeline que ejecute la suite en la imagen del proyecto",
+      "description": "Resuelto por el PR #19: `.github/workflows/ci.yml` corre en cada push y PR hacia `development` y `main`, con permisos `contents: read` y sin secretos. La suite corre `python -m pytest -q` sobre el checkout, sin montar `./data` del host.",
+      "origin": "engineering",
+      "priority": "P2",
+      "status": "done",
+      "module": "tests_isolation",
+      "depends_on": [],
+      "acceptance": [
+        "La suite completa se ejecuta automaticamente sobre cada PR hacia `development`",
+        "El pipeline usa el aislamiento de datos integrado y no monta `./data` del host",
+        "El resultado es visible en el PR",
+        "El pipeline no requiere secretos"
+      ],
+      "evidence": "`.github/workflows/ci.yml` en `development` (`9ddaf25`): dispara en `push` y `pull_request` hacia `development` y `main`; `permissions: contents: read`; sin `secrets`; valida ademas el catalogo con `project_control.py validate` y `check`. Suite completa en verde en GitHub Actions.",
+      "github_issue": null,
+      "next_action": "Ninguno. Evidencia vigente en el workflow y en las corridas de CI.",
+      "approved": false
+    },
+    {
+      "id": "QLT-002",
+      "title": "Reejecutar los flujos de navegador real del editor estructurado",
+      "description": "Los 4 flujos CDP sobre Chromium existen en `tests/test_structured_cv_editor_js.js` pero no se reejecutaron en la validacion final de la etapa 9.x. La validacion automatizada del editor fue 31 pruebas de servicio y 35 de rutas HTTP.",
+      "origin": "engineering",
+      "priority": "P2",
+      "status": "backlog",
+      "module": "structured_cv",
+      "depends_on": [],
+      "acceptance": [
+        "Los 4 flujos CDP se ejecutan contra la app en ejecucion y pasan",
+        "El resultado queda registrado con el commit validado",
+        "Si fallan, se corrige la causa o se documenta por que no aplica"
+      ],
+      "evidence": "`tests/test_structured_cv_editor_js.js:413,511,556,601`; `DEVELOPMENT_LOG.md:36-38` registra que no se reejecutaron.",
+      "github_issue": null,
+      "next_action": "Requiere la app levantada; usar el contenedor efimero y puerto de loopback ya validados.",
+      "approved": false
+    },
+    {
+      "id": "QLT-003",
+      "title": "Adoptar black y ruff como dependencias de desarrollo",
+      "description": "No hay formatters ni linters disponibles en el host ni en la imagen. El control de formato queda cubierto solo por el diff check CRLF-aware, que detecta ruido de fin de linea pero no estilo.",
+      "origin": "debt",
+      "priority": "P3",
+      "status": "backlog",
+      "module": "tests_isolation",
+      "depends_on": [],
+      "acceptance": [
+        "`black` y `ruff` estan declarados como dependencias de desarrollo",
+        "El lint pasa en el estado actual sin reformatear el historial",
+        "El pipeline ejecuta el lint"
+      ],
+      "evidence": "`DEVELOPMENT_LOG.md:36-38`.",
+      "github_issue": null,
+      "next_action": "Medir cuanto reformateo exigiria antes de decidir.",
+      "approved": false
+    },
+    {
+      "id": "DBV-001",
+      "title": "Migraciones versionadas por pasos",
+      "description": "Toda la migracion vive en una unica funcion idempotente que anade columnas. Funciona hoy; no escala a transformaciones de datos ni a una secuencia de versiones, y la constante de version es un rotulo que no controla el flujo.",
+      "origin": "engineering",
+      "priority": "P3",
+      "status": "backlog",
+      "module": "structured_cv",
+      "depends_on": [],
+      "acceptance": [
+        "Cada migracion tiene version y es idempotente",
+        "El historial de versiones aplicadas es consultable en `app_metadata`",
+        "Una base existente migra al estado actual sin perder datos",
+        "Existe test de migracion desde cada version previa"
+      ],
+      "evidence": "`app/database.py:157-163` y `app/database.py:182-191`.",
+      "github_issue": null,
+      "next_action": "No es urgente: activar antes de la siguiente migracion que no sea una columna.",
+      "approved": false
+    },
+    {
+      "id": "OPS-001",
+      "title": "Procedimiento de backup documentado pero inseguro y sin verificar",
+      "description": "El procedimiento de backup y restore ya existe en el README, asi que no falta documentacion. El problema es otro y es mas serio: el procedimiento documentado copia `data/app.db` con `cp` mientras la aplicacion puede estar escribiendo, lo que puede producir una copia inconsistente. La forma segura es `.backup` de SQLite o detener la app antes de copiar. Ademas el procedimiento no se ha verificado ejecutandolo y no cubre el escenario de respaldo previo a una migracion de esquema.",
+      "origin": "engineering",
+      "priority": "P2",
+      "status": "backlog",
+      "module": "database",
+      "depends_on": [],
+      "acceptance": [
+        "El procedimiento documentado usa una forma de copia consistente de SQLite, no `cp` con la app escribiendo",
+        "El procedimiento indica si la app debe estar detenida durante la copia",
+        "La restauracion se verifica ejecutandola y comprobando `PRAGMA integrity_check` sobre la copia restaurada",
+        "Existe un procedimiento de respaldo previo a una migracion de esquema",
+        "La documentacion de usuario refleja el procedimiento corregido"
+      ],
+      "evidence": "`README.md:112-151` documenta backup y restore con `cp data/app.db backups/app-...db`. Copiar el archivo de SQLite en caliente puede capturar un estado a medio escribir. El unico respaldo existente en disco es `data/app.db.stage9.1-pre-migration.bak`, hecho a mano y sin procedimiento asociado.",
+      "github_issue": null,
+      "next_action": "Decidir la forma de backup segura, ejecutarla y verificar que la restauracion devuelve una base integra con `PRAGMA integrity_check`.",
+      "approved": false
+    },
+    {
+      "id": "ATS-001",
+      "title": "UX residual del modulo ATS",
+      "description": "El modulo ATS funciona y esta verificado. Lo pendiente es suica visual: selector de paletas, miniaturas reales de PDF y evolucion visual de cards.",
+      "origin": "engineering",
+      "priority": "P3",
+      "status": "backlog",
+      "module": "ats",
+      "depends_on": [],
+      "acceptance": [
+        "El alcance visual esta acotado y aprobado antes de implementar",
+        "No cambia el scoring, los pesos ni los criterios existentes",
+        "El criterio de aceptacion es visual y queda validado en navegador real"
+      ],
+      "evidence": "`CHANGELOG_GENERAL.md:95` lo registra como backlog de etapas futuras; `README.md:441-451` describe Etapa 8.1.3 y 8.2.",
+      "github_issue": null,
+      "next_action": "Sin fecha: es mejora estetica, no riesgo.",
+      "approved": false
+    },
+    {
+      "id": "EDT-001",
+      "title": "Drag and drop en el editor estructurado",
+      "description": "El editor reordena items con botones `Subir`/`Bajar` y renumeracion automatica. El drag and drop quedo explicitamente fuera del alcance hasta ahora.",
+      "origin": "engineering",
+      "priority": "P3",
+      "status": "backlog",
+      "module": "structured_cv",
+      "depends_on": [],
+      "acceptance": [
+        "El alcance y la decision estan aprobados por Franco",
+        "La reordenacion por botones se conserva como alternativa accesible"
+      ],
+      "evidence": "`CHANGELOG_GENERAL.md:30-36` lo lista como 'no incluido'; `MODULE_INDEX.md` describe el editor sin drag and drop.",
+      "github_issue": null,
+      "next_action": "Solo si Franco lo pide; es mejora, no bloqueo.",
+      "approved": false
+    },
+    {
+      "id": "IMP-001",
+      "title": "Exportaciones e importaciones mas amplias que JSON",
+      "description": "Hoy solo hay exportacion e importacion JSON para CVs. DOCX, Markdown y otros formatos quedan como posibilidad, no como requisito.",
+      "origin": "engineering",
+      "priority": "P3",
+      "status": "backlog",
+      "module": "imports_json",
+      "depends_on": [],
+      "acceptance": [
+        "El formato a agregar esta definido por Franco",
+        "El roundtrip a CV editable esta cubierto con tests"
+      ],
+      "evidence": "`export_service.py` limita la whitelist a `.tex`, `.pdf` y `.json` (`:396-397`).",
+      "github_issue": null,
+      "next_action": "Ninguna hasta que exista pedido explicito.",
+      "approved": false
+    },
+    {
+      "id": "AIX-001",
+      "title": "Integraciones asistidas por IA",
+      "description": "Se ha mencionado IA real, integraciones con OpenAI API, paletas funcionales y thumbnails. Ninguna esta aprobada ni implementada.",
+      "origin": "engineering",
+      "priority": "P3",
+      "status": "backlog",
+      "module": "project_control",
+      "depends_on": [],
+      "acceptance": [
+        "Franco define alcance, limites de datos y proveedor",
+        "Existe una decision sobre si el CV del usuario puede enviarse a un servicio externo"
+      ],
+      "evidence": "`CHANGELOG_GENERAL.md:95` y `PROJECT_HISTORY_ROLLBACK.md:62` lo dejan fuera del alcance de v0.9.0; `README.md:451` lo marca como fuera de alcance actual.",
+      "github_issue": null,
+      "next_action": "Ninguna. Es la linea de trabajo mas abierta y la de mayor riesgo de privacidad.",
+      "approved": false
+    },
+    {
+      "id": "CLEAN-001",
+      "title": "Limpieza del CV id 49 y artefactos de validacion en data/",
+      "description": "`data/app.db` contiene un CV id 49 creado por una corrida de pruebas que escribio sobre la base real. El aislamiento quedo corregido y verificado, pero el registro y unos 150 artefactos de exportacion y validacion siguen en disco.",
+      "origin": "defect",
+      "priority": "P3",
+      "status": "backlog",
+      "module": "database",
+      "depends_on": [],
+      "acceptance": [
+        "Franco decide si el CV 49 se borra o se conserva como evidencia",
+        "`data/` queda con un estado conocido y documentado",
+        "La decision queda registrada en LESSONS_LEARNED"
+      ],
+      "evidence": "`data/app.db` con 49 CVs verificado integro; 175 archivos en `data/`, de los cuales 107 en `exports/` y 37 en `documentation-qa/` son artefactos de validacion.",
+      "github_issue": null,
+      "next_action": "Esperar la decision de Franco; es una escritura irreversible sobre datos ficticios.",
+      "approved": false
+    },
+    {
+      "id": "SEC-005",
+      "title": "Cap de tamaño de request por endpoint",
+      "description": "No hay cap de tamaño de request. Una version previa de la propuesta proponia un cap global de 2 MiB, que es inviable: el importador de PDF autoriza 10 MiB. La politica correcta es por ruta, con la tabla de maximos del §5.1 de SECURITY_HARDENING_PROPOSAL.md, aplicada antes de leer el cuerpo para que un archivo enorme se rechace sin haberse leido.",
+      "origin": "engineering",
+      "priority": "P2",
+      "status": "backlog",
+      "module": "dashboard",
+      "depends_on": [
+        "SEC-001"
+      ],
+      "acceptance": [
+        "Cada ruta POST tiene un maximo declarado en la tabla del §5.1",
+        "El cap se aplica antes del parseo completo del cuerpo",
+        "Un PDF de hasta 10 MiB + 64 KB se acepta en /cvs/import/pdf",
+        "Un cuerpo por encima del cap devuelve 413 sin leerse entero",
+        "Un formulario normal no acepta cuerpos de varios megabytes"
+      ],
+      "evidence": "`docs/development/SECURITY_HARDENING_PROPOSAL.md` §5.1; `MAX_PDF_BYTES` en el importador.",
+      "github_issue": null,
+      "next_action": "Se incluye con SEC-001 en la misma entrega de hardening.",
+      "approved": false
+    }
+  ]
+}

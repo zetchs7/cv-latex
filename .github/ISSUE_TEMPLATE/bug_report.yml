@@ -1,0 +1,44 @@
+---
+name: Bug report
+description: Comportamiento incorrecto verificado en CV LaTeX Builder
+title: "[bug] "
+labels: "tipo:bug"
+body: |
+  ## Qué pasa
+
+  Una frase con el comportamiento incorrecto.
+
+  ## Resultado esperado
+
+  Qué debería haber ocurrido.
+
+  ## Resultado observado
+
+  Qué ocurrió realmente, con el mensaje de error literal si lo hubo.
+
+  ## Cómo reproducirlo
+
+  1.
+  2.
+  3.
+
+  ## Módulo
+
+  Dashboard / CV Builder / Editor estructurado / ATS / Cartas / Tracker /
+  Exportaciones / Documentación / Infraestructura
+
+  ## Entorno
+
+  - Rama o commit:
+  - Versión declarada en `/health`:
+  - ¿Docker o instalación local?:
+
+  ## Evidencia
+
+  Ruta y línea, hash de PDF, salida de un comando, o captura. Sin evidencia el
+  Issue no es accionable.
+
+  ## Alcance del daño
+
+  ¿Perdió datos el usuario? ¿Solo la interfaz? ¿Un resultado incorrecto en un
+  archivo generado?

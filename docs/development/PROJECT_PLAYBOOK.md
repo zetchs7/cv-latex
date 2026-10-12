@@ -197,3 +197,32 @@ main <- development <- feature/*
 - Elegir una arquitectura que preserve compatibilidad con datos existentes.
 - Dividir implementacion en subetapas chicas con criterios de aceptacion.
 - Para el editor estructurado de CV, leer `docs/adr/ADR-0003-structured-cv-editor.md` y `docs/development/STRUCTURED_CV_EDITOR_PLAN.md` antes de implementar.
+
+## 18. Project Control Center
+
+Desde la etapa de gobierno del proyecto, el estado de `cv-latex` no se reconstruye leyendo
+documentos sueltos: se reconstruye desde un catálogo.
+
+- **Canónico**: `docs/development/project_control/catalog.json`
+- **Derivados y generados**: `PROJECT_STATUS.md`, `BACKLOG.md`, `ROADMAP.md`
+- **Política escrita a mano**: `GITHUB_ISSUES_PROJECTS_GUIDE.md`
+- **Diseño**: `docs/adr/ADR-0005-project-control-center.md`
+
+### Reglas
+
+1. Si cambia el estado de una tarea, el catálogo se actualiza **en el mismo commit**.
+2. `validate`, `status` y `check` son de solo lectura. `render` es el único que escribe.
+3. `check` debe pasar en todo commit que toque el catálogo.
+4. Una tarea con `approved: false` es una propuesta, no un requisito. No presentarla como
+   decisión tomada.
+5. Un dato tiene una sola fuente. Si aparece en el catálogo y en un documento, el documento
+   se genera.
+
+### Comandos
+
+```bash
+python3 tools/project_control.py validate   # estructura, IDs, dependencias, ciclos
+python3 tools/project_control.py status     # resumen del estado actual
+python3 tools/project_control.py render     # regenera el Markdown derivado
+python3 tools/project_control.py check      # detecta deriva; no escribe nada
+```
