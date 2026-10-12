@@ -29,6 +29,8 @@ from dataclasses import dataclass, field as dataclass_field
 import re
 import unicodedata
 
+from app.services.pdf_import_service import PdfUnclassifiableDocument
+
 CONFIDENCE_HIGH = "high"
 CONFIDENCE_MEDIUM = "medium"
 CONFIDENCE_LOW = "low"
@@ -43,7 +45,10 @@ MAX_LINE_LENGTH_FOR_HEADING = 60
 MAX_ITEMS_PER_SECTION = 30
 MAX_SKILLS = 40
 MAX_LANGUAGES = 20
-MAX_UNCLASSIFIED_BLOCKS = 40
+# Tope de seguridad: si un documento deja mas texto sin clasificar que
+# esto, se rechaza antes de crear un borrador incompleto. NO se recorta en
+# silencio: el Issue #14 prohibe descartar informacion extraida del PDF.
+MAX_UNCLASSIFIED_CHARACTERS = 200_000
 
 
 @dataclass(frozen=True)
@@ -378,10 +383,20 @@ def parse_cv_text(text: str) -> ParsedCvDocument:
 
     conflicts = _detect_conflicts(fields, items)
 
+    total_unclassified_characters = sum(len(block) for block in unclassified)
+    if total_unclassified_characters > MAX_UNCLASSIFIED_CHARACTERS:
+        # Documento legible pero demasiado grande para revisarlo de forma util.
+        # Se rechaza de forma controlada ANTES de crear un borrador que perderia
+        # contenido sin que la persona se de cuenta.
+        raise PdfUnclassifiableDocument(
+            "El PDF dejo mas texto del que la pantalla de revision puede mostrar. "
+            "Proba con un CV mas corto o con un PDF mejor estructurado."
+        )
+
     return ParsedCvDocument(
         fields=tuple(fields),
         items=tuple(items),
-        unclassified=tuple(unclassified[:MAX_UNCLASSIFIED_BLOCKS]),
+        unclassified=tuple(unclassified),
         conflicts=tuple(conflicts),
     )
 
@@ -1107,7 +1122,10 @@ def _collect_orphan_lines(
             if DATE_RANGE_PATTERN.search(cleaned) and len(cleaned) < 40:
                 continue
             seen.add(cleaned)
-            unclassified.append(cleaned[:300])
+            # Sin recorte por linea: el unico limite es el total del documento,
+            # que se comprueba antes de crear el borrador. Recortar cada linea
+            # perderia informacion sin que nada lo dijera.
+            unclassified.append(cleaned)
 
 
 def _detect_conflicts(fields: list[StagedField], items: list[StagedItem]) -> list[StagedConflict]:

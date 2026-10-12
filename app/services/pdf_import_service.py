@@ -48,6 +48,10 @@ class PdfImportError(Exception):
         self.user_message = user_message
 
 
+class PdfUnclassifiableDocument(Exception):
+    """Documento legible pero demasiado grande para clasificarlo sin perdida."""
+
+
 @dataclass(frozen=True)
 class ExtractedWord:
     """Una palabra con su pagina y su posicion vertical."""

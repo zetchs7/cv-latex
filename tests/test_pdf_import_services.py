@@ -665,3 +665,115 @@ def test_proposed_title_is_capped_at_the_domain_limit():
         draft, values={}, decisions={}, unclassified_assignments={}, title="T" * 200
     )
     assert len(updated.proposed_title) == st.MAX_CV_TITLE
+
+
+# --- Invariante de integridad: ningun descarte silencioso -----------------
+
+
+def _body_with_unclassified(count: int) -> str:
+    body = "DATOS PERSONALES\nNombre: Ana Perez\n\n"
+    body += "\n\n".join(
+        f"Bloque sin clasificar numero {index} con contenido suficientemente largo para contar"
+        for index in range(count)
+    )
+    return body
+
+
+def test_parser_keeps_every_unclassified_line():
+    """El Issue prohibe descartar texto: el tope ya no recorta."""
+
+    from app.services import import_staging_service as st
+
+    parsed = parse_cv_text(_body_with_unclassified(60))
+    assert len(parsed.unclassified) >= 40, "no debe recortarse a 40 bloques"
+
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+    loaded = st.load_draft(draft.draft_id)
+    assert len(loaded.unclassified) >= 40, "el borrador debe conservar todos los bloques"
+
+
+def test_document_over_the_unclassified_capacity_is_rejected(monkeypatch):
+    """Un documento enorme se rechaza antes de crear un borrador incompleto."""
+
+    from app.services import pdf_section_parser as parser_module
+
+    # Se pasa por el limite real del modulo. El recalculo es explicito: no se
+    # parchea la constante sino que se comprueba el comportamiento con ella.
+    original_limit = parser_module.MAX_UNCLASSIFIED_CHARACTERS
+    try:
+        parser_module.MAX_UNCLASSIFIED_CHARACTERS = 200
+        with pytest.raises(parser_module.PdfUnclassifiableDocument) as error:
+            parser_module.parse_cv_text("Linea suelta que ocupa espacio suficiente. " * 10)
+    finally:
+        parser_module.MAX_UNCLASSIFIED_CHARACTERS = original_limit
+
+    assert "revision" in str(error.value).lower()
+
+
+def test_keeping_more_blocks_than_the_contract_allows_is_rejected():
+    from app.services import import_staging_service as st
+
+    parsed = parse_cv_text("DATOS PERSONALES\nNombre: Ana Perez\n")
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+
+    for index in range(25):
+        draft.unclassified.append(
+            st.UnclassifiedEntry(
+                key=f"unclassified.extra.{index}",
+                text=f"Bloque extra {index} con contenido suficiente",
+                reason="prueba",
+            )
+        )
+
+    decisions = {entry.key: st.STATUS_CONFIRMED for entry in draft.entries}
+    for item in draft.unclassified:
+        decisions[item.key] = st.STATUS_KEPT
+    draft = st.apply_review(draft, values={}, decisions=decisions, unclassified_assignments={})
+
+    with pytest.raises(st.ImportStagingError) as error:
+        st.confirm_draft(draft, title="CV")
+    assert error.value.code == "review_too_much_additional_info"
+    assert "20" in error.value.user_message
+
+    assert st.load_draft(draft.draft_id).draft_id == draft.draft_id
+
+
+def test_certification_assignment_never_silently_truncates():
+    from app.services import import_staging_service as st
+
+    long_text = "Certificacion avanzada en " + "ingenieria " * 40
+    assert len(long_text) > st.FIELD_LIMITS["certifications.name"]
+
+    parsed = parse_cv_text(f"DATOS PERSONALES\nNombre: Ana Perez\n{long_text}\n")
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+    item = draft.unclassified[0]
+
+    draft = st.apply_review(
+        draft,
+        values={},
+        decisions={**{e.key: st.STATUS_CONFIRMED for e in draft.entries}, item.key: st.STATUS_KEPT},
+        unclassified_assignments={item.key: "certifications"},
+    )
+
+    with pytest.raises(st.ImportStagingError) as error:
+        st.confirm_draft(draft, title="CV")
+    assert error.value.code == "review_value_too_long"
+    assert "certifications" in error.value.user_message
+
+    assert st.load_draft(draft.draft_id).unclassified[0].text == long_text.strip()
+
+
+def test_no_confirmed_value_is_ever_silently_shortened():
+    from app.services import import_staging_service as st
+
+    location = "Buenos Aires " * 5
+    assert len(location) <= st.FIELD_LIMITS["personal.location"]
+    parsed = parse_cv_text(f"DATOS PERSONALES\nNombre: Ana Perez\nUbicacion: {location}\n")
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+
+    decisions = {entry.key: st.STATUS_CONFIRMED for entry in draft.entries}
+    values = {entry.key: entry.value for entry in draft.entries}
+    draft = st.apply_review(draft, values=values, decisions=decisions, unclassified_assignments={})
+    payload = st.confirm_draft(draft, title="CV")
+
+    assert payload["personal"]["location"] == values["personal.location"]

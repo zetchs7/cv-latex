@@ -377,11 +377,45 @@ def test_invalid_draft_ids_are_rejected(client: TestClient, bad_id: str):
     assert "/etc/passwd" not in response.text
 
 
-def test_discard_removes_the_draft(client: TestClient):
+def _discard(client: TestClient, draft_id: str, confirmation: str):
+    return _submit(
+        client,
+        f"/cvs/import/{draft_id}/discard",
+        [("confirm_discard", confirmation), ("cv_title", "")],
+        follow_redirects=False,
+    )
+
+
+def test_discard_requires_exact_confirmation(client: TestClient):
     draft_id = _upload(client)
-    response = client.post(f"/cvs/import/{draft_id}/discard", follow_redirects=False)
+
+    # Confirmacion vacia: el borrador sigue intacto.
+    assert _discard(client, draft_id, "").status_code == 422
+    assert client.get(f"/cvs/import/{draft_id}").status_code == 200
+
+    # Confirmacion incorrecta: tampoco.
+    assert _discard(client, draft_id, "nombre que no es").status_code == 422
+    assert client.get(f"/cvs/import/{draft_id}").status_code == 200
+
+
+def test_discard_with_exact_confirmation_removes_the_draft(client: TestClient):
+    draft_id = _upload(client)
+
+    response = _discard(client, draft_id, _suggested_title(client, draft_id))
     assert response.status_code == 303
     assert client.get(f"/cvs/import/{draft_id}").status_code == 404
+
+
+def _suggested_title(client: TestClient, draft_id: str) -> str:
+    """El titulo esperado es el nombre detectado, visible en la pantalla."""
+
+    from app.services.import_staging_service import load_draft
+
+    draft = load_draft(draft_id)
+    for entry in draft.entries:
+        if entry.key == "personal.full_name" and entry.value.strip():
+            return entry.value.strip()[:120]
+    return "CV importado desde PDF"
 
 
 def test_the_pdf_itself_is_never_persisted(client: TestClient):

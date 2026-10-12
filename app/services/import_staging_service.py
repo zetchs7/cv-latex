@@ -50,6 +50,41 @@ DECISION_STATUSES = (STATUS_CONFIRMED, STATUS_DISCARDED, STATUS_KEPT)
 MAX_SKILL_LABEL = 60
 MAX_CV_TITLE = 120
 
+# Limites reales de schema 2 (`ITEM_SECTION_SPECS`). Se validan al confirmar:
+# recortar antes escondia el problema y perdia informacion sin avisar.
+FIELD_LIMITS: dict[str, dict[str, int]] = {
+    "personal.full_name": 160,
+    "personal.location": 160,
+    "personal.headline": 160,
+    "contact.email": 180,
+    "contact.phone": 80,
+    "summary": 1200,
+    "links": 200,
+    "education.institution": 120,
+    "education.degree": 120,
+    "education.summary": 800,
+    "certifications.name": 160,
+    "certifications.issuer": 120,
+    "certifications.date": 10,
+    "projects.name": 160,
+    "projects.summary": 1000,
+    "projects.technologies": 300,
+    "skills.label": 60,
+    "skills.category": 60,
+    "languages.name": 60,
+    "languages.level": 20,
+    "experience.company": 120,
+    "experience.role": 120,
+    "experience.location": 120,
+    "experience.start_date": 10,
+    "experience.end_date": 10,
+    "experience.summary": 2000,
+    "experience.technologies": 300,
+    "experience.highlights": 2000,
+}
+
+MAX_ADDITIONAL_INFO = 20
+
 UNCLASSIFIED_TARGET_SECTIONS = (
     "additional_info",
     "skills",
@@ -576,7 +611,10 @@ def _build_assigned_unclassified(draft: ImportDraft) -> dict[str, list[dict]]:
             else:
                 _overflow.append(item.key)
         elif item.assigned_section == "certifications":
-            assigned["certifications"].append({"name": text[:160], "issuer": "", "date": ""})
+            # Sin recorte: el texto completo se guarda y se valida contra el
+            # limite real de `certifications[].name` al confirmar. Recortar aqui
+            # ocultaria el problema y perderia informacion en silencio.
+            assigned["certifications"].append({"name": text, "issuer": "", "date": ""})
         else:
             name, separator, rest = text.partition(" - ")
             assigned["projects"].append(
@@ -629,7 +667,7 @@ def _build_additional_info(draft: ImportDraft) -> list[dict[str, str]]:
             title, content = _split_additional_text(item.text)
             additional.append({"title": title, "content": content})
 
-    return additional[:20]
+    return additional
 
 
 def _split_additional_text(text: str) -> tuple[str, str]:
@@ -641,6 +679,55 @@ def _split_additional_text(text: str) -> tuple[str, str]:
     return "Informacion del PDF", text[:1000]
 
 
+def _validate_field_limits(draft: ImportDraft) -> None:
+    """Rechaza con mensaje especifico lo que no entra en schema 2.
+
+    Recortar en su lugar seria perdida silenciosa. El borrador se conserva
+    intacto, asi que la persona puede acortar el valor y reintentar.
+    """
+
+    overlong: list[str] = []
+
+    for entry in draft.entries:
+        if entry.status != STATUS_CONFIRMED:
+            continue
+
+        candidates = list(entry.values.items()) if entry.values else [(entry.key, entry.value)]
+        for field_name, value in candidates:
+            limit = FIELD_LIMITS.get(f"{entry.section}.{field_name}") or FIELD_LIMITS.get(field_name)
+            if limit is not None and len(value) > limit:
+                overlong.append(f"{field_name} ({len(value)} de {limit} caracteres)")
+
+    for item in draft.unclassified:
+        if item.status != STATUS_KEPT:
+            continue
+        limit = FIELD_LIMITS.get(f"{item.assigned_section}.name") if item.assigned_section else None
+        if limit is not None and len(item.text) > limit:
+            overlong.append(f"{item.assigned_section} ({len(item.text)} de {limit} caracteres)")
+
+    if overlong:
+        raise ImportStagingError(
+            "review_value_too_long",
+            "Algunos valores superan el largo que admite el CV y fueron recortados o "
+            "rechazados para no perder informacion en silencio: "
+            + "; ".join(overlong[:6])
+            + ". Editalos para acortarlos y volve a confirmar.",
+        )
+
+
+def _validate_additional_info_count(draft: ImportDraft) -> None:
+    """`additional_info` admite 20 elementos: mas de eso se rechaza, no se recorta."""
+
+    payload_preview = build_schema2_payload(draft, title="previsualizacion")
+    if len(payload_preview.get("additional_info", [])) > MAX_ADDITIONAL_INFO:
+        raise ImportStagingError(
+            "review_too_much_additional_info",
+            f"Conservaste mas bloques de informacion adicional que los {MAX_ADDITIONAL_INFO} que "
+            "admite el CV. Combina los que hablen de lo mismo, reasignalos a otra seccion o "
+            "descartalos antes de confirmar.",
+        )
+
+
 def confirm_draft(draft: ImportDraft, *, title: str) -> dict:
     """Valida que no queden pendientes y devuelve el payload schema 2.
 
@@ -649,6 +736,9 @@ def confirm_draft(draft: ImportDraft, *, title: str) -> dict:
     """
 
     entries_pending, unclassified_pending = pending_summary(draft)
+
+    _validate_field_limits(draft)
+    _validate_additional_info_count(draft)
 
     if entries_pending or unclassified_pending:
         raise ImportStagingError(

@@ -210,9 +210,18 @@
       {% if not can_confirm %}aria-disabled="true"{% endif %}>
       Confirmar y crear el CV
     </button>
-    <button class="button danger" type="submit" formaction="{{ url_for('pdf_import_discard', draft_id=draft.draft_id) }}">
-      Descartar la importacion
-    </button>
+    {#- El descarte pide el mismo texto exacto que usan CVs y cartas. La
+        comprobacion va en el servidor: sin esto, un clic accidental sobre el
+        boton de peligro destruiria toda la revision. -#}
+    <div class="confirm-inline">
+      <label>
+        <span>Para descartar, escribe: {{ suggested_title }}</span>
+        <input type="text" name="confirm_discard" autocomplete="off">
+      </label>
+      <button class="button danger" type="submit" formaction="{{ url_for('pdf_import_discard', draft_id=draft.draft_id) }}">
+        Descartar la importacion
+      </button>
+    </div>
   </section>
 </form>
 {% endblock %}

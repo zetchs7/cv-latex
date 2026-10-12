@@ -47,6 +47,7 @@ from app.services.pdf_import_service import (
     MAX_PDF_BYTES,
     MAX_PDF_PAGES,
     PdfImportError,
+    PdfUnclassifiableDocument,
     extract_pdf,
     read_limited_pdf_bytes,
 )
@@ -92,7 +93,22 @@ def pdf_import_submit(request: Request, pdf_file: UploadFile = File(...)) -> HTM
             status=422,
         )
 
-    parsed = parse_cv_text(extracted.text)
+    try:
+        parsed = parse_cv_text(extracted.text)
+    except PdfUnclassifiableDocument as error:
+        # Documento legible pero demasiado grande para revisarlo sin perder nada.
+        # Se rechaza antes de crear un borrador incompleto.
+        logger.info("pdf import unclassifiable: pages=%d", extracted.page_count)
+        return _render(
+            request,
+            "cvs/import_form.html",
+            page_title="Importar CV desde PDF",
+            error_message=str(error),
+            max_bytes=MAX_PDF_BYTES,
+            max_pages=MAX_PDF_PAGES,
+            status=422,
+        )
+
     draft = create_draft(
         parsed,
         source_filename=pdf_file.filename or "cv.pdf",
@@ -202,11 +218,31 @@ async def pdf_import_confirm(request: Request, draft_id: str) -> HTMLResponse:
 
 
 @router.post("/{draft_id}/discard")
-def pdf_import_discard(request: Request, draft_id: str) -> RedirectResponse:
+async def pdf_import_discard(request: Request, draft_id: str) -> RedirectResponse:
+    """Descarta el borrador, pero solo con confirmacion de texto exacto.
+
+    Un clic accidental sobre el boton de peligro borraria horas de revision. El
+    patron es el mismo que usan CVs y cartas, y la comprobacion va en el
+    servidor: `confirm()` del navegador no es una validacion.
+    """
+
     try:
-        delete_draft(draft_id)
+        draft = load_draft(draft_id)
     except ImportStagingError:
-        pass
+        return RedirectResponse(url=request.url_for("cvs_list"), status_code=303)
+
+    form = await await_form(request)
+    expected = _suggest_title(draft)
+    if (form["discard_confirmation"] or "").strip() != expected:
+        return _render_review(
+            request,
+            draft,
+            error_message="Para descartar la importacion escribe exactamente el nombre del CV.",
+            status=422,
+            submitted=form,
+        )
+
+    delete_draft(draft_id)
     return RedirectResponse(url=request.url_for("cvs_list"), status_code=303)
 
 
@@ -225,6 +261,7 @@ async def await_form(request: Request) -> dict[str, dict[str, str]]:
     decisions: dict[str, str] = {}
     assignments: dict[str, str] = {}
     title = ""
+    discard_confirmation = ""
 
     for raw_key, raw_value in form.multi_items():
         key = str(raw_key)
@@ -232,6 +269,10 @@ async def await_form(request: Request) -> dict[str, dict[str, str]]:
 
         if key == "cv_title":
             title = value[:160]
+            continue
+
+        if key == "confirm_discard":
+            discard_confirmation = value[:160]
             continue
 
         if key.startswith("value__"):
@@ -242,7 +283,13 @@ async def await_form(request: Request) -> dict[str, dict[str, str]]:
         elif key.startswith("assign__"):
             assignments[key[len("assign__"):]] = value
 
-    return {"values": values, "decisions": decisions, "assignments": assignments, "title": title}
+    return {
+        "values": values,
+        "decisions": decisions,
+        "assignments": assignments,
+        "title": title,
+        "discard_confirmation": discard_confirmation,
+    }
 
 
 def _render(request: Request, template_name: str, *, status: int = 200, **context) -> HTMLResponse:
@@ -282,6 +329,7 @@ def _render_review(
         unclassified_pending=unclassified_pending,
         can_confirm=entries_pending == 0 and unclassified_pending == 0,
         status=status,
+        suggested_title=_suggest_title(draft),
     )
 
 
