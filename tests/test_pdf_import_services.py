@@ -600,3 +600,68 @@ def test_proposed_title_survives_a_failed_submission():
         draft, values={}, decisions={}, unclassified_assignments={}, title="Mi titulo largo"
     )
     assert st.load_draft(updated.draft_id).proposed_title == "Mi titulo largo"
+
+
+def test_decisions_are_validated_per_entry_type():
+    """`kept` en un dato detectado lo hacia desaparecer del CV en silencio."""
+
+    from app.services import import_staging_service as st
+
+    draft = _make_draft()
+    entry_key = draft.entries[0].key
+
+    with pytest.raises(st.ImportStagingError) as error:
+        st.apply_review(draft, values={}, decisions={entry_key: st.STATUS_KEPT}, unclassified_assignments={})
+    assert error.value.code == "review_invalid_decision"
+
+
+def test_unclassified_cannot_be_confirmed():
+    from app.services import import_staging_service as st
+
+    parsed = parse_cv_text("DATOS PERSONALES\nNombre: Ana Perez\nTexto sin ubicacion clara\n")
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+    assert draft.unclassified
+
+    with pytest.raises(st.ImportStagingError) as error:
+        st.apply_review(
+            draft,
+            values={},
+            decisions={draft.unclassified[0].key: st.STATUS_CONFIRMED},
+            unclassified_assignments={},
+        )
+    assert error.value.code == "review_invalid_decision"
+
+
+def test_long_unclassified_text_assigned_to_skills_is_not_truncated():
+    """Si no cabe como skill, el texto completo va a informacion adicional."""
+
+    from app.services import import_staging_service as st
+
+    largo = "Meteorologia aplicada y ceramica artistica con talleres de horneado"
+    parsed = parse_cv_text(f"DATOS PERSONALES\nNombre: Ana Perez\n{largo}\n")
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+    assert draft.unclassified
+    assert len(largo) > st.MAX_SKILL_LABEL
+
+    item = draft.unclassified[0]
+    draft = st.apply_review(
+        draft,
+        values={},
+        decisions={**{entry.key: st.STATUS_CONFIRMED for entry in draft.entries}, item.key: st.STATUS_KEPT},
+        unclassified_assignments={item.key: "skills"},
+    )
+    payload = st.confirm_draft(draft, title="CV")
+
+    assert all(item["label"] != largo for item in payload["skills"]), "no debe truncarse en silencio"
+    contenidos = " ".join(entry.get("content", "") for entry in payload["additional_info"])
+    assert "Meteorologia" in contenidos, payload["additional_info"]
+
+
+def test_proposed_title_is_capped_at_the_domain_limit():
+    from app.services import import_staging_service as st
+
+    draft = _make_draft()
+    updated = st.apply_review(
+        draft, values={}, decisions={}, unclassified_assignments={}, title="T" * 200
+    )
+    assert len(updated.proposed_title) == st.MAX_CV_TITLE

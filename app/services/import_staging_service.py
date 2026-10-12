@@ -47,6 +47,9 @@ STATUS_DISCARDED = "discarded"
 STATUS_KEPT = "kept"
 DECISION_STATUSES = (STATUS_CONFIRMED, STATUS_DISCARDED, STATUS_KEPT)
 
+MAX_SKILL_LABEL = 60
+MAX_CV_TITLE = 120
+
 UNCLASSIFIED_TARGET_SECTIONS = (
     "additional_info",
     "skills",
@@ -111,6 +114,9 @@ class ImportDraft:
     # El titulo se guarda en el borrador: sin esto, un error de validacion
     # re-pinta la pantalla y la persona pierde lo que escribio ahi.
     proposed_title: str = ""
+    # Bloques conservados que no caben en la seccion elegida y se envian a
+    # informacion adicional para no perderlos.
+    overflow_unclassified: list[str] = field(default_factory=list)
 
     def pending_entries(self) -> list[StagedEntry]:
         return [entry for entry in self.entries if entry.status == STATUS_PENDING]
@@ -140,6 +146,7 @@ class ImportDraft:
             "conflicts": self.conflicts,
             "finalized_cv_id": self.finalized_cv_id,
             "proposed_title": self.proposed_title,
+            "overflow_unclassified": list(self.overflow_unclassified),
         }
 
     @classmethod
@@ -156,6 +163,7 @@ class ImportDraft:
             version=int(payload.get("version", 1)),
             finalized_cv_id=payload.get("finalized_cv_id"),
             proposed_title=payload.get("proposed_title", ""),
+            overflow_unclassified=list(payload.get("overflow_unclassified", [])),
         )
 
 
@@ -389,11 +397,29 @@ def apply_review(
     # Se validan TODAS las decisiones antes de tocar el borrador. Si una sola
     # fuera invalida, no se guarda nada: la persona no puede perder lo que
     # escribio por un error de la pantalla.
+    #
+    # La lista global no alcanza. `kept` en una entrada detectada se aceptaba, y
+    # `_collect_items` solo mira `confirmed`: la entrada desaparecia del CV
+    # mientras su pendiente se limpiaba. Es la misma perdida silenciosa que el
+    # staging existe para evitar, alcanzada por otra via.
+    entry_keys = {entry.key for entry in draft.entries}
+    unclassified_keys = {item.key for item in draft.unclassified}
+
     for key, decision in decisions.items():
         if decision not in DECISION_STATUSES:
             raise ImportStagingError(
                 "review_invalid_decision",
                 "Una de las decisiones de la revision no es valida.",
+            )
+        if key in unclassified_keys and decision == STATUS_CONFIRMED:
+            raise ImportStagingError(
+                "review_invalid_decision",
+                "Un bloque sin clasificar se conserva o se descarta; no se confirma.",
+            )
+        if key in entry_keys and decision == STATUS_KEPT:
+            raise ImportStagingError(
+                "review_invalid_decision",
+                "Un dato detectado se confirma o se descarta; no se conserva.",
             )
 
     for key, section in unclassified_assignments.items():
@@ -419,7 +445,9 @@ def apply_review(
             entry.status = decisions[entry.key]
 
     if title:
-        draft.proposed_title = title[:160]
+        # El snapshot legacy limita el titulo a 120. Aceptar mas acáoria que el
+        # guardado fallara despues, con un mensaje que no ayuda.
+        draft.proposed_title = title[:MAX_CV_TITLE]
 
     for item in draft.unclassified:
         if item.key in decisions:
@@ -528,6 +556,7 @@ def _build_assigned_unclassified(draft: ImportDraft) -> dict[str, list[dict]]:
     """
 
     assigned: dict[str, list[dict]] = {"skills": [], "certifications": [], "projects": []}
+    _overflow: list[str] = []
 
     for item in draft.unclassified:
         if item.status != STATUS_KEPT or item.assigned_section not in assigned:
@@ -537,10 +566,15 @@ def _build_assigned_unclassified(draft: ImportDraft) -> dict[str, list[dict]]:
             continue
 
         if item.assigned_section == "skills":
-            label, _, category = text.partition(":")
-            if not category.strip() and len(label) > 60:
-                label, category = text, ""
-            assigned["skills"].append({"label": label.strip()[:60], "category": category.strip()[:60]})
+            # `skills[].label` admite 60 caracteres. Un bloque mas largo no
+            # entra, y recortarlo perderia el resto sin avisar. En ese caso el
+            # texto completo va a informacion adicional, donde la persona puede
+            # verlo entero y decidir que hacer con el.
+            if len(text) <= MAX_SKILL_LABEL:
+                label, _, category = text.partition(":")
+                assigned["skills"].append({"label": label.strip(), "category": category.strip()[:60]})
+            else:
+                _overflow.append(item.key)
         elif item.assigned_section == "certifications":
             assigned["certifications"].append({"name": text[:160], "issuer": "", "date": ""})
         else:
@@ -554,7 +588,16 @@ def _build_assigned_unclassified(draft: ImportDraft) -> dict[str, list[dict]]:
                 }
             )
 
+    if _overflow:
+        _set_overflow(draft, _overflow)
+
     return assigned
+
+
+def _set_overflow(draft: ImportDraft, keys: list[str]) -> None:
+    """Marca bloques que no caben en su seccion y van a informacion adicional."""
+
+    draft.overflow_unclassified = keys
 
 
 def _build_additional_info(draft: ImportDraft) -> list[dict[str, str]]:
@@ -575,6 +618,11 @@ def _build_additional_info(draft: ImportDraft) -> list[dict[str, str]]:
 
     for item in draft.unclassified:
         if item.status != STATUS_KEPT:
+            continue
+
+        if item.key in draft.overflow_unclassified:
+            title, content = _split_additional_text(item.text)
+            additional.append({"title": title, "content": content})
             continue
 
         if item.assigned_section == "additional_info" or not item.assigned_section:
