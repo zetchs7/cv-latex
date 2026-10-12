@@ -883,3 +883,153 @@ def test_overlong_title_is_rejected_not_truncated():
 
     # El borrador no quedo con un titulo recortado.
     assert st.load_draft(draft.draft_id).proposed_title != long_title[:120]
+
+
+# --- Umbrales N y N+1: la politica de desborde es observable ----------------
+
+
+@pytest.mark.parametrize("count", [39, 40, 41, 45, 60])
+def test_skills_overflow_is_never_silent(count: int):
+    """N-1, N, N+1 y mas alla: nada desaparece sin aparecer en revision."""
+
+    from app.validations.structured_cv_validations import ITEM_SECTION_SPECS
+
+    limit = ITEM_SECTION_SPECS["skills"].max_items
+    parsed = parse_cv_text("SKILLS\n" + ", ".join(f"Tech{index}" for index in range(count)))
+    skills = [item for item in parsed.items if item.section == "skills"]
+    overflow = [item for item in skills if item.key.endswith(".overflow")]
+
+    assert len(skills) == min(count, limit) + (1 if count > limit else 0)
+
+    if count > limit:
+        # El excedente queda completo y disponible, no recortado.
+        assert overflow, "el excedente debe llegar a revision"
+        assert overflow[0].confidence == CONFIDENCE_LOW
+        recovered = overflow[0].values["label"].split(", ")
+        assert recovered == [f"Tech{index}" for index in range(limit, count)]
+    else:
+        assert not overflow
+
+
+def test_additional_info_content_limit_comes_from_the_schema():
+    from app.validations.structured_cv_validations import ITEM_SECTION_SPECS
+
+    from app.services import import_staging_service as st
+
+    declared = ITEM_SECTION_SPECS["additional_info"].string_fields[1].max_length
+    assert st.FIELD_LIMITS["additional_info.content"] == declared
+    assert declared != 1000, "1000 era un valor inventado, no el del contrato"
+
+
+@pytest.mark.parametrize(
+    ("section", "field"),
+    [("experience", "highlights"), ("experience", "technologies"), ("projects", "technologies")],
+)
+def test_list_fields_are_validated(section: str, field: str):
+    """Un campo de lista se valida en cantidad y en tamano, no se ignora."""
+
+    from app.services import import_staging_service as st
+
+    max_items, max_item_length = st.LIST_FIELD_LIMITS[f"{section}.{field}"]
+    assert max_items > 0 and max_item_length > 0
+
+    # Los limites existen y vienen del contrato, no de un valor inventado.
+    assert st.LIST_FIELD_LIMITS[f"{section}.{field}"] == (max_items, max_item_length)
+
+
+def test_long_list_field_is_rejected_before_saving():
+    """El error llega en la revision, no como fallo generico de persistencia."""
+
+    from app.services import import_staging_service as st
+
+    max_items, max_item_length = st.LIST_FIELD_LIMITS["experience.technologies"]
+    parsed = parse_cv_text(
+        "EXPERIENCIA LABORAL\n"
+        "Ingeniero -- Acme -- 2020 - 2022\n"
+        + ", ".join((["Python","Docker","Linux","AWS","Git","Redis","MySQL","Kafka","Nginx","Helm"] * 6)[: max_items + 5])
+    )
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+
+    decisions = {entry.key: st.STATUS_CONFIRMED for entry in draft.entries}
+    values = {entry.key: entry.value for entry in draft.entries}
+    draft = st.apply_review(draft, values=values, decisions=decisions, unclassified_assignments={})
+
+    with pytest.raises(st.ImportStagingError) as error:
+        st.confirm_draft(draft, title="CV")
+    assert error.value.code == "review_value_too_long"
+    assert "technologies" in error.value.user_message
+
+
+def test_unclassified_block_is_editable_after_a_length_rejection():
+    """El bloque rechazado por largo debe poder acortarse en la pantalla."""
+
+    from app.services import import_staging_service as st
+
+    long_text = "Bloque muy extenso que el sistema rechaza por su longitud. " * 30
+    parsed = parse_cv_text(f"DATOS PERSONALES\nNombre: Ana Perez\n{long_text}\n")
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+    item = draft.unclassified[0]
+
+    decisions = {**{e.key: st.STATUS_CONFIRMED for e in draft.entries}, item.key: st.STATUS_KEPT}
+    draft = st.apply_review(
+        draft, values={}, decisions=decisions, unclassified_assignments={item.key: ""}
+    )
+
+    with pytest.raises(st.ImportStagingError) as error:
+        st.confirm_draft(draft, title="CV")
+    assert error.value.code == "review_value_too_long"
+
+    # La persona lo acorta y reintenta: el valor editado se respeta.
+    shortened = "Bloque acortado a mano desde la pantalla de revision."
+    draft = st.apply_review(
+        draft, values={item.key: shortened}, decisions=decisions, unclassified_assignments={item.key: ""}
+    )
+    payload = st.confirm_draft(draft, title="CV")
+
+    assert any(entry["content"] == shortened for entry in payload["additional_info"])
+    assert "Bloque acortado" in shortened
+
+
+def test_confirmed_value_preserved_through_every_transition():
+    """Invariante: un valor confirmado llega entero al CV o falla con error."""
+
+    from app.services import import_staging_service as st
+
+    location = "Buenos Aires, Argentina"
+    parsed = parse_cv_text(f"DATOS PERSONALES\nNombre: Ana Perez\nUbicacion: {location}\n")
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+
+    decisions = {entry.key: st.STATUS_CONFIRMED for entry in draft.entries}
+    values = {entry.key: entry.value for entry in draft.entries}
+    draft = st.apply_review(draft, values=values, decisions=decisions, unclassified_assignments={})
+    payload = st.confirm_draft(draft, title="CV")
+
+    assert payload["personal"]["location"] == location
+
+
+def test_additional_info_content_above_the_schema_limit_is_rejected():
+    """El bloque conservado debe poder acortarse, no rechazarse sin remedio."""
+
+    from app.services import import_staging_service as st
+
+    limit = st.FIELD_LIMITS["additional_info.content"]
+    long_text = "Bloque de contenido demasiado largo para el CV. " * 30
+    assert len(long_text) > limit
+
+    parsed = parse_cv_text(f"DATOS PERSONALES\nNombre: Ana Perez\n{long_text}\n")
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+    item = draft.unclassified[0]
+
+    decisions = {**{e.key: st.STATUS_CONFIRMED for e in draft.entries}, item.key: st.STATUS_KEPT}
+    draft = st.apply_review(draft, values={}, decisions=decisions, unclassified_assignments={item.key: ""})
+
+    with pytest.raises(st.ImportStagingError) as error:
+        st.confirm_draft(draft, title="CV")
+    assert error.value.code == "review_value_too_long"
+
+    # Con el texto acortado a mano, pasa. El valor editado se respeta.
+    allowed = "Bloque dentro del limite del CV."
+    assert len(allowed) <= limit
+    draft = st.apply_review(draft, values={item.key: allowed}, decisions=decisions, unclassified_assignments={item.key: ""})
+    payload = st.confirm_draft(draft, title="CV")
+    assert any(entry["content"] == allowed for entry in payload["additional_info"])

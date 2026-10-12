@@ -177,7 +177,23 @@
     {% for item in draft.unclassified %}
     <fieldset class="import-entry">
       <legend>{{ item.key }}</legend>
-      <pre>{{ item.text }}</pre>
+
+      {#- Editable, no read-only: si el sistema rechaza el bloque por su largo,
+          la persona tiene que poder acortarlo aca. Un <pre> la obligaba a
+          descartar todo y reescribir de cero.
+          El texto original del PDF queda visible como evidencia en el details. -#}
+      <label>
+        <span>Contenido</span>
+        <textarea name="value__{{ item.key }}" rows="4" maxlength="2000">{{ item.text }}</textarea>
+      </label>
+
+      {% if item.source_text and item.source_text != item.text %}
+      <details>
+        <summary>Texto original del PDF</summary>
+        <pre>{{ item.source_text }}</pre>
+      </details>
+      {% endif %}
+
       <p><small>{{ item.reason }}</small></p>
 
       <label>

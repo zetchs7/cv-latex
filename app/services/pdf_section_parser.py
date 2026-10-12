@@ -655,7 +655,10 @@ def _extract_items(section_name: str, segments: list[_Section], items: list[Stag
     counter = 0
     for segment in matching:
         for candidate in _candidates_for(segment.lines):
-            if counter >= _max_items(section_name):
+            # El item de overflow no cuenta contra el tope: es la senal de que
+            # hubo excedente, no un elemento mas. Si se cortara, el excedente
+            # volveria a desaparecer en silencio.
+            if counter >= _max_items(section_name) and not candidate.key.endswith(".overflow"):
                 return
             items.append(candidate)
             counter += 1
@@ -880,8 +883,14 @@ def _build_skill_items(lines: list[str]) -> list[StagedItem]:
         if normalized not in {existing.lower() for existing in unique}:
             unique.append(candidate)
 
+    limite = _max_items("skills")
     items: list[StagedItem] = []
-    for candidate in unique[:_max_items("skills")]:
+    overflow: list[str] = []
+
+    # Los excedentes NO se descartan: van a revision para que la persona decida.
+    # Recortarlos en silencio era perdida de informacion, que es exactamente lo
+    # que el Issue #14 prohibe.
+    for candidate in unique[:limite]:
         category = _categorize_skill(candidate)
         confidence = CONFIDENCE_HIGH if category else CONFIDENCE_MEDIUM
         reason = (
@@ -897,6 +906,23 @@ def _build_skill_items(lines: list[str]) -> list[StagedItem]:
                 source_text=candidate[:200],
                 confidence=confidence,
                 reason=reason,
+            )
+        )
+
+    overflow = list(unique[limite:])
+    if overflow:
+        items.append(
+            StagedItem(
+                key="skills.overflow",
+                section="skills",
+                values={"label": ", ".join(overflow), "category": ""},
+                source_text=", ".join(overflow),
+                confidence=CONFIDENCE_LOW,
+                reason=(
+                    f"El PDF lista mas tecnologias que las {limite} que admite el CV. "
+                    "Separa con comas las que quieras conservar y editalas, o descarta "
+                    "las que no apliquen."
+                ),
             )
         )
 

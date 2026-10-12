@@ -69,17 +69,38 @@ def _build_field_limits() -> dict[str, int]:
         for spec in item_spec.string_fields:
             limits[f"{section}.{spec.field}"] = spec.max_length
 
-    limits["summary"] = schema.STRING_SECTION_SPECS["summary"]
-    limits["personal.full_name"] = 160
-    limits["contact.email"] = 180
-    limits["links.url"] = 200
+    for section, max_length in schema.STRING_SECTION_SPECS.items():
+        limits.setdefault(section, max_length)
+
+    # Los topes que no viven en una seccion del payload se declaran aqui, con su
+    # motivo. `personal.full_name` y `contact.email` son especificos del dominio.
     limits["cv_title"] = 120
-    limits["additional_info.content"] = 1000
+    limits["additional_info.content"] = schema.ITEM_SECTION_SPECS["additional_info"].string_fields[1].max_length
 
     return limits
 
 
 FIELD_LIMITS: dict[str, int] = _build_field_limits()
+
+
+def _build_list_field_limits() -> dict[str, tuple[int, int]]:
+    """(max_items, max_por_elemento) para los campos de lista del schema.
+
+    Sin esto, `experience.highlights` y `experience.technologies` no se validaban
+    nunca: una experiencia con 17 tecnologias pasaba la revision y reventaba al
+    guardar, lejos del sitio donde la persona podia corregirlo.
+    """
+
+    from app.validations import structured_cv_validations as schema
+
+    result: dict[str, tuple[int, int]] = {}
+    for section, item_spec in schema.ITEM_SECTION_SPECS.items():
+        for spec in item_spec.string_list_fields:
+            result[f"{section}.{spec.field}"] = (item_spec.max_items, spec.item_max_length)
+    return result
+
+
+LIST_FIELD_LIMITS: dict[str, tuple[int, int]] = _build_list_field_limits()
 
 MAX_ADDITIONAL_INFO = 20
 ADDITIONAL_INFO_CONTENT_LIMIT = 1000
@@ -468,6 +489,10 @@ def apply_review(
         # "<clave>:<campo>". Separarlos aqui evita que editar un campo de un
         # item pise el valor escalar de otra entrada.
         for submitted_key, submitted_value in values.items():
+            # Los bloques sin clasificar se editan con la misma clave que se
+            # muestran: aca se persiste lo que la persona escribio.
+            if any(item.key == submitted_key for item in draft.unclassified):
+                continue
             if submitted_key == entry.key:
                 entry.value = submitted_value
             elif submitted_key.startswith(f"{entry.key}:") and entry.values:
@@ -490,6 +515,8 @@ def apply_review(
         draft.proposed_title = title
 
     for item in draft.unclassified:
+        if item.key in values:
+            item.text = values[item.key][:2000]
         if item.key in decisions:
             item.status = decisions[item.key]
         if item.key in unclassified_assignments:
@@ -719,6 +746,25 @@ def _validate_field_limits(draft: ImportDraft) -> None:
 
         if limit is not None and len(item.text) > limit:
             overlong.append(f"{section} ({len(item.text)} de {limit} caracteres)")
+
+    # Campos de lista: cantidad de elementos y tamano de cada uno. Un campo de
+    # texto que se parte en lista solo al armar el payload no se validaba nunca.
+    for entry in draft.entries:
+        if entry.status != STATUS_CONFIRMED or not entry.values:
+            continue
+
+        for field_name, raw_value in entry.values.items():
+            limits = LIST_FIELD_LIMITS.get(f"{entry.section}.{field_name}")
+            if limits is None:
+                continue
+
+            max_items, max_item_length = limits
+            parts = [part.strip() for part in re.split(r"[,;\n]+", raw_value) if part.strip()]
+
+            if len(parts) > max_items:
+                overlong.append(f"{field_name} ({len(parts)} elementos, maximo {max_items})")
+            elif any(len(part) > max_item_length for part in parts):
+                overlong.append(f"{field_name} (un elemento supera {max_item_length} caracteres)")
 
     if overlong:
         raise ImportStagingError(

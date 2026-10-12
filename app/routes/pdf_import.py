@@ -363,6 +363,11 @@ def _with_submitted(draft: ImportDraft, submitted: dict) -> ImportDraft:
                     entry.values[field_name] = value
 
     for item in clone.unclassified:
+        if item.key in submitted["values"]:
+            # La persona pudo acortar el bloque que el sistema rechazo. Se guarda
+            # lo que escribio, sin recortarlo: si sigue largo, la validacion lo
+            # dira con el mensaje correspondiente.
+            item.text = submitted["values"][item.key][:2000]
         if item.key in submitted["assignments"]:
             item.assigned_section = submitted["assignments"][item.key]
 
