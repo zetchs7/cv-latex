@@ -1,0 +1,45 @@
+---
+name: Feature request
+description: Funcionalidad nueva deseada en CV LaTeX Builder
+title: "[feature] "
+labels: "tipo:feature"
+body: |
+  ## Qué querés que se pueda hacer
+
+  En una frase, desde el punto de vista de quien usa la app.
+
+  ## Por qué ahora
+
+  Qué problema concreto resuelve hoy. Si es una idea sin problema detrás,
+  decilo: se registra como propuesta, no como requisito.
+
+  ## Alcance tentativo
+
+  Qué entra y qué queda afuera. "Entra: leer el PDF. Queda afuera: OCR."
+
+  ## Criterios de aceptación
+
+  - [ ]
+  - [ ]
+
+  ## Módulo
+
+  Dashboard / CV Builder / Editor estructurado / ATS / Cartas / Tracker /
+  Exportaciones / Documentación
+
+  ## Datos y privacidad
+
+  ¿Maneja datos personales o confidenciales del usuario? ¿Necesita enviar algo
+  a un servicio externo? Esto condiciona la prioridad.
+
+  ## Origen
+
+  Pedido de Franco / idea propia / recomendación técnica
+
+  ## Prioridad propuesta
+
+  P0 rompe el uso / P1 importa mucho / P2 mejora / P3 idea para más adelante
+
+  ## Dependencias
+
+  ¿Depende de que exista otra cosa?
