@@ -745,7 +745,9 @@ def _build_experience_item(block: list[str]) -> StagedItem:
         summary_parts.append(line.strip())
 
     if technology_parts:
-        values["technologies"] = ", ".join(technology_parts)[:400]
+        # Sin recorte: 400 caracteres podian cortar technologies a mitad de lista
+        # sin dejar rastro. El exceso se rechaza al confirmar, con el campo nombrado.
+        values["technologies"] = ", ".join(technology_parts)
     if summary_parts:
         values["summary"] = ". ".join(summary_parts)
     if highlight_parts:
@@ -914,7 +916,10 @@ def _build_skill_items(lines: list[str]) -> list[StagedItem]:
         items.append(
             StagedItem(
                 key="skills.overflow",
-                section="skills",
+                # Seccion propia: si fuera "skills", confirmarla la convertiria en
+                # una skill mas y el payload tendria 41 elementos, que el schema
+                # rechaza con skills_too_many_items.
+                section="skills_overflow",
                 values={"label": ", ".join(overflow), "category": ""},
                 source_text=", ".join(overflow),
                 confidence=CONFIDENCE_LOW,

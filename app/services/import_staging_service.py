@@ -41,14 +41,21 @@ DRAFT_ID_BYTES = 24
 DRAFT_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{32,64}$")
 MAX_STORED_DRAFT_BYTES = 2 * 1024 * 1024
 
+# El contrato schema 2 se importa UNA vez a nivel de modulo: los limites de
+# este servicio se derivan de el, y una segunda tabla a mano se desincroniza.
+from app.validations import structured_cv_validations as schema
+
+
 STATUS_PENDING = "pending"
 STATUS_CONFIRMED = "confirmed"
 STATUS_DISCARDED = "discarded"
 STATUS_KEPT = "kept"
 DECISION_STATUSES = (STATUS_CONFIRMED, STATUS_DISCARDED, STATUS_KEPT)
 
-MAX_SKILL_LABEL = 60
-MAX_CV_TITLE = 120
+# El bloque de tecnologias excedentes NO es una skill mas: vive en su propia
+# seccion para que `_collect_items(confirmed, "skills")` no lo convierta en la
+# skill 41, que el schema rechaza despues de una revision aparentemente valida.
+SKILLS_OVERFLOW_SECTION = "skills_overflow"
 
 # Limites de schema 2, DERIVADOS del contrato real en lugar de copiados a mano.
 # La tabla duplicada que habia antes se desincronizo: permitia 30 skills cuando el
@@ -72,8 +79,8 @@ def _build_field_limits() -> dict[str, int]:
     for section, max_length in schema.STRING_SECTION_SPECS.items():
         limits.setdefault(section, max_length)
 
-    # Los topes que no viven en una seccion del payload se declaran aqui, con su
-    # motivo. `personal.full_name` y `contact.email` son especificos del dominio.
+    # El titulo del CV no es parte del payload schema 2: es metadato del
+    # documento. Se declara aqui, con su motivo, en vez de duplicarlo en otro lado.
     limits["cv_title"] = 120
     limits["additional_info.content"] = schema.ITEM_SECTION_SPECS["additional_info"].string_fields[1].max_length
 
@@ -89,6 +96,12 @@ def _build_list_field_limits() -> dict[str, tuple[int, int]]:
     Sin esto, `experience.highlights` y `experience.technologies` no se validaban
     nunca: una experiencia con 17 tecnologias pasaba la revision y reventaba al
     guardar, lejos del sitio donde la persona podia corregirlo.
+
+    El tope sale de `spec.max_items`, que es el del CAMPO, y no de
+    `item_spec.max_items`, que es el de la SECCION que lo contiene. Son distintos:
+    `experience` admite 30 items pero `highlights` solo 12 y `technologies` 16.
+    Con el tope equivocado, 17 tecnologias pasaban la revision y el schema las
+    rechazaba al guardar.
     """
 
     from app.validations import structured_cv_validations as schema
@@ -96,14 +109,22 @@ def _build_list_field_limits() -> dict[str, tuple[int, int]]:
     result: dict[str, tuple[int, int]] = {}
     for section, item_spec in schema.ITEM_SECTION_SPECS.items():
         for spec in item_spec.string_list_fields:
-            result[f"{section}.{spec.field}"] = (item_spec.max_items, spec.item_max_length)
+            result[f"{section}.{spec.field}"] = (spec.max_items, spec.item_max_length)
     return result
 
 
 LIST_FIELD_LIMITS: dict[str, tuple[int, int]] = _build_list_field_limits()
 
-MAX_ADDITIONAL_INFO = 20
-ADDITIONAL_INFO_CONTENT_LIMIT = 1000
+# Estos dos vivian a mano y el de contenido contradecía al contrato: el schema
+# admite 600 caracteres, la constante decia 1000. El derivado de abajo es la
+# UNICA fuente; una segunda tabla no puede desincronizarse.
+MAX_ADDITIONAL_INFO = schema.ITEM_SECTION_SPECS["additional_info"].max_items
+MAX_SKILL_LABEL = next(
+    spec.max_length
+    for spec in schema.ITEM_SECTION_SPECS["skills"].string_fields
+    if spec.field == "label"
+)
+ADDITIONAL_INFO_CONTENT_LIMIT = FIELD_LIMITS["additional_info.content"]
 
 UNCLASSIFIED_TARGET_SECTIONS = (
     "additional_info",
@@ -633,13 +654,13 @@ def _build_assigned_unclassified(draft: ImportDraft) -> dict[str, list[dict]]:
             continue
 
         if item.assigned_section == "skills":
-            # `skills[].label` admite 60 caracteres. Un bloque mas largo no
-            # entra, y recortarlo perderia el resto sin avisar. En ese caso el
-            # texto completo va a informacion adicional, donde la persona puede
-            # verlo entero y decidir que hacer con el.
+            # Ni `label` ni `category` se recortan. Un bloque que no entra va a
+            # informacion adicional con el texto entero, y un campo que excede el
+            # limite del contrato se rechaza al confirmar con un mensaje que
+            # nombra el campo. Recortar aqui perdia datos en silencio.
             if len(text) <= MAX_SKILL_LABEL:
                 label, _, category = text.partition(":")
-                assigned["skills"].append({"label": label.strip(), "category": category.strip()[:60]})
+                assigned["skills"].append({"label": label.strip(), "category": category.strip()})
             else:
                 _overflow.append(item.key)
         elif item.assigned_section == "certifications":
@@ -651,7 +672,7 @@ def _build_assigned_unclassified(draft: ImportDraft) -> dict[str, list[dict]]:
             name, separator, rest = text.partition(" - ")
             assigned["projects"].append(
                 {
-                    "name": (name if separator else text).strip()[:160],
+                    "name": (name if separator else text).strip(),
                     "summary": rest.strip(),
                     "link": "",
                     "technologies": [],
@@ -708,7 +729,10 @@ def _split_additional_text(text: str) -> tuple[str, str]:
     match = _LABELLED_VALUE.match(text.strip())
     if match:
         return match.group("label").strip(), match.group("value").strip()
-    return "Informacion del PDF", text[:1000]
+    # Sin recorte: si el texto excede el limite real del contrato, el error lo
+    # nombra al confirmar y el borrador sigue editable. Recortar a 1000
+    # sobrepasaba ademas el limite de 600 del schema.
+    return "Informacion del PDF", text
 
 
 def _validate_field_limits(draft: ImportDraft) -> None:
@@ -789,6 +813,46 @@ def _validate_additional_info_count(draft: ImportDraft) -> None:
         )
 
 
+def _describe_schema_errors(errors: tuple[str, ...]) -> str:
+    """Traduce los codigos del validador canonico a algo accionable.
+
+    El codigo solo (`experience_technologies_too_long`) no le dice a nadie que
+    corregir. Se nombra el campo y el limite real del contrato.
+    """
+
+    ETIQUETAS = {
+        "skills": "la lista de tecnologias",
+        "experience": "la experiencia",
+        "projects": "los proyectos",
+        "additional_info": "la informacion adicional",
+        "summary": "el resumen",
+        "personal": "los datos personales",
+        "contact": "los datos de contacto",
+        "languages": "los idiomas",
+        "certifications": "las certificaciones",
+    }
+
+    explicados: list[str] = []
+    for code in errors:
+        seccion, _, resto = code.partition("_")
+        etiqueta = ETIQUETAS.get(seccion, seccion.replace("_", " "))
+        if resto.endswith("_too_long"):
+            campo = resto[: -len("_too_long")].replace("_", " ")
+            explicados.append(f"{etiqueta}: el campo '{campo}' excede su limite")
+        elif resto.endswith("_too_many_items"):
+            explicados.append(f"{etiqueta} tiene mas elementos de los que admite el CV")
+        elif "must_be_string" in code or "must_be_object" in code:
+            explicados.append(f"{etiqueta} tiene un valor con el formato incorrecto")
+        else:
+            explicados.append(f"{etiqueta}: {code.replace('_', ' ')}")
+
+    return (
+        "La revision no termina en un CV valido todavia. Corregi estos puntos: "
+        + "; ".join(dict.fromkeys(explicados))
+        + ". El borrador queda intacto, asi que podes corregirlos y reintentar."
+    )
+
+
 def confirm_draft(draft: ImportDraft, *, title: str) -> dict:
     """Valida que no queden pendientes y devuelve el payload schema 2.
 
@@ -821,4 +885,37 @@ def confirm_draft(draft: ImportDraft, *, title: str) -> dict:
             "Falta el nombre completo, que es obligatorio para crear el CV.",
         )
 
-    return build_schema2_payload(draft, title=title)
+    # Las tecnologias excedentes no son una skill mas: viven en su propia seccion
+    # para no romper el tope del schema. Si la persona las conserva sin resolver,
+    # se rechaza con un motivo accionable en vez de dejarlas caer en silencio.
+    kept_overflow = [
+        entry for entry in draft.entries
+        if entry.section == SKILLS_OVERFLOW_SECTION and entry.status != STATUS_DISCARDED
+    ]
+    if kept_overflow:
+        limite = schema.ITEM_SECTION_SPECS["skills"].max_items
+        raise ImportStagingError(
+            "review_skills_overflow_pending",
+            "El PDF lista mas tecnologias de las que el CV admite "
+            f"({limite}). Las que sobraron quedaron aparte, en un bloque que no se guarda. "
+            "Quita las que no quieras de la lista de tecnologias y despues descarta "
+            "ese bloque, o borra tecnologias de la lista hasta que entre todas.",
+        )
+
+    payload = build_schema2_payload(draft, title=title)
+
+    # Validacion canonica contra el MISMO contrato que usa la persistencia.
+    #
+    # Antes, staging y schema 2 eran dos fuentes de verdad: staging tenia sus
+    # limites y el schema los suyos, y cualquier divergencia seEDIA como un
+    # error generico de guardado despues de una revision que parecia valida.
+    # Preguntar al validador canonico hace que esa divergencia sea imposible por
+    # construccion: si el payload no entra, no se entrega.
+    validation = schema.validate_structured_payload_v2(payload)
+    if not validation.is_valid:
+        raise ImportStagingError(
+            "review_schema_invalid",
+            _describe_schema_errors(validation.errors),
+        )
+
+    return payload
