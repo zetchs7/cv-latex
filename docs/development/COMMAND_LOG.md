@@ -5256,3 +5256,18 @@ Error completo:
 La primera version de la prueba de modo normal fallaba porque `ensure_exports_directory()` crea el directorio y, con el `/data` por defecto, el host no tiene permisos para crearlo.
 Reintento/correccion:
 La prueba paso a no escribir nada: verifica con `get_data_dir()` que el directorio por defecto sigue siendo `/data` y que el guard devuelve la ruta intacta en lugar de rechazarla. El subproceso sigue siendo necesario porque `_is_test_process()` tambien detecta `pytest` en `sys.modules`.
+2026-10-12 05:00:33 ART | Etapa 10.2/importacion-pdf | CMD-099
+Accion:
+Implementar la importacion de Curriculum Vitae desde PDF con staging revisable.
+Motivo:
+Issue #14: subir un PDF, interpretarlo, mapearlo al modelo interno y revisarlo antes de guardar. Sin staging, los datos dudosos del Issue no tienen representacion posible en el modelo persistente sin ensuciar el CV final.
+Comando:
+Lectura del Issue #14 completo; analisis de schema 2 y sus limites de campo; `app/services/pdf_import_service.py`; `app/services/pdf_section_parser.py`; `app/services/import_staging_service.py`; `app/routes/pdf_import.py`; dos plantillas; generacion de fixtures por subagente; `tests/test_pdf_import_services.py`; `tests/test_pdf_import_flow.py`; suite completa en host y en Docker.
+Argumentos:
+Rama `feature/pdf-cv-import` desde `development` en `e19ea5a`. Superficie acotada a tres servicios, un router, dos plantillas, fixtures y tests. **Sin push, sin PR, sin merge, sin release, sin tag y sin modificar `main`.** `app/database.py`, el schema 2, las plantillas LaTeX y el ATS quedan intactos.
+Resultado:
+Flujo completo verificado: subir, extraer, revisar, corregir, confirmar, crear CV, editar, exportar JSON, reimportar, generar TEX y consultar ATS. 75 pruebas nuevas; suite completa **323 passed** en host y en Docker. El payload schema 2 plano que genera el staging es aceptado por `validate_structured_payload_v2` y por la validacion del snapshot legacy. Los borradores viven en `<data>/import-drafts/`, fuera de `/static`, expiran a las dos horas y validan su identificador antes de tocar el sistema de archivos. El PDF original nunca se persiste.
+Error completo:
+1) El payload se construyo inicialmente anidando las secciones bajo una clave `sections`; el validador lo aceptaba pero el snapshot legacy salia vacio y el CV se creaba sin nombre ni email. 2) `technologies` y `highlights` se emitian como texto con comas y el schema 2 los exige como listas. 3) `_MONTH` era una cadena y no un grupo de regex, asi que su alternacion se aplanaba al interpolarla y los meses no se detectaban. 4) `01/2020` se reducia a `2020`. 5) El XML de poppler no numera sus `<page>` y el atributo leia 1 para todas. 6) Veinte tests fallaban porque `data=` con lista de tuplas envia un formulario vacio sin error: el sintoma era un mensaje de negocio legitimo y el defecto estaba en el arnes.
+Reintento/correccion:
+Cada defecto se localizo por reproduccion minima antes de corregir, no por inspeccion: un PDF de texto plano contra el payload plano, un item contra el `ITEM_SECTION_SPECS`, y una ruta minima de prueba contra las tres formas de enviar un formulario. Las tres ultimas quedan en LL-028 y LL-029.

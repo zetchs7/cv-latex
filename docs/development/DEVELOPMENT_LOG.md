@@ -1,6 +1,51 @@
 # Development Log
 
 
+## Etapa 10.2 - Importacion de Curriculum Vitae desde PDF
+
+- Fecha: 2026-10-12
+- Rama: `feature/pdf-cv-import` (desde `development` en `e19ea5a`, sin publicar)
+- Objetivo: implementar el Issue #14 de punta a punta, con staging revisable y sin tocar el contrato persistente de schema 2.
+
+### Por que existe el staging
+
+El Issue pide dos secciones visibles —"Campos con dudas" e "Informacion no clasificada"— que el modelo persistente no puede representar. `additional_info` renderiza contenido visible del CV, asi que no sirve como almacen de incertidumbre. Ademas, siete campos que el Issue menciona no tienen seccion: seniority, modalidad, rol/impacto/empresa de proyecto y descripcion/estado de certificacion. Mezclarlos habria producido exactamente lo contrario de lo pedido.
+
+El staging es la unica forma de cumplir las dos cosas a la vez: representar la incertidumbre y guardar un CV limpio.
+
+### Lo implementado
+
+- `app/services/pdf_import_service.py`: validacion (bytes magicos, 10 MiB, 20 paginas, cifrado) y extraccion con `pdfinfo` y `pdftotext`, sin dependencias nuevas.
+- `app/services/pdf_section_parser.py`: clasificacion determinista con nivel de confianza ordinal y motivo declarado.
+- `app/services/import_staging_service.py`: borrador en disco con TTL, identificador impredecible revalidado, decisiones explicitas y mapeo a schema 2 plano.
+- `app/routes/pdf_import.py` y dos plantillas: el flujo completo con pantalla de revision obligatoria.
+- Fixtures: 9 PDFs sinteticos deterministas y versionados, regenerables sin red.
+
+### Hallazgos de la investigacion con PDFs reales
+
+El analisis con fixtures reales, no solo con texto de ejemplo, expone problemas que el texto sintetico esconde:
+
+- Un PDF sin encabezados reconocibles **perdia el 100% del contenido**. La clasificacion paso a ser una resta: todas las lineas menos lo consumido. Ahora ese PDF muestra sus 8 bloques para revisar.
+- El payload schema 2 es **plano**: anidar las secciones bajo una clave `sections` hacia que el validador aceptara pero el snapshot legacy saliera vacio, y el CV se creara sin nombre ni email.
+- `technologies` y `highlights` deben ser **listas**, no texto con comas.
+- `pdfinfo` sale con el mismo codigo ante un PDF cifrado que ante uno corrupto: el cifrado se detecta leyendo la marca `/Encrypt` del contenido crudo.
+
+### Tres defectos corregidos durante los tests
+
+1. `_MONTH` era una cadena, no un grupo de regex. Al interpolarla, su alternacion se aplanaba sobre todo el patron y `January 2019` matcheaba `Jan`. Los meses no funcionaban y nada lo delataba. LL-028.
+2. `01/2020` se reducia a `2020`, perdiendo el mes en silencio.
+3. El XML de poppler no numera sus `<page>`: leer ese atributo devolvia 1 para todas las paginas.
+
+Ademas, el arnes de tests era el problema en veinte fallos: `data=` con lista de tuplas envia un formulario vacio sin error. LL-029.
+
+### Estado
+
+- Suite completa: **323 passed**, 1 warning preexistente. En host y en Docker con rootfs de solo lectura, sin montajes y sin red.
+- JavaScript: 8 pasaron.
+- `app/database.py`, schema 2, las cuatro plantillas LaTeX y el ATS **no fueron modificados**.
+- Documentacion de usuario servida y sus PDFs pendientes de regenerar junto con el release, porque la feature todavia no esta publicada.
+
+
 ## Cierre tecnico previo al PR - politica EOL, navegacion del editor, documentacion y compatibilidad TEX
 
 - Fecha: 2026-10-10
