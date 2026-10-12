@@ -182,7 +182,9 @@ def validate_catalog(catalog: dict) -> list[Problem]:
         problems.append(Problem("error", "meta", "debe ser un objeto"))
     else:
         schema_version = meta.get("schema_version")
-        if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+        # `True in {1, 2}` es True en Python: un `schema_version: true` pasaba
+        # como version 1. La version es un numero, no un booleano.
+        if isinstance(schema_version, bool) or schema_version not in SUPPORTED_SCHEMA_VERSIONS:
             problems.append(
                 Problem(
                     "error",

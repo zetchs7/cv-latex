@@ -35,15 +35,20 @@ inyección SQL (no hay queries concatenadas), y path traversal en subidas (verif
 La app registra **cero middleware**: `app/main.py:26-39` solo crea la instancia e incluye 6
 routers. No hay `CORSMiddleware`, no hay `TrustedHostMiddleware`, no hay CSRF.
 
-Catorce rutas escriben, todas POST:
+Trece rutas escriben, todas POST, todas sin token:
 
 ```
-POST /applications/            POST /cvs/                      POST /cvs/{id}/edit
-POST /applications/{id}/edit   POST /cvs/new/structured       POST /cvs/{id}/structured-edit
-POST /applications/{id}/delete POST /cvs/import/json          POST /cvs/{id}/duplicate
-POST /cover-letters/           POST /cvs/{id}/edit             POST /cvs/{id}/delete
-POST /cover-letters/{id}/edit  POST /cover-letters/{id}/delete POST /cover-letters/{id}/edit
+POST /applications/                 POST /cvs/
+POST /applications/{id}/edit        POST /cvs/new/structured
+POST /applications/{id}/delete      POST /cvs/import/json
+POST /cover-letters/                POST /cvs/{id}/edit
+POST /cover-letters/{id}/edit       POST /cvs/{id}/structured-edit
+POST /cover-letters/{id}/delete     POST /cvs/{id}/duplicate
+POST /cvs/{id}/delete
 ```
+
+Con `feature/pdf-cv-import` integrada son 17: las cuatro del importador de PDF
+sumadas a estas trece. La tabla de limites del §5.1 nombra las diecisiete.
 
 **Mecanismo.** Un `<form method="post" enctype="application/x-www-form-urlencoded">` en un
 sitio atacante apuntando a `http://127.0.0.1:8000/cvs/` es una *simple request*: **no dispara

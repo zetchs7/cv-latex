@@ -450,8 +450,17 @@ PDF_IMPORT_POST_ROUTES = {
     "/cvs/import/{draft_id}/discard",
 }
 
-ROUTER_PREFIX_RE = re.compile(r'APIRouter\(\s*prefix="([^"]*)"')
+# Un `APIRouter()` sin `prefix=` es valido (`app/routes/dashboard.py:8` lo usa) y
+# sus rutas tienen prefijo vacio. Antes el modulo entero se saltaba y una ruta
+# POST nueva alli no aparecia en una tabla que se declara exhaustiva.
+# La llamada se captura completa y el prefijo se busca DENTRO: los routers reales
+# llevan mas argumentos (`tags=[...]`), asi que el `)` no sigue al prefijo.
+ROUTER_CALL_RE = re.compile(r'APIRouter\([^)]*\)')
+ROUTER_PREFIX_RE = re.compile(r'prefix="([^"]*)"')
 ROUTE_RE = re.compile(r'@router\.(post|get|put|patch|delete)\(\s*"([^"]*)"')
+
+
+ROUTER_ROUTE_PATTERN = re.compile(r'@router\.(post|get|put|patch|delete)\(\s*"([^"]*)"')
 
 
 def _declared_post_routes() -> set[str]:
@@ -460,10 +469,11 @@ def _declared_post_routes() -> set[str]:
     routes: set[str] = set()
     for module in sorted(ROUTES_DIRECTORY.glob("*.py")):
         source = module.read_text(encoding="utf-8")
-        prefix_match = ROUTER_PREFIX_RE.search(source)
-        if prefix_match is None:
+        call_match = ROUTER_CALL_RE.search(source)
+        if call_match is None:
             continue
-        prefix = prefix_match.group(1)
+        prefix_match = ROUTER_PREFIX_RE.search(call_match.group(0))
+        prefix = prefix_match.group(1) if prefix_match else ""  # sin prefix es prefijo vacio
         for method, path in ROUTE_RE.findall(source):
             if method == "post":
                 routes.add(prefix + path)
@@ -852,3 +862,44 @@ def test_check_without_a_git_index_reports_the_real_reason(git_repository, monke
         assert "el commit los omitiria" not in output
     finally:
         (git_repository / ".git-away").rename(git_repository / ".git")
+
+
+def test_boolean_schema_version_is_rejected(git_repository):
+    """`True == 1` en Python: un schema_version booleano pasaba como version 1."""
+
+    import json
+    import subprocess
+
+    catalog = git_repository / "docs" / "development" / "project_control" / "catalog.json"
+    payload = json.loads(catalog.read_text(encoding="utf-8"))
+    payload["meta"]["schema_version"] = True
+    catalog.write_text(json.dumps(payload), encoding="utf-8")
+
+    import io
+    import contextlib
+
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        project_control.command_validate(argparse.Namespace())
+    assert "schema_version" in buffer.getvalue()
+
+
+def test_audit_sees_routers_without_an_explicit_prefix():
+    """`APIRouter()` sin prefix explicito sigue trayendo sus rutas al audit.
+
+    `app/routes/dashboard.py` usa esa forma. Si el modulo se saltaba entero, una
+    ruta POST nueva alli no apareceria en una tabla que se declara exhaustiva.
+    """
+
+    source = (REPOSITORY_ROOT / "app" / "routes" / "dashboard.py").read_text(encoding="utf-8")
+
+    # El modulo tiene que entrar al analisis...
+    call = ROUTER_CALL_RE.search(source)
+    assert call is not None, "el audit no encuentra el APIRouter de dashboard.py"
+    assert ROUTER_PREFIX_RE.search(call.group(0)) is None, (
+        "dashboard deberia seguir sin prefix explicito para que este test signifique algo"
+    )
+
+    # ...y una ruta POST agregada alli tiene que aparecer entre las declaradas.
+    with_new = source + '\n@router.post("/nueva-de-prueba")\ndef nueva(): ...\n'
+    assert "/nueva-de-prueba" in {r for _, r in re.findall(ROUTE_RE, with_new)}
