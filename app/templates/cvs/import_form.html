@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+
+{% block title %}Importar CV desde PDF - CV LaTeX Builder{% endblock %}
+{% block topbar_title %}Importar CV desde PDF{% endblock %}
+
+{% block content %}
+<section class="confirm-panel">
+  <p class="eyebrow">Importacion asistida</p>
+  <h1>Importar CV desde PDF</h1>
+
+  <p>
+    Sube un curriculum en PDF y el sistema va a interpretar su contenido para
+    cargarlo en el formato interno de la aplicacion. El PDF se usa como
+    <strong>fuente de datos</strong>: el CV final se genera con las plantillas
+    propias del proyecto, no se copia el diseno original.
+  </p>
+
+  <p>
+    Nada se guarda hasta que revises y confirmes los datos en la pantalla
+    siguiente.
+  </p>
+
+  {% if error_message %}
+  <div class="flash-message flash-message-error" role="alert">{{ error_message }}</div>
+  {% endif %}
+
+  <form
+    class="confirm-form"
+    method="post"
+    enctype="multipart/form-data"
+    action="{{ url_for('pdf_import_submit') }}"
+  >
+    <label>
+      <span>Archivo PDF</span>
+      <input type="file" name="pdf_file" accept="application/pdf,.pdf" required>
+    </label>
+
+    <button class="button primary" type="submit">Analizar PDF</button>
+  </form>
+
+  <h2>Limites y alcance</h2>
+  <ul>
+    <li>Tamanio maximo: {{ (max_bytes // (1024 * 1024)) if max_bytes else 10 }} MiB.</li>
+    <li>Paginas maximas: {{ max_pages if max_pages else 20 }}.</li>
+    <li>Solo PDF con texto seleccionable. No hay OCR en la version actual.</li>
+    <li>El archivo se procesa en memoria y en un temporal que se borra al terminar. No queda guardado.</li>
+    <li>El analisis es determinista: puede equivocarse, por eso cada dato se puede revisar y corregir.</li>
+  </ul>
+
+  <p>
+    <a class="text-link" href="{{ url_for('cvs_list') }}">Volver a la lista de CVs</a>
+  </p>
+</section>
+{% endblock %}

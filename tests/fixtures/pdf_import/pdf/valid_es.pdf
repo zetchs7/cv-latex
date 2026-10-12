@@ -1,0 +1,90 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Producer (cv-latex pdf_builder) >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 3406 >>
+stream
+BT /F1 10 Tf 40 760 Td (Juan Carlos P\351rez) Tj ET
+BT /F1 10 Tf 40 748 Td (Ingeniero de software) Tj ET
+BT /F1 10 Tf 40 736 Td () Tj ET
+BT /F1 10 Tf 40 724 Td (DATOS PERSONALES) Tj ET
+BT /F1 10 Tf 40 712 Td (Nombre: Juan Carlos P\351rez) Tj ET
+BT /F1 10 Tf 40 700 Td (Email: juan.perez.demo@example.com) Tj ET
+BT /F1 10 Tf 40 688 Td (Tel\351fono: +34 600 123 456) Tj ET
+BT /F1 10 Tf 40 676 Td (Ubicaci\363n: Madrid, Espa\361a) Tj ET
+BT /F1 10 Tf 40 664 Td (LinkedIn: https://www.linkedin.com/in/juan-perez-demo) Tj ET
+BT /F1 10 Tf 40 652 Td (GitHub: https://github.com/juan-perez-demo) Tj ET
+BT /F1 10 Tf 40 640 Td () Tj ET
+BT /F1 10 Tf 40 628 Td (PERFIL PROFESIONAL) Tj ET
+BT /F1 10 Tf 40 616 Td (Ingeniero de software con ocho a\361os de experiencia en el desarrollo) Tj ET
+BT /F1 10 Tf 40 604 Td (de aplicaciones web y servicios backend en entornos de producci\363n.) Tj ET
+BT /F1 10 Tf 40 592 Td () Tj ET
+BT /F1 10 Tf 40 580 Td (EXPERIENCIA LABORAL) Tj ET
+BT /F1 10 Tf 40 568 Td (Empresa: Soluciones Aurora S.L.) Tj ET
+BT /F1 10 Tf 40 556 Td (Cargo: Desarrollador Backend Senior) Tj ET
+BT /F1 10 Tf 40 544 Td (Fechas: 03/2021 - Actualidad) Tj ET
+BT /F1 10 Tf 40 532 Td (Responsabilidades: dise\361o de APIs REST, optimizaci\363n de consultas) Tj ET
+BT /F1 10 Tf 40 520 Td (SQL y mentor\355a de equipos junior.) Tj ET
+BT /F1 10 Tf 40 508 Td (Empresa: Datos Pearson S.A.) Tj ET
+BT /F1 10 Tf 40 496 Td (Cargo: Analista de Datos) Tj ET
+BT /F1 10 Tf 40 484 Td (Fechas: 09/2018 - 02/2021) Tj ET
+BT /F1 10 Tf 40 472 Td (Responsabilidades: informes autom\341ticos y paneles de indicadores.) Tj ET
+BT /F1 10 Tf 40 460 Td () Tj ET
+BT /F1 10 Tf 40 448 Td (EDUCACI\323N) Tj ET
+BT /F1 10 Tf 40 436 Td (Centro: Universidad Polit\351cnica de Madrid) Tj ET
+BT /F1 10 Tf 40 424 Td (Titulaci\363n: Grado en Ingenier\355a Inform\341tica) Tj ET
+BT /F1 10 Tf 40 412 Td (Fechas: 2012 - 2016) Tj ET
+BT /F1 10 Tf 40 400 Td () Tj ET
+BT /F1 10 Tf 40 388 Td (APTITUDES T\311CNICAS) Tj ET
+BT /F1 10 Tf 40 376 Td (Python, FastAPI, SQL, PostgreSQL, Docker, Git, Linux, APIs REST,) Tj ET
+BT /F1 10 Tf 40 364 Td (pruebas automatizadas, integraci\363n continua, LaTeX.) Tj ET
+BT /F1 10 Tf 40 352 Td () Tj ET
+BT /F1 10 Tf 40 340 Td (IDIOMAS) Tj ET
+BT /F1 10 Tf 40 328 Td (Espa\361ol: Nativo) Tj ET
+BT /F1 10 Tf 40 316 Td (Ingl\351s: B2 - Avanzado) Tj ET
+BT /F1 10 Tf 40 304 Td (Portugu\351s: A1 - B\341sico) Tj ET
+BT /F1 10 Tf 40 292 Td () Tj ET
+BT /F1 10 Tf 40 280 Td (CERTIFICACIONES) Tj ET
+BT /F1 10 Tf 40 268 Td (Certificaci\363n: AWS Certified Solutions Architect - Associate) Tj ET
+BT /F1 10 Tf 40 256 Td (Entidad: Amazon Web Services) Tj ET
+BT /F1 10 Tf 40 244 Td (A\361o: 2023) Tj ET
+BT /F1 10 Tf 40 232 Td () Tj ET
+BT /F1 10 Tf 40 220 Td (PROYECTOS) Tj ET
+BT /F1 10 Tf 40 208 Td (Proyecto: Panel de control de m\351tricas operativas) Tj ET
+BT /F1 10 Tf 40 196 Td (Descripci\363n: herramienta interna de visualizaci\363n de indicadores) Tj ET
+BT /F1 10 Tf 40 184 Td (de servicio para el \341rea de operaciones.) Tj ET
+BT /F1 10 Tf 40 172 Td (Stack: Python, FastAPI, SQLite, LaTeX) Tj ET
+BT /F1 10 Tf 40 160 Td () Tj ET
+BT /F1 10 Tf 40 148 Td (\332ltimo proyecto: migraci\363n de un m\363dulo cr\355tico de facturaci\363n) Tj ET
+BT /F1 10 Tf 40 136 Td (\(\200120.000 al a\361o\) sin paradas de servicio durante dos a\361os.) Tj ET
+BT /F1 10 Tf 40 124 Td (Disponibilidad: \277presencial o remoto? \241Remoto o h\355brido!) Tj ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000272 00000 n 
+0000000398 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R /Info 4 0 R >>
+startxref
+3855
+%%EOF
