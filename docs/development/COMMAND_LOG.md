@@ -5256,3 +5256,34 @@ Error completo:
 La primera version de la prueba de modo normal fallaba porque `ensure_exports_directory()` crea el directorio y, con el `/data` por defecto, el host no tiene permisos para crearlo.
 Reintento/correccion:
 La prueba paso a no escribir nada: verifica con `get_data_dir()` que el directorio por defecto sigue siendo `/data` y que el guard devuelve la ruta intacta en lugar de rechazarla. El subproceso sigue siendo necesario porque `_is_test_process()` tambien detecta `pytest` en `sys.modules`.
+2026-10-12 01:09:24 ART | Etapa 10.1/cierre-pr-17 | CMD-097
+Accion:
+Verificar las condiciones del PR #17 y ejecutar el squash merge a `development`.
+Motivo:
+El PR lingered con la revision de Codex pendiente segun el reporte anterior. Habia que confirmar el estado real en GitHub antes de decidir, no asumirlo.
+Comando:
+`gh pr view 17 --json ...`; `gh api repos/zetchs7/cv-latex/pulls/17/reviews`; `gh api repos/zetchs7/cv-latex/pulls/17/comments`; spot-check de las guardas de aislamiento; `gh pr merge 17 --squash --delete-branch=false`; `git merge --ff-only origin/development`.
+Argumentos:
+Rama `fix/test-data-isolation` @ `35d1c23`. Se conserva la rama remota. Sin cambios sobre `main`, sin tags, sin release.
+Resultado:
+Las precondiciones se cumplian: revision de Codex terminada sobre `35d1c23` el 2026-10-11T21:07:30Z con resultado "Didn't find any major issues", cero comentarios inline contra ese commit, `baseRefOid` en `97e2577` sin avance inesperado, `mergeable=MERGEABLE`, `mergeStateStatus=CLEAN` y diff acotado a 8 archivos de aislamiento y trazabilidad. El spot-check dio: ruta legitima permitida; `APP_DATA_DIR=/data`, `APP_DB_FILENAME` absoluto, `APP_DB_FILENAME` con traversal y `exports` como symlink, los cuatro abortando, con cero archivos escritos fuera. Merge por squash: `e19ea5a`, `mergedAt=2026-10-12T04:01:56Z`. `development` local y remoto en `e19ea5a`. Rama correctiva remota conservada en `35d1c23`. `main` intacta en `a28d1fd`. Tags sin cambios.
+Error completo:
+Una expresion `jq` con `// "-"` dentro de una interpolacion fallo tres veces por el escape del pipe, y el filtro por `commit_id` de los comentarios inline dio un falso positivo: GitHub re-ancla ese campo cuando el diff se mueve.
+Reintento/correccion:
+Se stepwise `gh pr view` campo por campo en lugar de una expresion compleja, y se filtro por `original_commit_id`, que es inmutable. La correccion del criterio de atribucion quedo documentada en LL-027.
+
+2026-10-12 01:09:24 ART | Etapa 10.1/project-control-center | CMD-098
+Accion:
+Auditar el proyecto, implementar el Project Control Center v1 y preparar la siguiente feature.
+Motivo:
+El proyecto tenia 16 documentos de desarrollo, 4 ADR y 25 lecciones aprendidas, pero ninguna fuente unica que respondiera "en que esta el proyecto". El estado estaba disperso entre `MODULE_INDEX.md`, `DEVELOPMENT_LOG.md`, issues de GitHub y memoria de sesiones.
+Comando:
+Dos exploradores read-only en paralelo para mapear la superficie de la app y la infraestructura; `gh issue view 14`; escritura de `ADR-0005`; `catalog.json`; `tools/project_control.py`; `render` y `check`; `tests/test_project_control.py`; integracion en `README.md`, `MODULE_INDEX.md`, `PROJECT_PLAYBOOK.md` y `LESSONS_LEARNED.md`; plantillas en `.github/ISSUE_TEMPLATE/`.
+Argumentos:
+Rama `feature/project-control-center` creada desde `development` en `e19ea5a`. Superficie acotada a documentacion, `tools/`, `.github/ISSUE_TEMPLATE/`, catalogo y tests. **Sin push, sin PR, sin merge, sin release, sin tag y sin modificar `main`.** No se toco codigo de producto de la aplicacion.
+Resultado:
+Catalogo con 11 modulos, 7 riesgos y 19 tareas, de las cuales 2 estan aprobadas por Franco y 17 son propuestas. Herramienta con cuatro verbos, `check` verificado como de solo lectura por hash antes y despues, y renderizado determinista verificado con dos renders consecutivos. 33 tests nuevos en verde. Documentacion generada sincronizada con el catalogo. La auditoria encontro que la app no registra ningun middleware, lo que se registro como `RSK-001` y `SEC-001`; y que `development` esta 2 commits adelante de `main`, registrado como `RSK-004` y `REL-001`.
+Error completo:
+Se colaron caracteres CJK y palabras inglesas pegadas en varios archivos nuevos, detectados por un escaneo explicito y corregidos. Dos tests fallaron: uno porque `load_catalog` usaba `CATALOG_PATH` como valor por defecto, que queda fijado al importar y no se puede sustituir en tests; el otro por una asercion mia mal escrita. La tarea `OPS-001` se registro inicialmente como "sin procedimiento de backup", lo cual era falso.
+Reintento/correccion:
+`load_catalog` paso a resolver `CATALOG_PATH` en tiempo de llamada. Las aserciones se reescribieron para afirmar por ubicacion de problema y no por texto del mensaje. Se abrio `README.md:112-151`, se confirmo que el procedimiento de backup si existia y la tarea quedo reformulada como "documentado pero inseguro y sin verificar", con el hallazgo real de que copia la base con `cp` mientras la app escribe. Registrado en LL-026. Los criterios de cierre del MVP se movieron del codigo al catalogo para que Franco pueda editarlos sin programar.
