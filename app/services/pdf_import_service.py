@@ -275,12 +275,10 @@ def _read_words(pdf_path: Path) -> tuple[tuple[ExtractedWord, ...], bool]:
         return (), False
 
     words: list[ExtractedWord] = []
-    for page_element in _elements_named(root, "page"):
-        try:
-            page_number = int(page_element.attrib.get("number", "1"))
-        except ValueError:
-            page_number = 1
-
+    # El XML de poppler no numera los <page>: el numero es el orden en el
+    # documento. Leer un atributo inexistente devolvia 1 para todas las paginas
+    # y hacia creer que el documento tenia una sola.
+    for page_number, page_element in enumerate(_elements_named(root, "page"), start=1):
         for word_element in _elements_named(page_element, "word"):
             text = (word_element.text or "").strip()
             if not text:

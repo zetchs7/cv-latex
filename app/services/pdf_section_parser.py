@@ -184,16 +184,23 @@ URL_PATTERN = re.compile(r"(?:https?://|www\.)[^\s,;)]+", re.IGNORECASE)
 LINKEDIN_PATTERN = re.compile(r"linkedin\.com/[^\s,;)]+", re.IGNORECASE)
 GITHUB_PATTERN = re.compile(r"github\.com/[^\s,;)]+", re.IGNORECASE)
 
+# El grupo no captura es parte de la constante, no del sitio de uso: sin el,
+# al interpolar `_MONTH` dentro de otro patron su alternacion se aplana
+# sobre la expresion completa y "January 2019" matchea solo "Jan".
 _MONTH = (
+    "(?:"
     "january|february|march|april|may|june|july|august|september|october|november|december"
     "|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec"
     "|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre"
     "|ene|abr|ago|sept|dic"
+    ")"
 )
 CURRENT_MARKERS = ("actualidad", "presente", "actual", "current", "present", "today", "now", "hoy")
 
 _YEAR = r"(?:19|20)\d{2}"
-_DATE = rf"(?:\d{{1,2}}[/\-.]{_MONTH}[^\s,;]*[/\-.]{_YEAR}|{_MONTH}\s+{_YEAR}|{_YEAR})"
+# Tres formas, de mas especifica a mas laxa: dia/mes/anio, mes/anio y anio.
+# Sin la segunda, "01/2020" se reducia a "2020" y se perdia el mes en silencio.
+_DATE = rf"(?:\d{{1,2}}[\/\-.]{_MONTH}[^\s,;]*[\/\-.]{_YEAR}|\d{{1,2}}[\/\-.]{_YEAR}|{_MONTH}\s+{_YEAR}|{_YEAR})"
 RANGE_SEPARATOR = r"\s*(?:-|–|—|to|a|al|hasta)\s*"
 
 DATE_RANGE_PATTERN = re.compile(
