@@ -202,6 +202,20 @@ def test_dependency_cycle_is_rejected():
     assert any("ciclo de dependencias" in message for message in _errors(catalog))
 
 
+# Estos tests verifican invariantes del REPOSITORIO: el indice de Git, los
+# documentos generados y los enlaces de la documentacion. La imagen de ejecucion
+# no es un checkout —no tiene indice, ni README.md, ni historial— asi que alli
+# no hay nada que afirmar. Saltan con motivo explicito en vez de fallar o, peor,
+# pasar por una comparacion contra archivos que no existen.
+pytestmark = pytest.mark.skipif(
+    not (REPOSITORY_ROOT / ".git").exists(),
+    reason=(
+        "los tests del Project Control Center verifican el estado del repositorio; "
+        "la imagen de ejecucion no es un checkout de git"
+    ),
+)
+
+
 def test_task_depending_on_itself_is_rejected():
     catalog = _valid_catalog()
     catalog["tasks"][0]["depends_on"] = ["TAREA-001"]
