@@ -146,7 +146,10 @@ def _detect_cycles(tasks: list[dict], problems: list[Problem]) -> None:
     graph = {
         task.get("id"): [dep for dep in _iterable_or_empty(task.get("depends_on")) if isinstance(dep, str)]
         for task in tasks
-        if isinstance(task, dict)
+        # Solo ids que son texto: un id que sea lista u objeto ya tiene su
+        # error de esquema registrado, y usarlo como clave de diccionario
+        # rompe el grafo antes de que la validacion pueda terminar.
+        if isinstance(task, dict) and isinstance(task.get("id"), str)
     }
 
     state: dict[str, int] = {}
@@ -675,6 +678,17 @@ def _selected_documents(only: str | None) -> list[str]:
 
 
 def _render_all(catalog: dict, only: str | None) -> dict[str, str]:
+    """Renderiza los documentos. Valida antes: un render sobre un catalogo con
+    un tipo invalido revienta con `TypeError` en vez de con un error util."""
+
+    problems = validate_catalog(catalog)
+    errors = [problem for problem in problems if problem.level == "error"]
+    if errors:
+        raise CatalogError(
+            "el catalogo tiene errores y no se renderiza:\n"
+            + "\n".join(problem.render() for problem in errors)
+        )
+
     rendered = {}
     for name in _selected_documents(only):
         content = RENDERERS[name](catalog)
@@ -784,13 +798,16 @@ def command_render(arguments: argparse.Namespace) -> int:
     return 0
 
 
-def _read_staged_bytes(relative_path: Path) -> bytes | None:
+def _read_staged_bytes(relative_path: Path | None) -> bytes | None:
     """Contenido de un archivo en el indice de Git, o None si no esta.
 
     Sin esto, `check` compara solo el working tree y el estado exacto desde el
     que se hace commit —catalogo staged y Markdown recien renderizado sin
     stagear— passa como sincronizado.
     """
+
+    if relative_path is None:
+        return None
 
     try:
         result = subprocess.run(
@@ -826,6 +843,32 @@ def command_check(arguments: argparse.Namespace) -> int:
         print(f"\n{len(errors)} error(es) de validacion")
         return 1
 
+    # Los documentos del indice se comparan contra el catalogo del indice.
+    # Usar el del working tree deja pasar el caso inverso: cambios de catalogo
+    # sin stagear y documentos regenerados ya stageados.
+    try:
+        catalog_relative = CATALOG_PATH.relative_to(REPOSITORY_ROOT)
+    except ValueError:
+        catalog_relative = None
+    staged_catalog_bytes = _read_staged_bytes(catalog_relative) if catalog_relative else None
+    staged_catalog = None
+    if staged_catalog_bytes is not None:
+        try:
+            staged_catalog = json.loads(staged_catalog_bytes.decode("utf-8"))
+            staged_catalog_problems = validate_catalog(staged_catalog)
+            if [problem for problem in staged_catalog_problems if problem.level == "error"]:
+                staged_catalog = None
+            else:
+                staged_rendered = {
+                    name: content.encode("utf-8")
+                    for name, content in _render_all(staged_catalog, arguments.only).items()
+                }
+        except (UnicodeDecodeError, json.JSONDecodeError, CatalogError):
+            staged_catalog = None
+            staged_rendered = {}
+    else:
+        staged_rendered = {}
+
     drifted = []
     missing = []
     unstaged = []
@@ -859,9 +902,10 @@ def command_check(arguments: argparse.Namespace) -> int:
 
         # El working tree puede estar bien y el indice no: ese es el estado desde
         # el que se hace commit.
-        if relative is not None:
+        if relative is not None and staged_catalog is not None:
             staged = _read_staged_bytes(relative)
-            if staged is not None and staged != expected:
+            reference = staged_rendered.get(filename, expected)
+            if staged is not None and staged != reference:
                 unstaged.append(filename)
 
     if unstaged:
