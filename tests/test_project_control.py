@@ -13,6 +13,7 @@ import hashlib
 import importlib.util
 import json
 import re
+import shutil
 from pathlib import Path
 
 import pytest
@@ -503,3 +504,167 @@ def test_check_detects_crlf_drift(tmp_path, monkeypatch):
     target.write_bytes(target.read_text(encoding="utf-8").replace("\n", "\r\n").encode("utf-8"))
 
     assert project_control.command_check(argparse.Namespace(only=None)) == 1
+
+
+# --- Indice de git: los cuatro estados se validan por separado ------------
+
+
+def _git_environment() -> dict[str, str]:
+    """Entorno para operar git sin tocar la configuracion global del usuario."""
+
+    import os
+    import tempfile
+
+    home = tempfile.mkdtemp(prefix="pcc-git-home-")
+    return {
+        **os.environ,
+        "HOME": home,
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_CONFIG_SYSTEM": os.devnull,
+        "GIT_AUTHOR_NAME": "PCC Test",
+        "GIT_AUTHOR_EMAIL": "pcc@test.invalid",
+        "GIT_COMMITTER_NAME": "PCC Test",
+        "GIT_COMMITTER_EMAIL": "pcc@test.invalid",
+    }
+
+
+def _run_git(cwd: Path, *arguments: str) -> None:
+    import subprocess
+
+    result = subprocess.run(
+        ["git", *arguments],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=_git_environment(),
+    )
+    assert result.returncode == 0, f"git {' '.join(arguments)}: {result.stderr}"
+
+
+@pytest.fixture
+def git_repository(tmp_path):
+    """Un repo git temporal que copia la herramienta, el catalogo y los docs."""
+
+    environment = _git_environment()
+    repository = tmp_path / "repo"
+    (repository / "docs" / "development" / "project_control").mkdir(parents=True)
+    (repository / "tools").mkdir(parents=True)
+    (repository / "tests").mkdir(parents=True)
+
+    shutil.copy(TOOL_PATH, repository / "tools" / "project_control.py")
+    shutil.copy(CATALOG_PATH, repository / "docs" / "development" / "project_control" / "catalog.json")
+    for filename in ("PROJECT_STATUS.md", "BACKLOG.md", "ROADMAP.md"):
+        shutil.copy(
+            REPOSITORY_ROOT / "docs" / "development" / filename,
+            repository / "docs" / "development" / filename,
+        )
+
+    _run_git(repository, "init", "--quiet")
+    _run_git(repository, "add", "--all")
+    _run_git(repository, "commit", "--quiet", "-m", "baseline")
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(project_control, "REPOSITORY_ROOT", repository)
+    monkeypatch.setattr(project_control, "CATALOG_PATH", repository / "docs" / "development" / "project_control" / "catalog.json")
+    monkeypatch.setattr(project_control, "DOCUMENTS_DIRECTORY", repository / "docs" / "development")
+    monkeypatch.delenv("GIT_DIR", raising=False)
+    yield repository
+    monkeypatch.undo()
+
+
+def _check(git_repository: Path) -> int:
+    return project_control.command_check(argparse.Namespace(only=None))
+
+
+def test_git_index_all_four_states_in_sync(git_repository):
+    """Catalogo y documentos, en arbol e indice, todos iguales."""
+
+    assert _check(git_repository) == 0
+
+
+def test_git_invalid_staged_catalog_fails_instead_of_falling_back(git_repository):
+    """El indice con un catalogo invalido es fallo, no un fallback al arbol."""
+
+    import subprocess
+
+    catalog = git_repository / "docs" / "development" / "project_control" / "catalog.json"
+    payload = json.loads(catalog.read_text(encoding="utf-8"))
+    payload["tasks"][0]["depends_on"] = 7
+    catalog.write_text(json.dumps(payload), encoding="utf-8")
+
+    subprocess.run(
+        ["git", "add", "--all"], cwd=git_repository, capture_output=True, check=False, env=_git_environment()
+    )
+    # El working tree vuelve a estar bien: sin el fallback, esto debe fallar.
+    shutil.copy(CATALOG_PATH, catalog)
+
+    assert _check(git_repository) == 1
+
+
+def test_git_staged_document_missing_from_index_is_drift(git_repository):
+    """`git rm --cached` de un documento generado debe detectarse."""
+
+    import subprocess
+
+    target = git_repository / "docs" / "development" / "BACKLOG.md"
+    subprocess.run(
+        ["git", "rm", "--cached", str(target.relative_to(git_repository))],
+        cwd=git_repository,
+        capture_output=True,
+        check=False,
+        env=_git_environment(),
+    )
+
+    assert _check(git_repository) == 1
+
+
+def test_git_stale_staged_document_is_drift(git_repository):
+    import subprocess
+
+    stale = git_repository / "docs" / "development" / "ROADMAP.md"
+    stale.write_text(stale.read_text(encoding="utf-8") + "\nobsoleto en el indice\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "--all"], cwd=git_repository, capture_output=True, check=False, env=_git_environment()
+    )
+    project_control.command_render(argparse.Namespace(only=None))
+
+    assert _check(git_repository) == 1
+
+
+def test_git_working_tree_only_change_is_drift(git_repository):
+    target = git_repository / "docs" / "development" / "PROJECT_STATUS.md"
+    target.write_text(target.read_text(encoding="utf-8") + "\nsolo en el working tree\n", encoding="utf-8")
+    assert _check(git_repository) == 1
+
+
+def test_git_crlf_in_staged_document_is_drift(git_repository):
+    import subprocess
+
+    target = git_repository / "docs" / "development" / "BACKLOG.md"
+    target.write_bytes(target.read_text(encoding="utf-8").replace("\n", "\r\n").encode("utf-8"))
+    subprocess.run(
+        ["git", "add", "--all"], cwd=git_repository, capture_output=True, check=False, env=_git_environment()
+    )
+    project_control.command_render(argparse.Namespace(only=None))
+
+    assert _check(git_repository) == 1
+
+
+def test_validate_status_and_check_are_read_only_in_git(git_repository):
+    before = {
+        path.relative_to(git_repository).as_posix(): path.read_bytes()
+        for path in sorted(git_repository.rglob("*"))
+        if path.is_file() and ".git/" not in path.as_posix()
+    }
+
+    project_control.command_validate(argparse.Namespace())
+    project_control.command_status(argparse.Namespace())
+    project_control.command_check(argparse.Namespace(only=None))
+
+    after = {
+        path.relative_to(git_repository).as_posix(): path.read_bytes()
+        for path in sorted(git_repository.rglob("*"))
+        if path.is_file() and ".git/" not in path.as_posix()
+    }
+    assert before == after

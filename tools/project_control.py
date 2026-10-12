@@ -850,24 +850,38 @@ def command_check(arguments: argparse.Namespace) -> int:
         catalog_relative = CATALOG_PATH.relative_to(REPOSITORY_ROOT)
     except ValueError:
         catalog_relative = None
+    # Cuatro estados se validan por separado, cada uno contra su propia fuente:
+    # catalogo del working tree, documentos del working tree, catalogo staged y
+    # documentos staged. La validacion del indice usa SOLO el catalogo staged.
+    # Si el catalogo staged existe pero es invalido, eso es un fallo: antes se
+    # descartaba en silencio y la comparacion del indice se saltaba, que es
+    # justo el estado desde el que se hace el commit.
     staged_catalog_bytes = _read_staged_bytes(catalog_relative) if catalog_relative else None
     staged_catalog = None
+    staged_rendered: dict[str, bytes] = {}
+
     if staged_catalog_bytes is not None:
         try:
             staged_catalog = json.loads(staged_catalog_bytes.decode("utf-8"))
-            staged_catalog_problems = validate_catalog(staged_catalog)
-            if [problem for problem in staged_catalog_problems if problem.level == "error"]:
-                staged_catalog = None
-            else:
-                staged_rendered = {
-                    name: content.encode("utf-8")
-                    for name, content in _render_all(staged_catalog, arguments.only).items()
-                }
-        except (UnicodeDecodeError, json.JSONDecodeError, CatalogError):
-            staged_catalog = None
-            staged_rendered = {}
-    else:
-        staged_rendered = {}
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            print(f"project_control: el catalogo en el indice de git no es JSON valido: {error}")
+            return 1
+
+        staged_problems = validate_catalog(staged_catalog)
+        staged_errors = [problem for problem in staged_problems if problem.level == "error"]
+        for problem in staged_problems:
+            print(f"[indice] {problem.render()}")
+        if staged_errors:
+            print(
+                f"\n{len(staged_errors)} error(es) en el catalogo del indice de git. "
+                "Corregilo y volve a stagearlo."
+            )
+            return 1
+
+        staged_rendered = {
+            name: content.encode("utf-8")
+            for name, content in _render_all(staged_catalog, arguments.only).items()
+        }
 
     drifted = []
     missing = []
@@ -902,11 +916,18 @@ def command_check(arguments: argparse.Namespace) -> int:
 
         # El working tree puede estar bien y el indice no: ese es el estado desde
         # el que se hace commit.
-        if relative is not None and staged_catalog is not None:
+        if relative is not None:
             staged = _read_staged_bytes(relative)
-            reference = staged_rendered.get(filename, expected)
-            if staged is not None and staged != reference:
-                unstaged.append(filename)
+            if staged is None:
+                # El documento esta en el working tree pero fue eliminado del
+                # indice (por ejemplo con `git rm --cached`). Antes se ignoraba
+                # y el commit podia omitir un documento generado obligatorio.
+                # Es independiente de que el catalogo staged exista.
+                missing.append(filename)
+            elif staged_catalog is not None:
+                reference = staged_rendered.get(filename, expected)
+                if staged != reference:
+                    unstaged.append(filename)
 
     if unstaged:
         drifted.extend(f"{name} (stale en el indice de git)" for name in unstaged)
