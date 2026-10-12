@@ -2,11 +2,15 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 import sqlite3
+import sys
+import tempfile
 
 
 DEFAULT_DATA_DIR = "/data"
 DEFAULT_DB_FILENAME = "app.db"
 CURRENT_SCHEMA_VERSION = "2"
+REPOSITORY_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+TESTING_ENV_MARKER = "CV_LATEX_TESTING"
 STRUCTURED_CV_COLUMNS = {
     "structured_schema_version": "INTEGER",
     "structured_payload": "TEXT",
@@ -28,12 +32,112 @@ class ClosingConnection(sqlite3.Connection):
         return False
 
 
+def _is_test_process() -> bool:
+    """Indica si el proceso actual es una corrida de pruebas.
+
+    El marcador explicito lo define `tests/conftest.py` antes de importar
+    cualquier modulo de la app. La presencia de `pytest` en `sys.modules` cubre
+    las corridas que importan la app desde una sesion de pruebas ya abierta.
+    """
+
+    if os.getenv(TESTING_ENV_MARKER):
+        return True
+
+    return "pytest" in sys.modules
+
+
+def _is_inside_directory(path: Path, directory: Path) -> bool:
+    try:
+        path.resolve().relative_to(directory.resolve())
+    except ValueError:
+        return False
+
+    return True
+
+
+def _temporary_root() -> Path:
+    return Path(tempfile.gettempdir())
+
+
+def _ensure_test_data_dir_is_isolated(data_dir: Path) -> None:
+    """Rechaza todo directorio de datos que no sea temporal durante las pruebas.
+
+    Un unico chequeo contra `<repo>/data` no alcanza: un test o un fixture
+    puede reasignar `APP_DATA_DIR` mas adelante en la corrida y apuntar, por
+    ejemplo, a `/data`, que es el store real montado por Docker Compose.
+    Durante una corrida de pruebas solo se admite un directorio bajo la raiz
+    temporal del sistema. `resolve()` sigue symlinks, asi que un enlace que
+    apunte al store real tambien queda rechazado.
+    """
+
+    if _is_inside_directory(data_dir, REPOSITORY_DATA_DIR):
+        raise RuntimeError(
+            "El directorio de datos del repositorio no puede usarse durante las pruebas: "
+            f"{data_dir} esta dentro de {REPOSITORY_DATA_DIR}. "
+            f"Apunta APP_DATA_DIR a un temporal y exporta {TESTING_ENV_MARKER}=1 "
+            "(tests/conftest.py lo resuelve automaticamente) para aislar la corrida."
+        )
+
+    if not _is_inside_directory(data_dir, _temporary_root()):
+        raise RuntimeError(
+            "Durante las pruebas el directorio de datos debe estar bajo la raiz temporal "
+            f"del sistema ({_temporary_root()}): {data_dir} queda fuera. "
+            f"Apunta APP_DATA_DIR a un temporal; {TESTING_ENV_MARKER}=1 lo resuelve "
+            "tests/conftest.py automaticamente."
+        )
+
+
+def ensure_isolated_path(path: Path, description: str) -> Path:
+    """Exige que una ruta derivada quede dentro del directorio de datos.
+
+    `get_data_dir()` solo valida el directorio raiz: un subdirectorio puede ser
+    un enlace simbolico a otro arbol, y las escrituras lo seguirian. Durante una
+    corrida de pruebas toda ruta sobre la que se escribe tiene que resolver
+    dentro del directorio de datos ya aislado. Fuera de las pruebas no hace nada,
+    para no alterar el comportamiento normal de la aplicacion.
+    """
+
+    if not _is_test_process():
+        return path
+
+    data_dir = get_data_dir()
+
+    if not _is_inside_directory(path, data_dir):
+        raise RuntimeError(
+            f"{description} debe quedar dentro del directorio de datos de la corrida "
+            f"({data_dir}): {path} resuelve a {path.resolve()}, que queda fuera. "
+            "Revisa enlaces simbolicos dentro del directorio de datos de prueba."
+        )
+
+    return path
+
+
 def get_data_dir() -> Path:
-    return Path(os.getenv("APP_DATA_DIR", DEFAULT_DATA_DIR))
+    data_dir = Path(os.getenv("APP_DATA_DIR", DEFAULT_DATA_DIR))
+
+    if _is_test_process():
+        _ensure_test_data_dir_is_isolated(data_dir)
+
+    return data_dir
 
 
 def get_database_path() -> Path:
-    return get_data_dir() / os.getenv("APP_DB_FILENAME", DEFAULT_DB_FILENAME)
+    data_dir = get_data_dir()
+    database_path = data_dir / os.getenv("APP_DB_FILENAME", DEFAULT_DB_FILENAME)
+
+    # `Path / "ruta_absoluta"` devuelve la ruta absoluta y un `..` resuelve hacia
+    # arriba, asi que `APP_DB_FILENAME` podria sacar la base fuera del directorio
+    # de datos ya aislado. Se exige que quede dentro de ese directorio, no solo
+    # bajo la raiz temporal: un `..` que suba un nivel seguiria dentro de `/tmp`
+    # y escaparia del directorio de pruebas.
+    if _is_test_process() and not _is_inside_directory(database_path, data_dir):
+        raise RuntimeError(
+            "Durante las pruebas la base de datos debe quedar dentro del directorio "
+            f"de datos de la corrida ({data_dir}): {database_path} queda fuera. "
+            "Revisa APP_DB_FILENAME; no admite rutas absolutas ni rutas con '..'."
+        )
+
+    return database_path
 
 
 def get_connection() -> sqlite3.Connection:

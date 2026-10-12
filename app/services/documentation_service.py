@@ -7,11 +7,13 @@ import tempfile
 
 from markupsafe import Markup
 
+from app.database import ensure_isolated_path, get_data_dir
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOCUMENTATION_SOURCE_DIR = REPO_ROOT / "docs" / "user"
 DOCUMENTATION_OUTPUT_DIR = REPO_ROOT / "app" / "static" / "docs"
-DOCUMENTATION_BUILD_DIR = REPO_ROOT / "data" / "documentation-build"
+DOCUMENTATION_BUILD_SUBDIRECTORY = "documentation-build"
 PDFLATEX_COMMAND = "pdflatex"
 PDFLATEX_TIMEOUT_SECONDS = 45
 DOCUMENTATION_RELEASE_VERSION = "v0.9.0"
@@ -82,6 +84,20 @@ class DocumentationGenerationError(RuntimeError):
     pass
 
 
+def get_documentation_build_dir() -> Path:
+    """Directorio de trabajo de pdflatex, dentro del directorio de datos configurado.
+
+    Se resuelve en cada llamada a proposito: como constante de modulo ignoraria
+    `APP_DATA_DIR` y la suite terminaria compilando dentro del repositorio.
+    `DOCUMENTATION_SOURCE_DIR` y `DOCUMENTATION_OUTPUT_DIR` no cambian porque son
+    entrada de solo lectura y destino de PDFs servidos, respectivamente.
+    """
+
+    build_directory = get_data_dir() / DOCUMENTATION_BUILD_SUBDIRECTORY
+
+    return ensure_isolated_path(build_directory, "El directorio de compilacion de la documentacion")
+
+
 def list_documentation_assets() -> tuple[DocumentationAsset, ...]:
     return DOCUMENTATION_ASSETS
 
@@ -109,7 +125,7 @@ def load_documentation_page(document_key: str) -> DocumentationPage | None:
 
 def generate_all_documentation_pdfs() -> list[Path]:
     DOCUMENTATION_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    DOCUMENTATION_BUILD_DIR.mkdir(parents=True, exist_ok=True)
+    get_documentation_build_dir().mkdir(parents=True, exist_ok=True)
 
     generated_paths: list[Path] = []
 
@@ -124,9 +140,10 @@ def generate_all_documentation_pdfs() -> list[Path]:
 
 def _compile_latex_to_pdf(latex_content: str, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    DOCUMENTATION_BUILD_DIR.mkdir(parents=True, exist_ok=True)
+    build_directory = get_documentation_build_dir()
+    build_directory.mkdir(parents=True, exist_ok=True)
 
-    with tempfile.TemporaryDirectory(prefix="docs-pdf-", dir=DOCUMENTATION_BUILD_DIR) as temp_directory_name:
+    with tempfile.TemporaryDirectory(prefix="docs-pdf-", dir=build_directory) as temp_directory_name:
         temp_directory = Path(temp_directory_name)
         tex_path = temp_directory / "documentation.tex"
         tex_path.write_text(latex_content, encoding="utf-8")

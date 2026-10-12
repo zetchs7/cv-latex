@@ -5180,3 +5180,79 @@ Error completo:
 Ninguno.
 Reintento/correccion:
 Causa raiz identificada: `app/services/documentation_service.py:14` define `DOCUMENTATION_BUILD_DIR = REPO_ROOT / "data" / "documentation-build"` como constante de modulo que ignora `APP_DATA_DIR`, y los tests que no parchean esa variable operar sobre el `data/` real. Bajo el runner Docker el workspace era de solo lectura con tmpfs en `data`, por lo que el aislamiento era un efecto del entorno y no del codigo.
+2026-10-11 17:32:44 | Etapa 9.9/aislamiento-tests | CMD-092
+Accion:
+Corregir de raiz el aislamiento de pruebas para que no dependa de Docker.
+Motivo:
+Una corrida de pruebas en el host creo el CV id 49 dentro de `data/app.db` real y dejo artefactos en `data/exports`. El aislamiento lo daba el tmpfs del contenedor, no el codigo: no existia `conftest.py` y `DOCUMENTATION_BUILD_DIR` era una constante de modulo que ignoraba `APP_DATA_DIR`.
+Comando:
+`systemctl is-active docker`; `pgrep -a dockerd`; `docker context ls`; `docker --context desktop-linux version`; `grep -rn 'REPO_ROOT|_DIR = Path' app/`; alta de `tests/conftest.py` y `tests/test_test_isolation.py`; edicion de `app/database.py` y `app/services/documentation_service.py`; corrida de la suite sin `APP_DATA_DIR` en el entorno.
+Argumentos:
+Rama `fix/test-data-isolation` creada desde `development` (`97e2577`). Superficie acotada a cuatro archivos. Sin push, PR, merge, tag ni release. Docker no disponible y sin sudo para levantarlo: se valido con el virtualenv efimero de versiones pineadas de `requirements.txt`.
+Resultado:
+`tests/conftest.py` crea un temporal unico y exporta `APP_DATA_DIR` y `CV_LATEX_TESTING=1` en tiempo de importacion, con verificacion fail-closed que aborta la sesion antes de escribir si la resolucion no cae en ese temporal. `get_data_dir()` rechaza el directorio de datos del repositorio mientras haya marcador o `pytest` importado, y conserva su comportamiento normal sin marcador. `DOCUMENTATION_BUILD_DIR` paso a `get_documentation_build_dir()`, derivado de `get_data_dir()` y evaluado en la llamada. Se verifico que `DOCUMENTATION_OUTPUT_DIR` solo lo escribe el comando de mantenimiento explicito, nunca los tests, asi que no se toco.
+Error completo:
+Docker resulto inaccesible por una causa externa: el motor (Docker Desktop del lado Windows) no esta corriendo, el contexto activo `default` apunta a un socket unix sin demonio escuchando y el contexto `desktop-linux` a un named pipe de Windows inaccesible desde WSL (`protocol not available`). No se intento reparar ni usar sudo.
+Reintento/correccion:
+Ninguno. La validacion se hizo con el virtualenv de versiones pineadas.
+
+2026-10-11 17:32:44 | Etapa 9.9/aislamiento-tests | CMD-093
+Accion:
+Verificar que la suite ya no toca el entorno normal de la aplicacion.
+Motivo:
+La correccion solo sirve si se demuestra con evidencia observable, no con narracion.
+Comando:
+`find data -type f -printf '%p|%s|%T@' | sort | sha256sum` antes y despues; `stat data/app.db`; suite completa con `env -u APP_DATA_DIR`; `ls -d /tmp/cv-latex-tests-*`; `pytest tests/test_test_isolation.py`; `python -m compileall -q app tests`; `git -c core.whitespace=cr-at-eol diff --check`.
+Argumentos:
+Sin escrituras sobre `data/` en ningun momento de la verificacion.
+Resultado:
+Suite completa **sin `APP_DATA_DIR` en el entorno**: `240 passed, 1 warning in 3.50s`. Manifiesto recursivo de `data/` identico antes y despues (`a1c64a266de3e6d57cfe7d43b17af293be8b7cbe783665b6ad8314d2e11dcb4c`, 175 archivos). `data/app.db` conserva mtime y tamano. Cero temporales huerfanos. Pruebas de aislamiento propias: 11 aprobadas. `compileall` exit 0. `diff --check` exit 0.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No fue necesario.
+2026-10-11 17:48:04 | Etapa 9.9/aislamiento-tests | CMD-094
+Accion:
+Validar la correccion de aislamiento dentro de Docker y preparar la integracion.
+Motivo:
+La correccion se habia validado solo con el virtualenv del host porque el motor de Docker no estaba disponible. Faltaba la segunda via y la evidencia de que la suite no toca la persistencia normal.
+Comando:
+`docker info`; `docker build -t cv-latex-test-isolation:c9f9d85 -f Dockerfile .`; `docker run --rm --network none --read-only --tmpfs /tmp --tmpfs /data ... -m pytest -p no:cacheprovider -q`; `docker compose config`; prueba HTTP en un contenedor independiente; `docker exec` para verificar el comportamiento fuera de testing.
+Argumentos:
+Contenedores efimeros sin montar `./data` del host ni volumenes del servicio normal, con tmpfs propio para `/tmp` y `/data` y rootfs de solo lectura. No se ejecuto `docker compose up --force-recreate`. Binding HTTP solo a `127.0.0.1`.
+Resultado:
+Imagen construida desde `c9f9d85`; se verifico que contiene `tests/conftest.py` (85 lineas) y `tests/test_test_isolation.py` (197 lineas), y que su `APP_DATA_DIR` sigue siendo `/data` para que el aislamiento tenga que sobreescribirlo. Suite completa en contenedor de solo lectura: **`240 passed, 1 warning in 2.09s`**. Evidencia interna: `APP_DATA_DIR` resuelve a `/tmp/cv-latex-tests-*`, `get_data_dir()` y `get_documentation_build_dir()` quedan bajo el temporal, la guardia aborta ante el `data/` del repositorio, la base se crea en el temporal y `/data` del contenedor no se abre. HTTP en contenedor independiente: `/health` 200 y las tres rutas de documentacion 200. Fuera de testing la app sigue usando `/data` y su base habitual. Manifiesto recursivo del `data/` del host identico antes y despues (`a1c64a266de3e6d57cfe7d43b17af293be8b7cbe783665b6ad8314d2e11dcb4c`). `docker compose config` exit 0. Contenedor de aplicacion normal intacto.
+Error completo:
+El primer contenedor HTTP no arranco con `sqlite3.OperationalError: unable to open database file`: el tmpfs `/data` queda en manos de root y el contenedor corre como `appuser` (uid 1000). Ademas, con `--network none` el puerto publicado no es alcanzable. Ambos son defectos de la invocacion, no del codigo ni del aislamiento.
+Reintento/correccion:
+Un reintento acotado con `--tmpfs /data:uid=1000,gid=1000,mode=0770` y red bridge con binding solo a loopback: HTTP 200 en las cuatro rutas.
+2026-10-11 18:01:05 | Etapa 9.9/aislamiento-tests | CMD-095
+Accion:
+Resolver los hallazgos del Codex Review del PR #17 (2 P1 y 1 P2) y revalidar.
+Motivo:
+El review del commit `ce46cfc` reporto que la proteccion fail-closed no cubria todo lo queProtect: un `APP_DATA_DIR` externo como `/data` (el store real de Compose) pasaba el filtro porque solo se reconocia `<repo>/data`; `APP_DB_FILENAME` podia ser absoluto o traer `..` y sacar la base del temporal; y la comprobacion del manifiesto estaba dentro de un test, que es el ultimo de su modulo pero no de la sesion.
+Comando:
+`gh pr view 17 --json reviews`; `gh api repos/zetchs7/cv-latex/pulls/17/comments`; edicion de `app/database.py` y `tests/conftest.py`; ampliacion de `tests/test_test_isolation.py`; `pytest tests/test_test_isolation.py`; suite completa en host sin `APP_DATA_DIR` y en Docker con rootfs de solo lectura.
+Argumentos:
+Rama `fix/test-data-isolation`. Superficie acotada a tres archivos. Sin push, PR, merge, tag ni release en este comando.
+Resultado:
+P1a: durante las pruebas `get_data_dir()` exige un directorio bajo la raiz temporal del sistema, no solo distinto de `<repo>/data`, de modo que `/data` y cualquier store externo quedan rechazados. P1b: `get_database_path()` exige que la base quede dentro del directorio de datos configurado, lo que cubre rutas absolutas y `..`; `conftest` fija `APP_DB_FILENAME` al valor por defecto para neutralizar cualquier valor hostil del host. P2: el manifiesto de `data/` y de `app/static/docs` se captura al importar `conftest` y se compara en `pytest_sessionfinish`, que escala el exit code a 1 si algo cambio. Pruebas nuevas: 4 de regresion mas las del manifiesto, totalling 245. Suite completa `245 passed, 1 warning` tanto en el host sin `APP_DATA_DIR` como en Docker con rootfs de solo lectura y sin montajes.
+Error completo:
+Dos fallos intermediarios fueron de las pruebas nuevas, no del aislamiento: asumian que `data/` del repositorio existe y es escribible, lo que no ocurre con rootfs de solo lectura ni cuando el directorio no existe. Ademas, fijar `APP_DB_FILENAME=test-app.db` rompio `test_database_migrations`, que crea su propia base como `app.db` y migraba una base vacia en su lugar.
+Reintento/correccion:
+Las pruebas del manifiesto pasaron a trabajar sobre un temporal propio y la asercion de cobertura se ajusto a la semántica real del snapshot. `APP_DB_FILENAME` paso a fijarse al nombre por defecto, que neutraliza el valor hostil del entorno sin romper las pruebas de migracion.
+2026-10-11 18:05:41 | Etapa 9.9/aislamiento-tests | CMD-096
+Accion:
+Resolver el segundo pase del Codex Review del PR #17 y revalidar.
+Motivo:
+La re-review del commit `ae64a2b` reporto dos P1. Uno, sobre `APP_DB_FILENAME`, es el mismo texto del hallazgo ya resuelto y su referencia cruzada apunta al commit `ce46cfc`. El otro es nuevo y real: `get_data_dir()` valida el directorio raiz, pero un subdirectorio derivado puede ser un enlace simbolico a otro arbol y las escrituras lo siguen.
+Comando:
+Reproduccion del escape con un `exports` y un `documentation-build` enlazados a un arbol externo; edicion de `app/database.py`, `app/services/export_service.py` y `app/services/documentation_service.py`; ampliacion de `tests/test_test_isolation.py`; suite completa en host y en Docker; smoke HTTP en un contenedor independiente.
+Argumentos:
+Rama `fix/test-data-isolation`. Superficie acotada a cuatro archivos. Sin push, PR, merge, tag ni release en este comando.
+Resultado:
+Se agrego `ensure_isolated_path()`, un guard compartido en `app/database.py` que, durante una corrida de pruebas, exige que toda ruta derivada resuelva dentro del directorio de datos ya aislado, y que fuera de las pruebas devuelve la ruta intacta. Se aplico en `ensure_exports_directory()`, `ensure_pdf_temp_root()` y `get_documentation_build_dir()`, siempre antes del `mkdir`. La reproduccion que reportaba el review ahora aborta en los tres casos y deja cero archivos escritos fuera. Pruebas nuevas: tres, la del escape, la del caso legitimo que evita un falso positivo y la que prueba en un subproceso que el guard es inerte y que `/data` sigue siendo el directorio por defecto. Suite completa `248 passed, 1 warning` en host sin `APP_DATA_DIR` y en Docker con rootfs de solo lectura, tmpfs en `/tmp` y `/data`, sin red y sin montajes. Manifiestos de `data/` y de `app/static/docs` identicos antes y despues. HTTP: `/health` y las tres rutas de documentacion en 200; el guard devuelve `/data/exports` sin observar y el directorio se crea. JavaScript 8, `compileall` 0, `diff --check` 0, `docker compose config` 0. Contenedor de aplicacion normal intacto.
+Error completo:
+La primera version de la prueba de modo normal fallaba porque `ensure_exports_directory()` crea el directorio y, con el `/data` por defecto, el host no tiene permisos para crearlo.
+Reintento/correccion:
+La prueba paso a no escribir nada: verifica con `get_data_dir()` que el directorio por defecto sigue siendo `/data` y que el guard devuelve la ruta intacta en lugar de rechazarla. El subproceso sigue siendo necesario porque `_is_test_process()` tambien detecta `pytest` en `sys.modules`.

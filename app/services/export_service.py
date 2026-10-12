@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import re
 
-from app.database import get_data_dir
+from app.database import ensure_isolated_path, get_data_dir
 from app.models import CV, CoverLetter
 from app.schemas import CVFormData
 from app.services.file_naming import SAFE_EXPORT_FILENAME_MAX_LENGTH, build_capped_filename, sanitize_filename_component
@@ -90,12 +90,14 @@ def read_limited_upload_bytes(
 
 def ensure_exports_directory() -> Path:
     exports_directory = get_data_dir() / EXPORTS_DIRECTORY_NAME
+    ensure_isolated_path(exports_directory, "El directorio de exportaciones")
     exports_directory.mkdir(parents=True, exist_ok=True)
     return exports_directory
 
 
 def ensure_pdf_temp_root() -> Path:
     temp_root = ensure_exports_directory() / "_tmp"
+    ensure_isolated_path(temp_root, "El directorio temporal de PDF")
     temp_root.mkdir(parents=True, exist_ok=True)
     return temp_root
 
