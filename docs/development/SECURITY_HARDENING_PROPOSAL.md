@@ -180,17 +180,39 @@ Esto preserva el modelo de uso: sin usuario, sin contraseña, sin base de sesion
 ### 5.1 Matriz de límites por ruta
 
 La tabla es la política. Agregar una ruta sin entrada aquí es un defecto, igual que olvidar el
-token CSRF.
+token CSRF. La lista es **exhaustiva**: nombra una por una todas las rutas POST del proyecto, con
+el nombre real del parámetro de ruta, para que se pueda auditar contra `app/routes/*.py`.
 
 | Ruta | Método | Cap | Motivo |
 | --- | --- | --- | --- |
-| `/cvs/` y `/cvs/{id}/edit` | POST | 256 KB | Formulario con campos acotados por `cv_validations` |
-| `/cvs/new/structured` y `/cvs/{id}/structured-edit` | POST | 1 MiB | Payload estructurado, tope de 512 KB + sobre |
-| `/cvs/import/json` | POST | 1 MiB | Límite real de ~520 KB |
-| `/cvs/import/pdf` | POST | **10 MiB + 64 KB** | Límite autorizado para PDFs |
-| `/cover-letters/*` | POST | 256 KB | Igual que CVs |
-| `/applications/*` | POST | 256 KB | Igual que CVs |
+| `/cvs/`, `/cvs/{cv_id}/edit` | POST | 256 KB | Formulario urlencoded; campos acotados por `cv_validations.FIELD_LIMITS` (~6.5 KB de caracteres) |
+| `/cvs/{cv_id}/duplicate` | POST | 8 KB | No parsea cuerpo: el único input es el `{cv_id}` de la ruta |
+| `/cvs/{cv_id}/delete` | POST | 8 KB | Un solo campo `confirmation_value` con el título del CV (`FIELD_LIMITS["title"]` = 120 caracteres) |
+| `/cvs/new/structured`, `/cvs/{cv_id}/structured-edit` | POST | 1 MiB | JSON estructurado; `MAX_STRUCTURED_PAYLOAD_BYTES` = 512 KB + sobre |
+| `/cvs/import/json` | POST | 1 MiB | Multipart de un archivo; `MAX_JSON_IMPORT_BYTES` = 512 KB + 8 KB de envelope |
+| `/cover-letters/`, `/cover-letters/{cover_letter_id}/edit` | POST | 256 KB | Formulario urlencoded; `COVER_LETTER_FIELD_LIMITS` (~5.8 KB de caracteres) |
+| `/cover-letters/{cover_letter_id}/delete` | POST | 8 KB | Un solo campo `confirmation_value` con empresa y puesto |
+| `/applications/`, `/applications/{application_id}/edit` | POST | 256 KB | Formulario urlencoded; `APPLICATION_FIELD_LIMITS` (~5.8 KB de caracteres) |
+| `/applications/{application_id}/delete` | POST | 8 KB | Un solo campo `confirm_delete`, que debe ser exactamente `yes` |
+| `/cvs/import/pdf` | POST | **10 MiB + 64 KB** | Multipart del archivo PDF; `MAX_PDF_BYTES` = 10 MiB + sobre multipart |
+| `/cvs/import/{draft_id}`, `/cvs/import/{draft_id}/confirm`, `/cvs/import/{draft_id}/discard` | POST | 2 MiB | Formulario de revisión: repite un par de campos por cada campo extraído, hasta `MAX_PDF_PAGES` = 20 |
 | Cualquier ruta GET | — | 8 KB | No deberían llevar cuerpo |
+
+Las dos filas de `/cvs/import/*` todavía **no existen en esta rama**: provienen del
+importador de PDF de `feature/pdf-cv-import`, que se integra en paralelo. Figuran igual porque la
+matriz tiene que estar completa antes del merge: cuando esa rama entre, el cap se aplica sin
+revisar nada de nuevo. Los paths son los que declara ese router (`APIRouter(prefix="/cvs/import")`),
+no `/cvs/import/pdf/{draft_id}`.
+
+El cap se define por **qué parsea la ruta**, no por el módulo donde vive:
+
+- Las rutas que no leen cuerpo (`/cvs/{cv_id}/duplicate`) y las que leen un único campo corto de
+  confirmación quedan en 8 KB, el mismo piso de las GET.
+- Los formularios clásicos repiten campos acotados por `*_validations`: 256 KB es un margen amplio
+  sobre los ~6 KB validados, sin abrir un vector de cuerpo grande.
+- Los payloads estructurados y los formularios de revisión repetidos por campo extraído necesitan
+  el sobre que ya existe en el código (512 KB) más el de las repeticiones.
+- El PDF es el único cuerpo binario grande y por diseño: su tope real ya está en `MAX_PDF_BYTES`.
 
 El sobre de 64 KB del PDF es para el multipart. **El cap se aplica antes de leer el cuerpo**, con
 un stream que corta al alcanzarlo: un archivo de 500 MB debe rechazarse con 413 sin haberse leído.
@@ -209,7 +231,8 @@ superficie de las demás.
 - POST con token válido → funciona (no romper la app).
 - `Host` no permitido → 403; `Host: localhost` → funciona.
 - Request por encima del cap → 413 antes del parseo.
-- Regresión: las 14 rutas de escritura siguen funcionando con token.
+- Regresión: las 13 rutas POST de esta rama (17 con `feature/pdf-cv-import`) siguen funcionando
+  con token.
 
 ## 8. Compatibilidad y reversión
 
@@ -224,7 +247,8 @@ deshacer. Es una reversión de código puro.
 1. Un sitio externo no puede crear ni modificar ningún registro (verificado con test, no con
    argumento).
 2. Un atacante con DNS rebinding no puede leer respuestas.
-3. Las 14 rutas de escritura funcionan normalmente desde la interfaz.
+3. Las rutas POST funcionan normalmente desde la interfaz (13 en esta rama, 17 con
+   `feature/pdf-cv-import`), sin excepciones.
 4. Un bind no-loopback produce advertencia al arrancar.
 5. El backup documentado produce una copia que `PRAGMA integrity_check` valida.
 6. La suite completa sigue verde.

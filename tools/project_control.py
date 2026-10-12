@@ -798,6 +798,27 @@ def command_render(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _git_index_available() -> bool:
+    """True si el repositorio tiene un indice de Git que se pueda consultar.
+
+    `git show :ruta` devuelve el mismo `None` cuando el archivo no esta en el
+    indice y cuando no hay indice en absoluto. Confundir ambos turnos produce un
+    veredicto falso: `check` acusa "el commit lo omite" sobre un arbol que
+    nunca se commiteo, porque no hay repositorio.
+    """
+
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            check=False,
+        )
+    except (OSError, ValueError):
+        return False
+    return result.returncode == 0
+
+
 def _read_staged_bytes(relative_path: Path | None) -> bytes | None:
     """Contenido de un archivo en el indice de Git, o None si no esta.
 
@@ -826,7 +847,15 @@ def _read_staged_bytes(relative_path: Path | None) -> bytes | None:
 
 
 def command_check(arguments: argparse.Namespace) -> int:
-    """Compara el Markdown contra el catalogo. Solo lectura por construccion."""
+    """Compara el Markdown contra el catalogo. Solo lectura por construccion.
+
+    Valida cuatro estados por separado: catalogo y documentos en el working
+    tree, y catalogo y documentos en el indice de Git. Que el catalogo o un
+    documento esten en el arbol pero NO en el indice es drift: el commit los
+    omite. Los dos casos se juzgan con la misma condicion y tienen la misma
+    severidad. La unica excepcion es un catalogo fuera del repositorio, donde
+    no hay indice que consultar.
+    """
 
     try:
         catalog = load_catalog()
@@ -856,7 +885,31 @@ def command_check(arguments: argparse.Namespace) -> int:
     # Si el catalogo staged existe pero es invalido, eso es un fallo: antes se
     # descartaba en silencio y la comparacion del indice se saltaba, que es
     # justo el estado desde el que se hace el commit.
-    staged_catalog_bytes = _read_staged_bytes(catalog_relative) if catalog_relative else None
+    #
+    # `index_available` es la UNICA condicion que decide si hay indice al que
+    # preguntar, y es la misma para el catalogo y para cada documento. Solo es
+    # False cuando el catalogo vive fuera del repositorio, en cuyo caso no hay
+    # indice que consultar para ninguno de los dos. Dentro del repositorio, la
+    # ausencia en el indice es drift: el commit omite un archivo obligatorio.
+    # Antes el catalogo ausente del indice (por ejemplo tras `git rm --cached`)
+    # saltaba toda la validacion del indice en silencio y `check` devolvia 0.
+    index_available = catalog_relative is not None
+    if catalog_relative is not None and not _git_index_available():
+        # El catalogo vive dentro del repositorio pero no hay indice: `check` no
+        # puede validar el estado desde el que se hace commit. Falla con un
+        # motivo exacto en vez de acusar una omision que no existe.
+        print(
+            "project_control: no hay indice de git consultable en "
+            f"{REPOSITORY_ROOT}, asi que el estado staged no se puede validar.\n"
+            "Corrige esto o ejecuta `check` dentro de un checkout del repositorio."
+        )
+        return 1
+
+    staged_catalog_bytes = _read_staged_bytes(catalog_relative)
+    missing_from_index: list[str] = []
+    if index_available and staged_catalog_bytes is None:
+        missing_from_index.append(catalog_relative.as_posix())
+
     staged_catalog = None
     staged_rendered: dict[str, bytes] = {}
 
@@ -915,29 +968,40 @@ def command_check(arguments: argparse.Namespace) -> int:
             continue
 
         # El working tree puede estar bien y el indice no: ese es el estado desde
-        # el que se hace commit.
-        if relative is not None:
+        # el que se hace commit. Se pregunta con la MISMA condicion que al
+        # catalogo, sin importar si el catalogo esta o no en el indice.
+        if index_available:
             staged = _read_staged_bytes(relative)
             if staged is None:
                 # El documento esta en el working tree pero fue eliminado del
-                # indice (por ejemplo con `git rm --cached`). Antes se ignoraba
-                # y el commit podia omitir un documento generado obligatorio.
-                # Es independiente de que el catalogo staged exista.
-                missing.append(filename)
-            elif staged_catalog is not None:
-                reference = staged_rendered.get(filename, expected)
-                if staged != reference:
-                    unstaged.append(filename)
+                # indice (por ejemplo con `git rm --cached`). El commit podria
+                # omitir un documento generado obligatorio.
+                missing_from_index.append(relative.as_posix() if relative is not None else filename)
+                continue
+
+            # Sin catalogo en el indice no hay bytes de referencia propios: se
+            # compara contra el documento renderizado del working tree. El
+            # catalogo ausente ya queda reportado arriba y falla igual.
+            reference = staged_rendered.get(filename, expected)
+            if staged != reference:
+                unstaged.append(filename)
 
     if unstaged:
         drifted.extend(f"{name} (stale en el indice de git)" for name in unstaged)
 
-    if missing or drifted:
+    if missing or drifted or missing_from_index:
         if missing:
             print("\nfaltan documentos generados: " + ", ".join(sorted(missing)))
+        if missing_from_index:
+            print(
+                "\nfaltan del indice de git, el commit los omitiria: "
+                + ", ".join(sorted(missing_from_index))
+            )
         if drifted:
             print("documentos desactualizados respecto del catalogo: " + ", ".join(sorted(drifted)))
         print("\nEjecutar: python3 tools/project_control.py render")
+        if missing_from_index:
+            print("Ejecutar: git add -- docs/development")
         return 1
 
     print(f"catalogo y {len(rendered)} documentos generados en sync")

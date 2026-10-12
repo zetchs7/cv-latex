@@ -430,6 +430,116 @@ def test_catalog_readme_documents_every_required_field():
     assert catalog["meta"]["generated_by"] == "tools/project_control.py"
 
 
+# --- Matriz de limites por ruta de la propuesta de seguridad ---------------
+#
+# §5.1 declara que su tabla es exhaustiva. Eso solo es auditable si la tabla se
+# contrasta contra el codigo: estos tests parsean `app/routes/*.py` y fallan si
+# aparece una ruta POST que la tabla no nome.
+
+SECURITY_PROPOSAL = REPOSITORY_ROOT / "docs/development/SECURITY_HARDENING_PROPOSAL.md"
+ROUTES_DIRECTORY = REPOSITORY_ROOT / "app/routes"
+
+# Rutas POST del importador de PDF, que vive en la rama hermana
+# `feature/pdf-cv-import` y todavia no esta en `app/routes/`. Se declaran aca
+# para que la tabla las audite igual: si el merge las cambia de path, el test de
+# igualdad lo detecta en vez de dejar filas fantasma.
+PDF_IMPORT_POST_ROUTES = {
+    "/cvs/import/pdf",
+    "/cvs/import/{draft_id}",
+    "/cvs/import/{draft_id}/confirm",
+    "/cvs/import/{draft_id}/discard",
+}
+
+ROUTER_PREFIX_RE = re.compile(r'APIRouter\(\s*prefix="([^"]*)"')
+ROUTE_RE = re.compile(r'@router\.(post|get|put|patch|delete)\(\s*"([^"]*)"')
+
+
+def _declared_post_routes() -> set[str]:
+    """Rutas POST reales, armadas con el prefijo del router de cada modulo."""
+
+    routes: set[str] = set()
+    for module in sorted(ROUTES_DIRECTORY.glob("*.py")):
+        source = module.read_text(encoding="utf-8")
+        prefix_match = ROUTER_PREFIX_RE.search(source)
+        if prefix_match is None:
+            continue
+        prefix = prefix_match.group(1)
+        for method, path in ROUTE_RE.findall(source):
+            if method == "post":
+                routes.add(prefix + path)
+    return routes
+
+
+def _limit_table_rows() -> list[list[str]]:
+    """Filas de la tabla de §5.1, sin encabezado ni separador."""
+
+    text = SECURITY_PROPOSAL.read_text(encoding="utf-8")
+    assert "### 5.1" in text, "la propuesta ya no tiene la seccion 5.1"
+    section = text.split("### 5.1", 1)[1].split("\n## ", 1)[0]
+
+    rows = []
+    for line in section.splitlines():
+        stripped = line.strip()
+        if not (stripped.startswith("|") and stripped.endswith("|")):
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        if cells[0] == "Ruta" or set(cells[0]) <= {"-"}:
+            continue
+        rows.append(cells)
+    return rows
+
+
+def _table_routes(rows: list[list[str]]) -> set[str]:
+    """Rutas nombradas en la primera columna de la tabla."""
+
+    named: set[str] = set()
+    for row in rows:
+        for part in re.split(r",|\sy\s", row[0]):
+            route = part.strip().strip("`")
+            if route.startswith("/"):
+                named.add(route)
+    return named
+
+
+def test_security_proposal_limit_table_covers_every_post_route():
+    declared = _declared_post_routes()
+    assert declared, "no se pudo parsear ninguna ruta POST de app/routes/*.py"
+
+    expected = declared | PDF_IMPORT_POST_ROUTES
+    table = _table_routes(_limit_table_rows())
+
+    assert expected - table == set(), "rutas POST sin fila en la matriz de §5.1"
+    assert table - expected == set(), "la matriz de §5.1 nombra rutas POST que no existen"
+
+
+@pytest.mark.parametrize(
+    "route",
+    [
+        "/cvs/{cv_id}/duplicate",
+        "/cvs/{cv_id}/delete",
+        "/cvs/{cv_id}/edit",
+        "/cvs/{cv_id}/structured-edit",
+        "/cover-letters/{cover_letter_id}/delete",
+        "/applications/{application_id}/delete",
+        *sorted(PDF_IMPORT_POST_ROUTES),
+    ],
+)
+def test_security_proposal_limit_table_names_route(route):
+    """Ancla explicita: las rutas que el review reporto como faltantes."""
+
+    assert route in _table_routes(_limit_table_rows()), f"§5.1 no nombra {route}"
+
+
+def test_every_limit_row_has_a_cap_and_a_reason():
+    rows = _limit_table_rows()
+    assert rows, "la tabla de §5.1 esta vacia"
+
+    for row in rows:
+        assert len(row) == 4, f"fila sin las cuatro columnas: {row}"
+        assert row[2], f"fila sin cap: {row}"
+        assert row[3], f"fila sin motivo: {row}"
+
+
 # --- Regresion de los hallazgos del review --------------------------------
 
 
@@ -619,6 +729,62 @@ def test_git_staged_document_missing_from_index_is_drift(git_repository):
     assert _check(git_repository) == 1
 
 
+def test_git_staged_catalog_missing_from_index_is_drift(git_repository, capsys):
+    """`git rm --cached` del catalogo no puede saltarse la validacion del indice.
+
+    El working tree esta impecable y los documentos generados siguen stageados:
+    solo el catalogo desaparecio del indice. Ese estado borra un archivo
+    obligatorio en el commit, asi que `check` tiene que devolver 1 y nombrar al
+    catalogo, igual que hace con un documento generado ausente del indice.
+    """
+
+    import subprocess
+
+    catalog = git_repository / "docs" / "development" / "project_control" / "catalog.json"
+    subprocess.run(
+        ["git", "rm", "--cached", catalog.relative_to(git_repository).as_posix()],
+        cwd=git_repository,
+        capture_output=True,
+        check=False,
+        env=_git_environment(),
+    )
+
+    assert _check(git_repository) == 1
+    assert catalog.relative_to(git_repository).as_posix() in capsys.readouterr().out
+
+
+def test_git_staged_catalog_and_document_missing_from_index_both_reported(git_repository, capsys):
+    """Catalogo y documento ausentes del indice se reportan juntos."""
+
+    import subprocess
+
+    catalog = git_repository / "docs" / "development" / "project_control" / "catalog.json"
+    document = git_repository / "docs" / "development" / "ROADMAP.md"
+    for target in (catalog, document):
+        subprocess.run(
+            ["git", "rm", "--cached", target.relative_to(git_repository).as_posix()],
+            cwd=git_repository,
+            capture_output=True,
+            check=False,
+            env=_git_environment(),
+        )
+
+    assert _check(git_repository) == 1
+
+    output = capsys.readouterr().out
+    assert catalog.relative_to(git_repository).as_posix() in output
+    assert "ROADMAP.md" in output
+
+
+def test_git_catalog_missing_from_working_tree_fails_even_if_staged(git_repository):
+    """Camino inverso: el indice tiene el catalogo pero el arbol no."""
+
+    catalog = git_repository / "docs" / "development" / "project_control" / "catalog.json"
+    catalog.unlink()
+
+    assert _check(git_repository) == 1
+
+
 def test_git_stale_staged_document_is_drift(git_repository):
     import subprocess
 
@@ -668,3 +834,21 @@ def test_validate_status_and_check_are_read_only_in_git(git_repository):
         if path.is_file() and ".git/" not in path.as_posix()
     }
     assert before == after
+
+
+def test_check_without_a_git_index_reports_the_real_reason(git_repository, monkeypatch, capsys):
+    """Sin indice consultable, `check` dice eso y no acusa una omision inexistente.
+
+    `git show :ruta` devuelve `None` tanto si el archivo no esta en el indice
+    como si no hay indice. Confundir los dos producia "el commit lo omite"
+    sobre un arbol que nunca se iba a commitear.
+    """
+
+    (git_repository / ".git").rename(git_repository / ".git-away")
+    try:
+        assert _check(git_repository) == 1
+        output = capsys.readouterr().out
+        assert "no hay indice de git consultable" in output
+        assert "el commit los omitiria" not in output
+    finally:
+        (git_repository / ".git-away").rename(git_repository / ".git")
