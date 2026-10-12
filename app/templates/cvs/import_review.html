@@ -13,7 +13,7 @@
     type="text"
     name="value__{{ entry.key }}{% if field_name %}:{{ field_name }}{% endif %}"
     value="{{ value or '' }}"
-    maxlength="600">
+    maxlength="{{ 1200 if entry.key == "summary" else 800 }}">
 </label>
 {% endmacro %}
 

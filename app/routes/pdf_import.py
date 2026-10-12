@@ -268,7 +268,7 @@ async def await_form(request: Request) -> dict[str, dict[str, str]]:
         value = str(raw_value)
 
         if key == "cv_title":
-            title = value[:160]
+            title = value
             continue
 
         if key == "confirm_discard":

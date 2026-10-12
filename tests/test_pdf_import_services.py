@@ -658,13 +658,15 @@ def test_long_unclassified_text_assigned_to_skills_is_not_truncated():
 
 
 def test_proposed_title_is_capped_at_the_domain_limit():
+    """Dentro del limite se guarda; por encima se rechaza, no se recorta."""
+
     from app.services import import_staging_service as st
 
     draft = _make_draft()
     updated = st.apply_review(
-        draft, values={}, decisions={}, unclassified_assignments={}, title="T" * 200
+        draft, values={}, decisions={}, unclassified_assignments={}, title="T" * st.FIELD_LIMITS["cv_title"]
     )
-    assert len(updated.proposed_title) == st.MAX_CV_TITLE
+    assert len(updated.proposed_title) == st.FIELD_LIMITS["cv_title"]
 
 
 # --- Invariante de integridad: ningun descarte silencioso -----------------
@@ -844,3 +846,40 @@ def test_long_additional_info_content_is_validated():
         st.confirm_draft(draft, title="CV")
     assert error.value.code == "review_value_too_long"
     assert "informacion adicional" in error.value.user_message
+
+
+def test_skills_are_not_capped_below_the_schema_limit():
+    """El tope sale del schema 2 (40 skills), no de una constante duplicada."""
+
+    from app.validations.structured_cv_validations import ITEM_SECTION_SPECS
+    from app.services import import_staging_service as st
+
+    assert ITEM_SECTION_SPECS["skills"].max_items == 40
+
+    texto = "SKILLS\n" + ", ".join(f"Tecnologia{index}" for index in range(35))
+    parsed = parse_cv_text(texto)
+    assert len(_items(parsed, "skills")) > 30, "no debe cortarse en 30 si el schema admite 40"
+
+
+def test_field_limits_come_from_the_schema_not_a_copy():
+    """Una tabla duplicada se desincroniza: la fuente es el schema."""
+
+    from app.validations import structured_cv_validations as schema
+    from app.services import import_staging_service as st
+
+    assert st.FIELD_LIMITS["skills.label"] == schema.ITEM_SECTION_SPECS["skills"].string_fields[0].max_length
+    assert st.FIELD_LIMITS["summary"] == schema.STRING_SECTION_SPECS["summary"]
+
+
+def test_overlong_title_is_rejected_not_truncated():
+    from app.services import import_staging_service as st
+
+    draft = _make_draft()
+    long_title = "T" * (st.FIELD_LIMITS["cv_title"] + 10)
+
+    with pytest.raises(st.ImportStagingError) as error:
+        st.apply_review(draft, values={}, decisions={}, unclassified_assignments={}, title=long_title)
+    assert error.value.code == "review_title_too_long"
+
+    # El borrador no quedo con un titulo recortado.
+    assert st.load_draft(draft.draft_id).proposed_title != long_title[:120]

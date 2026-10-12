@@ -42,7 +42,15 @@ CONFIDENCE_LABELS = {
 }
 
 MAX_LINE_LENGTH_FOR_HEADING = 60
-MAX_ITEMS_PER_SECTION = 30
+# Tope de items por seccion, derivado del schema 2 real. Un valor fijo se
+# desincroniza: con 30 fijo se perdian skills validos, porque schema 2 admite 40.
+def _max_items(section: str) -> int:
+    from app.validations.structured_cv_validations import ITEM_SECTION_SPECS
+
+    return ITEM_SECTION_SPECS[section].max_items
+
+
+MAX_ITEMS_PER_SECTION = 30  # compatibilidad: valor por defecto, no ya el tope real
 MAX_SKILLS = 40
 MAX_LANGUAGES = 20
 # Tope de seguridad: si un documento deja mas texto sin clasificar que
@@ -647,7 +655,7 @@ def _extract_items(section_name: str, segments: list[_Section], items: list[Stag
     counter = 0
     for segment in matching:
         for candidate in _candidates_for(segment.lines):
-            if counter >= MAX_ITEMS_PER_SECTION:
+            if counter >= _max_items(section_name):
                 return
             items.append(candidate)
             counter += 1
@@ -873,7 +881,7 @@ def _build_skill_items(lines: list[str]) -> list[StagedItem]:
             unique.append(candidate)
 
     items: list[StagedItem] = []
-    for candidate in unique[:MAX_SKILLS]:
+    for candidate in unique[:_max_items("skills")]:
         category = _categorize_skill(candidate)
         confidence = CONFIDENCE_HIGH if category else CONFIDENCE_MEDIUM
         reason = (

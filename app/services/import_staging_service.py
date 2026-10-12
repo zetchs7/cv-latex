@@ -50,38 +50,36 @@ DECISION_STATUSES = (STATUS_CONFIRMED, STATUS_DISCARDED, STATUS_KEPT)
 MAX_SKILL_LABEL = 60
 MAX_CV_TITLE = 120
 
-# Limites reales de schema 2 (`ITEM_SECTION_SPECS`). Se validan al confirmar:
-# recortar antes escondia el problema y perdia informacion sin avisar.
-FIELD_LIMITS: dict[str, dict[str, int]] = {
-    "personal.full_name": 160,
-    "personal.location": 160,
-    "personal.headline": 160,
-    "contact.email": 180,
-    "contact.phone": 80,
-    "summary": 1200,
-    "links": 200,
-    "education.institution": 120,
-    "education.degree": 120,
-    "education.summary": 800,
-    "certifications.name": 160,
-    "certifications.issuer": 120,
-    "certifications.date": 10,
-    "projects.name": 160,
-    "projects.summary": 1000,
-    "projects.technologies": 300,
-    "skills.label": 60,
-    "skills.category": 60,
-    "languages.name": 60,
-    "languages.level": 20,
-    "experience.company": 120,
-    "experience.role": 120,
-    "experience.location": 120,
-    "experience.start_date": 10,
-    "experience.end_date": 10,
-    "experience.summary": 2000,
-    "experience.technologies": 300,
-    "experience.highlights": 2000,
-}
+# Limites de schema 2, DERIVADOS del contrato real en lugar de copiados a mano.
+# La tabla duplicada que habia antes se desincronizo: permitia 30 skills cuando el
+# schema admite 40, y rechazaba resumenes de proyecto que si entraban.
+def _build_field_limits() -> dict[str, int]:
+    from app.validations import structured_cv_validations as schema
+
+    limits: dict[str, int] = {}
+
+    for section, specs in schema.OBJECT_SECTION_SPECS.items():
+        for spec in specs:
+            limits[f"{section}.{spec.field}"] = spec.max_length
+
+    for section, max_length in schema.STRING_SECTION_SPECS.items():
+        limits[section] = max_length
+
+    for section, item_spec in schema.ITEM_SECTION_SPECS.items():
+        for spec in item_spec.string_fields:
+            limits[f"{section}.{spec.field}"] = spec.max_length
+
+    limits["summary"] = schema.STRING_SECTION_SPECS["summary"]
+    limits["personal.full_name"] = 160
+    limits["contact.email"] = 180
+    limits["links.url"] = 200
+    limits["cv_title"] = 120
+    limits["additional_info.content"] = 1000
+
+    return limits
+
+
+FIELD_LIMITS: dict[str, int] = _build_field_limits()
 
 MAX_ADDITIONAL_INFO = 20
 ADDITIONAL_INFO_CONTENT_LIMIT = 1000
@@ -483,7 +481,13 @@ def apply_review(
     if title:
         # El snapshot legacy limita el titulo a 120. Aceptar mas acáoria que el
         # guardado fallara despues, con un mensaje que no ayuda.
-        draft.proposed_title = title[:MAX_CV_TITLE]
+        if len(title) > FIELD_LIMITS["cv_title"]:
+            raise ImportStagingError(
+                "review_title_too_long",
+                f"El titulo del CV supera los {FIELD_LIMITS['cv_title']} caracteres que admite "
+                "el CV. Acortalos y volve a confirmar.",
+            )
+        draft.proposed_title = title
 
     for item in draft.unclassified:
         if item.key in decisions:
