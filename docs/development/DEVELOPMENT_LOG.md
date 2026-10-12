@@ -1,6 +1,34 @@
 # Development Log
 
 
+## Etapa 10.3 - Cierre de reviews, correccion de CI y propuesta de seguridad
+
+- Fecha: 2026-10-12
+- Ramas: `feature/project-control-center` y `feature/pdf-cv-import`
+- Objetivo: resolver los hallazgos de Codex Review sobre ambos PR y dejar lista la propuesta de seguridad previa a produccion.
+
+### Lo resuelto
+
+- **CI del PR #20**: el runner de GitHub Actions no tiene `poppler-utils`, y la extraccion de PDF depende de `pdfinfo` y `pdftotext`. 24 tests fallaban con `pdf_tool_missing`. El workflow ahora instala el paquete; el defecto era del entorno, no del codigo.
+- **PR #18**: la comparacion del indice de git se resolvia contra el catalogo del working tree, lo que dejaba pasar el caso inverso. Ahora se validan los dos lados por separado. Se verifico por construccion: con el arbol correcto y un documento obsoleto en el indice, `check` lo reporta.
+- **PR #20**: tres P1 y dos P2 de perdida silenciosa, mas el hallazgo de que el patron se repetia.
+
+### El patron que costo tres rondas
+
+Corregi tres recortes silenciosos, el review encontro tres mas, y solo cuando conte los `[:N]` del camino de valores aparecieron unos sesenta. La regla unica quedo: los valores se guardan enteros y la validacion ocurre contra el limite real del schema al confirmar. LL-030 documenta la leccion: cuando un defecto se repite, hay que enumerar la clase, no la instancia.
+
+### Seguridad
+
+Auditoria de solo lectura con evidencia citada. Seis hallazgos, de los cuales dos son altos: 14 endpoints POST forjables desde cualquier sitio web (la ausencia de CORS es irrelevante; un POST simple no dispara preflight) y exposicion total si se cambia el bind. Y uno que casi siempre se afirma al reves: **el bind 127.0.0.1 no protege contra DNS rebinding**, porque la conexion la origina el navegador de la victima hacia su propia loopback. Verificado como ausente: path traversal, secretos en repo, root en contenedor, fuga de trazas y logging de datos personales.
+
+Propuesta completa en `docs/development/SECURITY_HARDENING_PROPOSAL.md`, con cuatro decisiones pendientes de Franco. **Nada implementado.**
+
+### Estado
+
+- Ninguno de los dos PR mergeado. `main` intacta en `a28d1fd`.
+- Suite: 340 passed en host y Docker.
+
+
 ## Etapa 10.1 - Project Control Center v1 y cierre del PR #17
 
 - Fecha: 2026-10-12

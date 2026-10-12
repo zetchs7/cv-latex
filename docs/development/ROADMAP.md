@@ -22,17 +22,19 @@ _Vacio._
 
 ## 3. Trabajo listo para iniciar
 
+- **SEC-001** [P0] TrustedHostMiddleware y proteccion contra DNS rebinding _(propuesta, no aprobada)_ — sin dependencias
 - **REL-001** [P1] Publicar v0.10.0 con la etapa 9.x _(propuesta, no aprobada)_ — espera: DOC-001
-- **SEC-001** [P1] TrustedHostMiddleware y proteccion contra DNS rebinding _(propuesta, no aprobada)_ — sin dependencias
+- **SEC-002** [P1] Proteccion CSRF para formularios POST _(propuesta, no aprobada)_ — espera: SEC-001
 - **QLT-001** [P2] Pipeline que ejecute la suite en la imagen del proyecto _(propuesta, no aprobada)_ — sin dependencias
 - **SEC-004** [P2] Unificar la confirmacion destructiva del tracker con el criterio de los demas modulos _(propuesta, no aprobada)_ — sin dependencias
 
 ## 4. Trabajo pendiente acordado
 
 - **CV-001** [P1] Importar Curriculum Vitae desde PDF — sin dependencias
+- **SEC-003** [P1] Estrategia de autenticacion si la app se expone fuera de localhost _(propuesta, no aprobada)_ — espera: SEC-002
 - **OPS-001** [P2] Procedimiento de backup documentado pero inseguro y sin verificar _(propuesta, no aprobada)_ — sin dependencias
 - **QLT-002** [P2] Reejecutar los flujos de navegador real del editor estructurado _(propuesta, no aprobada)_ — sin dependencias
-- **SEC-002** [P2] Proteccion CSRF para formularios POST _(propuesta, no aprobada)_ — espera: SEC-001
+- **SEC-005** [P2] Binding explicito y cap de tamano de request _(propuesta, no aprobada)_ — espera: SEC-001
 - **AIX-001** [P3] Integraciones asistidas por IA _(propuesta, no aprobada)_ — sin dependencias
 - **ATS-001** [P3] UX residual del modulo ATS _(propuesta, no aprobada)_ — sin dependencias
 - **CLEAN-001** [P3] Limpieza del CV id 49 y artefactos de validacion en data/ _(propuesta, no aprobada)_ — sin dependencias
@@ -41,7 +43,6 @@ _Vacio._
 - **EDT-001** [P3] Drag and drop en el editor estructurado _(propuesta, no aprobada)_ — sin dependencias
 - **IMP-001** [P3] Exportaciones e importaciones mas amplias que JSON _(propuesta, no aprobada)_ — sin dependencias
 - **QLT-003** [P3] Adoptar black y ruff como dependencias de desarrollo _(propuesta, no aprobada)_ — sin dependencias
-- **SEC-003** [P3] Estrategia de autenticacion si la app se expone fuera de localhost _(propuesta, no aprobada)_ — espera: SEC-002
 
 ## 5. Trabajo bloqueado
 

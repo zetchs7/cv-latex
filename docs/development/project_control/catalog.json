@@ -146,11 +146,11 @@
   "risks": [
     {
       "id": "RSK-001",
-      "title": "Sin middleware: la app local es operable desde cualquier sitio web",
+      "title": "14 endpoints POST forjables desde cualquier sitio web",
       "severity": "high",
       "status": "open",
-      "mitigation": "Anadir `TrustedHostMiddleware` y tokens CSRF a los formularios POST. Ver SEC-001 y SEC-002.",
-      "evidence": "`app/main.py:26-39` no registra ningun `add_middleware`. Un POST con `Form(...)` desde un sitio ajeno es una peticion simple que no dispara preflight, y sin token CSRF se ejecuta contra una app sin autenticacion."
+      "mitigation": "Ver SEC-001 (P0). Propuesta completa en `docs/development/SECURITY_HARDENING_PROPOSAL.md`.",
+      "evidence": "Cero `add_middleware` en `app/main.py:26-39`. Un POST con `Form(...)` es una simple request: sin preflight, el navegador lo envia y la app lo ejecuta. IDs secuenciales permiten iterarlos."
     },
     {
       "id": "RSK-002",
@@ -199,6 +199,14 @@
       "status": "open",
       "mitigation": "Adoptar `black` y `ruff` como dependencias de desarrollo. Ver QLT-003.",
       "evidence": "`DEVELOPMENT_LOG.md:36-38`: 'black y ruff no estan disponibles en host ni en la imagen'."
+    },
+    {
+      "id": "RSK-008",
+      "title": "Backup documentado puede producir una copia inconsistente",
+      "severity": "medium",
+      "status": "open",
+      "mitigation": "Usar `sqlite3 data/app.db \".backup\"` o detener la app antes de copiar. Ver OPS-001/SEC-003.",
+      "evidence": "`README.md:149` y `docs/user/WEB_USAGE_MANUAL.md` hacen `cp data/app.db` con la app corriendo."
     }
   ],
   "tasks": [
@@ -258,9 +266,9 @@
     {
       "id": "SEC-001",
       "title": "TrustedHostMiddleware y proteccion contra DNS rebinding",
-      "description": "La app no registra ningun middleware. Como no hay autenticacion ni CSRF, un sitio web ajeno puede disparar peticiones POST con `Form(...)` contra la instancia local y crear, modificar o borrar CVs. Agregar validacion de host y limitar la exposicion de red.",
+      "description": "La app no registra ningun middleware: cero add_middleware en todo el repo. Sus 14 endpoints POST son ejecutables mediante request forgery desde cualquier sitio web, porque un POST con Form(...) o urlencoded es una simple request que no dispara preflight y el navegador la envia. El atacante obtiene creacion y modificacion arbitraria de CVs, cartas y postulaciones; los ids son enteros secuenciales, asi que puede iterar /cvs/1/edit, /cvs/2/edit sin leer nada. El borrado queda protegido por la coincidencia exacta de texto, que un atacante ciego no conoce.",
       "origin": "engineering",
-      "priority": "P1",
+      "priority": "P0",
       "status": "ready",
       "module": "dashboard",
       "depends_on": [],
@@ -270,7 +278,7 @@
         "El bind por defecto sigue siendo `127.0.0.1`",
         "La limitacion esta documentada en README y en la documentacion de usuario"
       ],
-      "evidence": "`app/main.py:26-39` no registra ningun `add_middleware`; `docker-compose.yml:13` usa `APP_HOST_BIND=127.0.0.1` por defecto.",
+      "evidence": "Informe de amenazas 2026-10-12: `app/main.py:26-39` sin add_middleware; 14 rutas POST listadas en `app/routes/`; cero tokens CSRF en ninguna de las 8 plantillas con method=post; AUTOINCREMENT en `app/database.py:195`.",
       "github_issue": null,
       "next_action": "Decidir si se agrega CSRF en la misma entrega; ver SEC-002.",
       "approved": false
@@ -278,10 +286,10 @@
     {
       "id": "SEC-002",
       "title": "Proteccion CSRF para formularios POST",
-      "description": "Todos los formularios POST aceptan `Form(...)` sin token. Un POST desde un origen ajeno es una peticion simple que no dispara preflight CORS, asi que se ejecuta contra una aplicacion sin autenticacion.",
+      "description": "Sin TrustedHostMiddleware, un DNS rebinding da lectura total de la app: el atacante controla el DNS de su dominio con TTL bajo, la victima visita el sitio, el JS rebindea a 127.0.0.1, y el navegador conecta desde la maquina de la victima a su propia loopback. El bind 127.0.0.1 NO protege: la restriccion de interfaz no controla peticiones que el propio navegador origina localmente. La SOP se pasa de largo porque el origin sigue siendo el dominio del atacante, que ahora resuelve a loopback, y el JS puede leer las respuestas: exfiltracion de CVs completos.",
       "origin": "engineering",
-      "priority": "P2",
-      "status": "backlog",
+      "priority": "P1",
+      "status": "ready",
       "module": "dashboard",
       "depends_on": [
         "SEC-001"
@@ -300,9 +308,9 @@
     {
       "id": "SEC-003",
       "title": "Estrategia de autenticacion si la app se expone fuera de localhost",
-      "description": "La app esta disenada para uso local sin login. Exponerla fuera de localhost sin auth, permisos, CSRF, CORS, headers ni rate limits seria un riesgo inaceptable. Esta tarea no es una peticion de implementar auth hoy: es registrar que la decision debe ser explicita antes de cambiar el bind.",
+      "description": "OPS-001 cubria el riesgo de backup inconsistente: el procedimiento documentado copia `data/app.db` con `cp` mientras la app corre, y SQLite en journal mode default puede producir una copia a medio escribir. El RESTORE si es consistente porque exige detener la app; el backup no. La forma correcta es `sqlite3 data/app.db \".backup\"` o detener la app antes de copiar.",
       "origin": "engineering",
-      "priority": "P3",
+      "priority": "P1",
       "status": "backlog",
       "module": "dashboard",
       "depends_on": [
@@ -589,6 +597,26 @@
       "evidence": "`data/app.db` con 49 CVs verificado integro; 175 archivos en `data/`, de los cuales 107 en `exports/` y 37 en `documentation-qa/` son artefactos de validacion.",
       "github_issue": null,
       "next_action": "Esperar la decision de Franco; es una escritura irreversible sobre datos ficticios.",
+      "approved": false
+    },
+    {
+      "id": "SEC-005",
+      "title": "Binding explicito y cap de tamano de request",
+      "description": "`APP_HOST_BIND=0.0.0.0` deja la app accesible desde toda la LAN sin autenticacion, con lectura y escritura total. Ademas no hay cap global de tamano de body: un POST urlencoded enorme se parsea completo en memoria antes de la validacion por campo. El peligro de puerto esta documentado, pero nada lo advierte cuando se cambia el bind.",
+      "origin": "engineering",
+      "priority": "P2",
+      "status": "backlog",
+      "module": "dashboard",
+      "depends_on": [
+        "SEC-001"
+      ],
+      "acceptance": [
+        "Un bind distinto de 127.0.0.1 produce una advertencia visible al arrancar",
+        "Existe un cap de tamanio de request aplicado antes del parseo completo"
+      ],
+      "evidence": "`docker-compose.yml:13`, `app/database.py:195`; informe de amenazas 2026-10-12.",
+      "github_issue": null,
+      "next_action": "Se incluye con SEC-001 en la misma entrega de hardening.",
       "approved": false
     }
   ]

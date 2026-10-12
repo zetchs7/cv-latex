@@ -5287,3 +5287,18 @@ Error completo:
 Se colaron caracteres CJK y palabras inglesas pegadas en varios archivos nuevos, detectados por un escaneo explicito y corregidos. Dos tests fallaron: uno porque `load_catalog` usaba `CATALOG_PATH` como valor por defecto, que queda fijado al importar y no se puede sustituir en tests; el otro por una asercion mia mal escrita. La tarea `OPS-001` se registro inicialmente como "sin procedimiento de backup", lo cual era falso.
 Reintento/correccion:
 `load_catalog` paso a resolver `CATALOG_PATH` en tiempo de llamada. Las aserciones se reescribieron para afirmar por ubicacion de problema y no por texto del mensaje. Se abrio `README.md:112-151`, se confirmo que el procedimiento de backup si existia y la tarea quedo reformulada como "documentado pero inseguro y sin verificar", con el hallazgo real de que copia la base con `cp` mientras la app escribe. Registrado en LL-026. Los criterios de cierre del MVP se movieron del codigo al catalogo para que Franco pueda editarlos sin programar.
+2026-10-12 08:32:12 ART | Etapa 10.3/cierre-reviews | CMD-100
+Accion:
+Cerrar los hallazgos de Codex Review sobre ambos PR, corregir el CI y producir la propuesta de hardening de seguridad.
+Motivo:
+Los PR #18 y #20 estaban publicados sin merge. CI del PR #20 quedaba en rojo, y quedaban hallazgos P1 sin resolver, todos de la misma clase: perdida silenciosa de informacion.
+Comando:
+Lectura de reviews por `original_commit_id`; merge de `origin/development` en ambas ramas para incorporar CI; instalacion de `poppler-utils` en el workflow; barrido de todos los recortes del camino de valores; tests de regresion; auditoria de seguridad de solo lectura por subagente; catalogo y propuesta de hardening.
+Argumentos:
+Ramas `feature/project-control-center` y `feature/pdf-cv-import`. Sin push destructivo, sin rebase, sin force push, sin tocar `main`. Merge normal de `development`, no rebase, porque los commits ya estaban publicados.
+Resultado:
+PR #20: CI corregido (el runner no tenia poppler y 24 tests fallaban con `pdf_tool_missing`); tres P1 y dos P2 resueltos, y unos sesenta recortes relevados con una regla unica de validacion al confirmar; suite 337 a 340 passed en host y Docker. PR #18: P1 de comparacion del indice contra catalogo staged resuelto verificando ambos lados por separado; P2 de ids malformados y de validar antes de renderizar. Propuesta de hardening con modelo de amenazas, 6 hallazgos con evidencia citada y 4 decisiones pendientes. Catalogo: SEC-001 pasa a P0, se agregan SEC-005 y RSK-008. LL-030 documenta el patron del defecto repetido.
+Error completo:
+La primera pasada de correccion de recortes dejo tres instancias vivas que el review encontro. La causa fue tratar cada instancia como un hallazgo aislado en vez de enumerar la clase completa: cuando conte los `[:N]` del camino, habia unos sesenta.
+Reintento/correccion:
+Barrido sistematico con regla unica (valores enteros, validacion contra el schema al confirmar) y verificado con tres tests que afirman el invariante directamente. Leccion registrada como LL-030.

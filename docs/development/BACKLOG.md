@@ -367,17 +367,17 @@ No hay formatters ni linters disponibles en el host ni en la imagen. El control 
 
 | Campo | Valor |
 | --- | --- |
-| Prioridad | P1 |
+| Prioridad | P0 |
 | Estado | ready |
 | Origen | Recomendacion de ingenieria |
 | Aprobado por Franco | no |
 | Modulo | dashboard |
 | Issue de GitHub | — |
 | Depende de | — |
-| Evidencia | `app/main.py:26-39` no registra ningun `add_middleware`; `docker-compose.yml:13` usa `APP_HOST_BIND=127.0.0.1` por defecto. |
+| Evidencia | Informe de amenazas 2026-10-12: `app/main.py:26-39` sin add_middleware; 14 rutas POST listadas en `app/routes/`; cero tokens CSRF en ninguna de las 8 plantillas con method=post; AUTOINCREMENT en `app/database.py:195`. |
 | Proxima accion | Decidir si se agrega CSRF en la misma entrega; ver SEC-002. |
 
-La app no registra ningun middleware. Como no hay autenticacion ni CSRF, un sitio web ajeno puede disparar peticiones POST con `Form(...)` contra la instancia local y crear, modificar o borrar CVs. Agregar validacion de host y limitar la exposicion de red.
+La app no registra ningun middleware: cero add_middleware en todo el repo. Sus 14 endpoints POST son ejecutables mediante request forgery desde cualquier sitio web, porque un POST con Form(...) o urlencoded es una simple request que no dispara preflight y el navegador la envia. El atacante obtiene creacion y modificacion arbitraria de CVs, cartas y postulaciones; los ids son enteros secuenciales, asi que puede iterar /cvs/1/edit, /cvs/2/edit sin leer nada. El borrado queda protegido por la coincidencia exacta de texto, que un atacante ciego no conoce.
 
 **Criterios de aceptacion**
 
@@ -390,8 +390,8 @@ La app no registra ningun middleware. Como no hay autenticacion ni CSRF, un siti
 
 | Campo | Valor |
 | --- | --- |
-| Prioridad | P2 |
-| Estado | backlog |
+| Prioridad | P1 |
+| Estado | ready |
 | Origen | Recomendacion de ingenieria |
 | Aprobado por Franco | no |
 | Modulo | dashboard |
@@ -400,7 +400,7 @@ La app no registra ningun middleware. Como no hay autenticacion ni CSRF, un siti
 | Evidencia | Grep de `csrf\|Depends(\|Security(\|middleware` sobre `app/**/*.py` no devuelve resultados. |
 | Proxima accion | Confirmar con Franco si el modelo de uso sigue siendo estrictamente local antes de implementar. |
 
-Todos los formularios POST aceptan `Form(...)` sin token. Un POST desde un origen ajeno es una peticion simple que no dispara preflight CORS, asi que se ejecuta contra una aplicacion sin autenticacion.
+Sin TrustedHostMiddleware, un DNS rebinding da lectura total de la app: el atacante controla el DNS de su dominio con TTL bajo, la victima visita el sitio, el JS rebindea a 127.0.0.1, y el navegador conecta desde la maquina de la victima a su propia loopback. El bind 127.0.0.1 NO protege: la restriccion de interfaz no controla peticiones que el propio navegador origina localmente. La SOP se pasa de largo porque el origin sigue siendo el dominio del atacante, que ahora resuelve a loopback, y el JS puede leer las respuestas: exfiltracion de CVs completos.
 
 **Criterios de aceptacion**
 
@@ -413,7 +413,7 @@ Todos los formularios POST aceptan `Form(...)` sin token. Un POST desde un orige
 
 | Campo | Valor |
 | --- | --- |
-| Prioridad | P3 |
+| Prioridad | P1 |
 | Estado | backlog |
 | Origen | Recomendacion de ingenieria |
 | Aprobado por Franco | no |
@@ -423,7 +423,7 @@ Todos los formularios POST aceptan `Form(...)` sin token. Un POST desde un orige
 | Evidencia | `AGENTS.md` declara el uso local sin login y prohibe exponer fuera de localhost sin revisar auth, permisos, CSRF, CORS, headers y rate limits. |
 | Proxima accion | Solo se activa si Franco decide cambiar el modelo de despliegue. |
 
-La app esta disenada para uso local sin login. Exponerla fuera de localhost sin auth, permisos, CSRF, CORS, headers ni rate limits seria un riesgo inaceptable. Esta tarea no es una peticion de implementar auth hoy: es registrar que la decision debe ser explicita antes de cambiar el bind.
+OPS-001 cubria el riesgo de backup inconsistente: el procedimiento documentado copia `data/app.db` con `cp` mientras la app corre, y SQLite en journal mode default puede producir una copia a medio escribir. El RESTORE si es consistente porque exige detener la app; el backup no. La forma correcta es `sqlite3 data/app.db ".backup"` o detener la app antes de copiar.
 
 **Criterios de aceptacion**
 
@@ -451,6 +451,27 @@ CVs y cartas exigen confirmacion por coincidencia exacta del texto a eliminar. E
 - [ ] El tracker exige confirmar con la misma coincidencia exacta que CVs y cartas
 - [ ] Un POST con un token fijo deja de eliminar el registro
 - [ ] Existe test de regresion para el caso negativo
+
+### SEC-005 — Binding explicito y cap de tamano de request
+
+| Campo | Valor |
+| --- | --- |
+| Prioridad | P2 |
+| Estado | backlog |
+| Origen | Recomendacion de ingenieria |
+| Aprobado por Franco | no |
+| Modulo | dashboard |
+| Issue de GitHub | — |
+| Depende de | SEC-001 |
+| Evidencia | `docker-compose.yml:13`, `app/database.py:195`; informe de amenazas 2026-10-12. |
+| Proxima accion | Se incluye con SEC-001 en la misma entrega de hardening. |
+
+`APP_HOST_BIND=0.0.0.0` deja la app accesible desde toda la LAN sin autenticacion, con lectura y escritura total. Ademas no hay cap global de tamano de body: un POST urlencoded enorme se parsea completo en memoria antes de la validacion por campo. El peligro de puerto esta documentado, pero nada lo advierte cuando se cambia el bind.
+
+**Criterios de aceptacion**
+
+- [ ] Un bind distinto de 127.0.0.1 produce una advertencia visible al arrancar
+- [ ] Existe un cap de tamanio de request aplicado antes del parseo completo
 
 ## Tareas cerradas
 

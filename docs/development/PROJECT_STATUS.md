@@ -43,27 +43,28 @@
 
 | ID | Riesgo | Severidad | Mitigacion | Evidencia |
 | --- | --- | --- | --- | --- |
-| RSK-001 | Sin middleware: la app local es operable desde cualquier sitio web | high | Anadir `TrustedHostMiddleware` y tokens CSRF a los formularios POST. Ver SEC-001 y SEC-002. | `app/main.py:26-39` no registra ningun `add_middleware`. Un POST con `Form(...)` desde un sitio ajeno es una peticion simple que no dispara preflight, y sin token CSRF se ejecuta contra una app sin autenticacion. |
+| RSK-001 | 14 endpoints POST forjables desde cualquier sitio web | high | Ver SEC-001 (P0). Propuesta completa en `docs/development/SECURITY_HARDENING_PROPOSAL.md`. | Cero `add_middleware` en `app/main.py:26-39`. Un POST con `Form(...)` es una simple request: sin preflight, el navegador lo envia y la app lo ejecuta. IDs secuenciales permiten iterarlos. |
 | RSK-002 | Drift entre la documentacion y el estado real del repositorio | medium | `tools/project_control.py check` detecta la deriva del backlog. La deriva en README e historial requiere correccion manual: DOC-001. | `README.md:8` declara `v0.8.0` como ultimo tag cuando existe `v0.9.0` en `cbd10fa`; `PROJECT_HISTORY_ROLLBACK.md:61` afirma que `main` y `development` estan en `cbd10fa` y `development` esta en `e19ea5a`; `README.md:240-251` lista 11 de los 22 archivos de test. |
 | RSK-003 | La suite de 248 pruebas solo corre localmente | medium | Pipeline que ejecute la suite en la imagen del proyecto. Ver QLT-001. | No existe `.github/`, ni `pytest.ini`, ni `pyproject.toml`. La unica via automatizada es `docker compose exec app python -m pytest`. |
 | RSK-004 | `development` esta 2 commits adelante de `main`: la etapa 9.x no esta publicada | medium | Decidir y ejecutar el release. Ver REL-001. | `git rev-list --count main..development` = 2 (`97e2577`, `e19ea5a`). `main` sigue en `a28d1fd` y solo contiene la release v0.9.0. |
 | RSK-005 | `CURRENT_SCHEMA_VERSION` es un rotulo, no un control de flujo de migraciones | medium | Esquema de migraciones por pasos cuando la proxima migracion no sea una simple columna. Ver DBV-001. | `app/database.py:157-163` concentra toda la migracion en `migrate_cvs_table()`, idempotente por diseno pero sin historial ni orden. La version se sobreescribe en `app_metadata` (`database.py:182-191`). |
 | RSK-006 | La version de release de la documentacion esta fijada por constante | low | Derivar la constante de `VERSION` o de `APP_VERSION`. Ver DOC-002. | `documentation_service.py:19` fija `DOCUMENTATION_RELEASE_VERSION = 'v0.9.0'` y la fecha en `:21`; un cambio de version no las actualiza. |
 | RSK-007 | Sin formatters disponibles: el control de formato es solo el diff check | low | Adoptar `black` y `ruff` como dependencias de desarrollo. Ver QLT-003. | `DEVELOPMENT_LOG.md:36-38`: 'black y ruff no estan disponibles en host ni en la imagen'. |
+| RSK-008 | Backup documentado puede producir una copia inconsistente | medium | Usar `sqlite3 data/app.db ".backup"` o detener la app antes de copiar. Ver OPS-001/SEC-003. | `README.md:149` y `docs/user/WEB_USAGE_MANUAL.md` hacen `cp data/app.db` con la app corriendo. |
 
 ## Backlog en un vistazo
 
 | Prioridad | Tareas |
 | --- | --- |
-| P0 | 0 |
-| P1 | 4 |
+| P0 | 1 |
+| P1 | 5 |
 | P2 | 6 |
-| P3 | 9 |
+| P3 | 8 |
 
 | Estado | Tareas |
 | --- | --- |
 | backlog | 13 |
-| ready | 4 |
+| ready | 5 |
 | in_progress | 2 |
 | blocked | 0 |
 | done | 0 |
@@ -71,10 +72,12 @@
 
 ## Proxima tarea concreta
 
+- **SEC-001** (P0) TrustedHostMiddleware y proteccion contra DNS rebinding
+  - Siguiente paso: Decidir si se agrega CSRF en la misma entrega; ver SEC-002.
 - **REL-001** (P1) Publicar v0.10.0 con la etapa 9.x
   - Siguiente paso: Franco debe decidir la version objetivo y si el release incluye tambien el Project Control Center.
-- **SEC-001** (P1) TrustedHostMiddleware y proteccion contra DNS rebinding
-  - Siguiente paso: Decidir si se agrega CSRF en la misma entrega; ver SEC-002.
+- **SEC-002** (P1) Proteccion CSRF para formularios POST
+  - Siguiente paso: Confirmar con Franco si el modelo de uso sigue siendo estrictamente local antes de implementar.
 - **QLT-001** (P2) Pipeline que ejecute la suite en la imagen del proyecto
   - Siguiente paso: Decidir si se habilita GitHub Actions o si la suite queda deliberadamente local.
 - **SEC-004** (P2) Unificar la confirmacion destructiva del tracker con el criterio de los demas modulos
