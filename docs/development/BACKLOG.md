@@ -452,7 +452,7 @@ CVs y cartas exigen confirmacion por coincidencia exacta del texto a eliminar. E
 - [ ] Un POST con un token fijo deja de eliminar el registro
 - [ ] Existe test de regresion para el caso negativo
 
-### SEC-005 — Binding explicito y cap de tamano de request
+### SEC-005 — Cap de tamaño de request por endpoint
 
 | Campo | Valor |
 | --- | --- |
@@ -463,15 +463,18 @@ CVs y cartas exigen confirmacion por coincidencia exacta del texto a eliminar. E
 | Modulo | dashboard |
 | Issue de GitHub | — |
 | Depende de | SEC-001 |
-| Evidencia | `docker-compose.yml:13`, `app/database.py:195`; informe de amenazas 2026-10-12. |
+| Evidencia | `docs/development/SECURITY_HARDENING_PROPOSAL.md` §5.1; `MAX_PDF_BYTES` en el importador. |
 | Proxima accion | Se incluye con SEC-001 en la misma entrega de hardening. |
 
-`APP_HOST_BIND=0.0.0.0` deja la app accesible desde toda la LAN sin autenticacion, con lectura y escritura total. Ademas no hay cap global de tamano de body: un POST urlencoded enorme se parsea completo en memoria antes de la validacion por campo. El peligro de puerto esta documentado, pero nada lo advierte cuando se cambia el bind.
+No hay cap de tamaño de request. Una version previa de la propuesta proponia un cap global de 2 MiB, que es inviable: el importador de PDF autoriza 10 MiB. La politica correcta es por ruta, con la tabla de maximos del §5.1 de SECURITY_HARDENING_PROPOSAL.md, aplicada antes de leer el cuerpo para que un archivo enorme se rechace sin haberse leido.
 
 **Criterios de aceptacion**
 
-- [ ] Un bind distinto de 127.0.0.1 produce una advertencia visible al arrancar
-- [ ] Existe un cap de tamanio de request aplicado antes del parseo completo
+- [ ] Cada ruta POST tiene un maximo declarado en la tabla del §5.1
+- [ ] El cap se aplica antes del parseo completo del cuerpo
+- [ ] Un PDF de hasta 10 MiB + 64 KB se acepta en /cvs/import/pdf
+- [ ] Un cuerpo por encima del cap devuelve 413 sin leerse entero
+- [ ] Un formulario normal no acepta cuerpos de varios megabytes
 
 ## Tareas cerradas
 

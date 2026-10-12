@@ -34,7 +34,7 @@ _Vacio._
 - **SEC-003** [P1] Estrategia de autenticacion si la app se expone fuera de localhost _(propuesta, no aprobada)_ — espera: SEC-002
 - **OPS-001** [P2] Procedimiento de backup documentado pero inseguro y sin verificar _(propuesta, no aprobada)_ — sin dependencias
 - **QLT-002** [P2] Reejecutar los flujos de navegador real del editor estructurado _(propuesta, no aprobada)_ — sin dependencias
-- **SEC-005** [P2] Binding explicito y cap de tamano de request _(propuesta, no aprobada)_ — espera: SEC-001
+- **SEC-005** [P2] Cap de tamaño de request por endpoint _(propuesta, no aprobada)_ — espera: SEC-001
 - **AIX-001** [P3] Integraciones asistidas por IA _(propuesta, no aprobada)_ — sin dependencias
 - **ATS-001** [P3] UX residual del modulo ATS _(propuesta, no aprobada)_ — sin dependencias
 - **CLEAN-001** [P3] Limpieza del CV id 49 y artefactos de validacion en data/ _(propuesta, no aprobada)_ — sin dependencias

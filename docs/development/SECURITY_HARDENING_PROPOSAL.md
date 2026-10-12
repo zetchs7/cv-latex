@@ -97,12 +97,18 @@ día que se necesita.
 variable y recrear expone la app a toda la LAN: lectura y escritura total sin autenticación.
 Nada advierte que se hizo.
 
-### 2.5 Sin cap global de tamaño de request — **Severidad baja**
+### 2.5 Sin cap de tamaño de request — **Severidad baja**
 
 No hay límite de body. Un POST urlencoded enorme se parsea completo en memoria antes de la
 validación por campo. El import JSON sí corta a ~520 KB en streaming
-(`app/services/export_service.py:32-33`). En localhost el atacante necesitaría controlar el
-navegador de la víctima, así que es difícil de explotar, pero es una defensa que falta.
+(`app/services/export_service.py:32-33`).
+
+**Corrección respecto de una versión anterior de este documento**, que proponía un cap global de
+2 MiB: eso es **incompatible con el importador de PDF**, que autoriza 10 MiB
+(`MAX_PDF_BYTES`, rama `feature/pdf-cv-import`). Un cap único obligaría a elegir entre rechazar
+PDFs legítimos o aceptar cuerpos enormes en todas las rutas. La política correcta es **por
+endpoint**, no global: cada ruta declara el máximo que realmente necesita, y las rutas de formulario
+heredan un tope pequeño porque sus campos están acotados.
 
 ### 2.6 `pdflatex` sin `-no-shell-escape` — **Severidad baja**
 
@@ -159,7 +165,9 @@ Esto preserva el modelo de uso: sin usuario, sin contraseña, sin base de sesion
 ## 6. Cambios necesarios
 
 1. `app/main.py`: registrar `TrustedHostMiddleware` con una lista permitida derivada de
-   `APP_ALLOWED_HOSTS` (default `localhost,127.0.0.1`), y un middleware de cap de body.
+   `APP_ALLOWED_HOSTS` (default `localhost,127.0.0.1`).
+2. **Cap de tamaño por endpoint, no global.** Tabla de máximos por ruta, aplicada antes del
+   parseo completo del cuerpo. Ver §5.2.
 2. Sesión opaca: emitir una cookie de sesión en el primer GET y generar un token CSRF por
    sesión. Sin base de datos nueva: el token vive en memoria del proceso o en una cookie
    firmada.
@@ -168,6 +176,31 @@ Esto preserva el modelo de uso: sin usuario, sin contraseña, sin base de sesion
 4. Advertencia visible al arrancar si `APP_HOST_BIND` no es loopback.
 5. `OPS-001`/`SEC-003`: cambiar el backup documentado a `sqlite3 data/app.db ".backup"`.
 6. Opcional y barato: `-no-shell-escape` en `pdflatex`.
+
+### 5.1 Matriz de límites por ruta
+
+La tabla es la política. Agregar una ruta sin entrada aquí es un defecto, igual que olvidar el
+token CSRF.
+
+| Ruta | Método | Cap | Motivo |
+| --- | --- | --- | --- |
+| `/cvs/` y `/cvs/{id}/edit` | POST | 256 KB | Formulario con campos acotados por `cv_validations` |
+| `/cvs/new/structured` y `/cvs/{id}/structured-edit` | POST | 1 MiB | Payload estructurado, tope de 512 KB + sobre |
+| `/cvs/import/json` | POST | 1 MiB | Límite real de ~520 KB |
+| `/cvs/import/pdf` | POST | **10 MiB + 64 KB** | Límite autorizado para PDFs |
+| `/cover-letters/*` | POST | 256 KB | Igual que CVs |
+| `/applications/*` | POST | 256 KB | Igual que CVs |
+| Cualquier ruta GET | — | 8 KB | No deberían llevar cuerpo |
+
+El sobre de 64 KB del PDF es para el multipart. **El cap se aplica antes de leer el cuerpo**, con
+un stream que corta al alcanzarlo: un archivo de 500 MB debe rechazarse con 413 sin haberse leído.
+
+### 5.2 Por qué no un cap global
+
+Un único valor obliga a elegir entre dos males: 2 MiB rechaza PDFs legítimos de 6 MiB, y 10 MiB
+acepta cuerpos enormes en todas las rutas de formulario. La segunda opción es peor: son la mayoría
+y es donde vive el request forgery. Con cap por ruta, subir el techo del PDF no ensancha la
+superficie de las demás.
 
 ## 7. Tests de seguridad
 
@@ -204,8 +237,8 @@ deshacer. Es una reversión de código puro.
    siendo local. Si va a exponerse, la respuesta es autenticación, no CSRF.
 3. **¿`TrustedHostMiddleware` con lista fija o derivada de variable de entorno?** Recomiendo
    variable, con default conservador.
-4. **¿El cap de body en qué valor?** El import JSON ya usa ~520 KB; los formularios normales
-   son mucho menores. Un cap de 2 MiB cubre todo el uso legítimo actual.
+4. **¿Se aprueba la tabla de límites por ruta del §5.1?** Es la decisión que reemplaza al cap
+   global de 2 MiB, que era inviable con el importador de PDF de 10 MiB.
 
 ## 11. Estado
 
