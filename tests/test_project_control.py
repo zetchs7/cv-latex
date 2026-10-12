@@ -352,11 +352,17 @@ def test_validate_and_status_do_not_write():
 # --- Restricciones de diseno ---------------------------------------------
 
 
-def test_tool_has_no_network_or_subprocess_imports():
+def test_tool_has_no_network_imports():
+    """`subprocess` si se permite: `check` lee el indice de git.
+
+    Lo que no se permite es red. Es una herramienta de desarrollo que valida
+    consistencia del repositorio; no habla con ningun servicio.
+    """
+
     source = TOOL_PATH.read_text(encoding="utf-8")
-    forbidden = re.findall(r"^\s*(?:import|from)\s+(\w+)", source, flags=re.MULTILINE)
-    banned = {"socket", "urllib", "http", "requests", "subprocess", "ssl", "ftplib", "asyncio"}
-    assert not banned.intersection(forbidden), f"imports prohibidos: {banned.intersection(forbidden)}"
+    imported = re.findall(r"^\s*(?:import|from)\s+(\w+)", source, flags=re.MULTILINE)
+    banned = {"socket", "urllib", "http", "requests", "ssl", "ftplib", "asyncio"}
+    assert not banned.intersection(imported), f"imports de red prohibidos: {banned.intersection(imported)}"
 
 
 def test_tool_never_references_the_application_database():

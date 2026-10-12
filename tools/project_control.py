@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -783,6 +784,30 @@ def command_render(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _read_staged_bytes(relative_path: Path) -> bytes | None:
+    """Contenido de un archivo en el indice de Git, o None si no esta.
+
+    Sin esto, `check` compara solo el working tree y el estado exacto desde el
+    que se hace commit —catalogo staged y Markdown recien renderizado sin
+    stagear— passa como sincronizado.
+    """
+
+    try:
+        result = subprocess.run(
+            ["git", "show", f":{relative_path.as_posix()}"],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            check=False,
+        )
+    except (OSError, ValueError):
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    return result.stdout
+
+
 def command_check(arguments: argparse.Namespace) -> int:
     """Compara el Markdown contra el catalogo. Solo lectura por construccion."""
 
@@ -803,22 +828,44 @@ def command_check(arguments: argparse.Namespace) -> int:
 
     drifted = []
     missing = []
-    for filename, expected in rendered.items():
-        target = DOCUMENTS_DIRECTORY / filename
+    unstaged = []
+    expected_bytes = {name: content.encode("utf-8") for name, content in rendered.items()}
+
+    for filename, expected in expected_bytes.items():
         try:
-            # Se comparan BYTES, no texto: `read_text()` normaliza los finales
-            # de linea, asi que un archivo con CRLF pareceria identico y la
-            # deriva pasaria inadvertida justo en un repositorio con politica
-            # de EOL declarada.
-            actual = target.read_bytes()
+            relative = (DOCUMENTS_DIRECTORY / filename).relative_to(REPOSITORY_ROOT)
+        except ValueError:
+            # Fuera del repositorio no hay indice que consultar.
+            relative = None
+
+        # Se comparan BYTES, no texto: `read_text()` normaliza los finales de
+        # linea, asi que un archivo con CRLF pareceria identico y la deriva
+        # pasaria inadvertida justo en un repositorio con politica de EOL.
+        try:
+            working_tree = (DOCUMENTS_DIRECTORY / filename).read_bytes()
         except FileNotFoundError:
-            missing.append(filename)
-            continue
+            working_tree = None
         except OSError as error:
             drifted.append(f"{filename}: no se pudo leer ({error})")
             continue
-        if actual != expected.encode("utf-8"):
+
+        if working_tree is None:
+            missing.append(filename)
+            continue
+
+        if working_tree != expected:
             drifted.append(filename)
+            continue
+
+        # El working tree puede estar bien y el indice no: ese es el estado desde
+        # el que se hace commit.
+        if relative is not None:
+            staged = _read_staged_bytes(relative)
+            if staged is not None and staged != expected:
+                unstaged.append(filename)
+
+    if unstaged:
+        drifted.extend(f"{name} (stale en el indice de git)" for name in unstaged)
 
     if missing or drifted:
         if missing:
