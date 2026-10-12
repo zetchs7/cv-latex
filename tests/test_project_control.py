@@ -42,6 +42,7 @@ def _valid_catalog() -> dict:
             "main_branch": "main",
             "development_branch": "development",
             "last_verified_on": "2026-01-01",
+            "last_verification_evidence": "Suite en verde el 2026-01-01.",
             "mvp_criteria": ["Criterio uno."],
             "expanded_vision": ["Vision uno."],
             "release_policy": ["Politica una."],
@@ -420,3 +421,79 @@ def test_catalog_readme_documents_every_required_field():
     for field in ("approved", "origin", "depends_on", "acceptance", "github_issue", "next_action"):
         assert f"`{field}`" in readme, f"campo sin documentar: {field}"
     assert catalog["meta"]["generated_by"] == "tools/project_control.py"
+
+
+# --- Regresion de los hallazgos del review --------------------------------
+
+
+def test_approved_task_must_originate_from_franco():
+    """La garantia depende de esto: una sugerencia no puede quedar 'aprobada'."""
+
+    catalog = _valid_catalog()
+    catalog["tasks"][0]["origin"] = "engineering"
+    catalog["tasks"][0]["approved"] = True
+    assert "tasks[0].approved" in _error_locations(catalog)
+
+
+def test_task_cannot_depend_on_a_cancelled_task():
+    catalog = _valid_catalog()
+    cancelled = copy.deepcopy(catalog["tasks"][0])
+    cancelled["id"] = "TAREA-002"
+    cancelled["status"] = "cancelled"
+    catalog["tasks"].append(cancelled)
+    catalog["tasks"][0]["depends_on"] = ["TAREA-002"]
+    assert any("esta cancelada" in message for message in _errors(catalog))
+
+
+@pytest.mark.parametrize("malformed", [7, "TAREA-002", None, True, {"a": 1}])
+def test_non_list_depends_on_does_not_crash_validation(malformed):
+    catalog = _valid_catalog()
+    catalog["tasks"][0]["depends_on"] = malformed
+    problems = project_control.validate_catalog(catalog)
+    assert any(problem.level == "error" for problem in problems)
+
+
+def test_boolean_github_issue_is_rejected():
+    """`isinstance(True, int)` es True: un booleano colisionaria con el issue 1."""
+
+    catalog = _valid_catalog()
+    catalog["tasks"][0]["github_issue"] = True
+    assert "tasks[0].github_issue" in _error_locations(catalog)
+
+
+def test_project_requires_verification_evidence():
+    catalog = _valid_catalog()
+    del catalog["project"]["last_verification_evidence"]
+    assert "project.last_verification_evidence" in _error_locations(catalog)
+
+
+def test_render_escapes_block_level_content():
+    """Un salto de linea en una descripcion no debe romper el Markdown."""
+
+    catalog = _valid_catalog()
+    catalog["tasks"][0]["description"] = "Primera linea\n\n- item que parece marcado"
+    catalog["tasks"][0]["acceptance"] = ["Criterio con\nsalto de linea"]
+    rendered = project_control._render_all(catalog, "BACKLOG")["BACKLOG.md"]
+
+    assert "Primera linea - item que parece marcado" in rendered
+    assert "Criterio con salto de linea" in rendered
+    assert "Criterio con\n" not in rendered
+
+
+def test_check_detects_crlf_drift(tmp_path, monkeypatch):
+    """La deriva de EOL se compara a nivel de bytes, no de texto."""
+
+    documents = tmp_path / "docs"
+    documents.mkdir()
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(json.dumps(_valid_catalog(), ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(project_control, "CATALOG_PATH", catalog_path)
+    monkeypatch.setattr(project_control, "DOCUMENTS_DIRECTORY", documents)
+
+    project_control.command_render(argparse.Namespace(only=None))
+    assert project_control.command_check(argparse.Namespace(only=None)) == 0
+
+    target = documents / "BACKLOG.md"
+    target.write_bytes(target.read_text(encoding="utf-8").replace("\n", "\r\n").encode("utf-8"))
+
+    assert project_control.command_check(argparse.Namespace(only=None)) == 1

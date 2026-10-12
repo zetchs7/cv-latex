@@ -128,9 +128,22 @@ def _require_list(container: dict, key: str, location: str, problems: list[Probl
     return value
 
 
+def _iterable_or_empty(value: object) -> list:
+    """Itera solo si el valor es iterable. Un `depends_on: 7` no debe romper."""
+
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str) or value is None:
+        return []
+    try:
+        return list(value)  # type: ignore[call-overload]
+    except TypeError:
+        return []
+
+
 def _detect_cycles(tasks: list[dict], problems: list[Problem]) -> None:
     graph = {
-        task.get("id"): [dep for dep in task.get("depends_on", []) if isinstance(dep, str)]
+        task.get("id"): [dep for dep in _iterable_or_empty(task.get("depends_on")) if isinstance(dep, str)]
         for task in tasks
         if isinstance(task, dict)
     }
@@ -178,7 +191,14 @@ def validate_catalog(catalog: dict) -> list[Problem]:
     if not isinstance(project, dict):
         problems.append(Problem("error", "project", "debe ser un objeto"))
     else:
-        for key in ("name", "stable_version", "main_branch", "development_branch", "last_verified_on"):
+        for key in (
+            "name",
+            "stable_version",
+            "main_branch",
+            "development_branch",
+            "last_verified_on",
+            "last_verification_evidence",
+        ):
             _require_text(project, key, "project", problems)
         for key in ("mvp_criteria", "expanded_vision", "release_policy"):
             values = _require_list(project, key, "project", problems)
@@ -231,6 +251,15 @@ def validate_catalog(catalog: dict) -> list[Problem]:
         _require_text(risk, "evidence", location, problems)
 
     tasks = _require_list(catalog, "tasks", "catalog", problems)
+
+    # Se calcula antes del bucle porque la comprobacion de dependencias
+    # canceladas lo consulta por cada tarea.
+    cancelled_ids = {
+        task.get("id")
+        for task in tasks
+        if isinstance(task, dict) and task.get("status") == "cancelled" and isinstance(task.get("id"), str)
+    }
+
     task_ids: set[str] = set()
     for index, task in enumerate(tasks):
         location = f"tasks[{index}]"
@@ -255,6 +284,17 @@ def validate_catalog(catalog: dict) -> list[Problem]:
             problems.append(
                 Problem("error", f"{location}.approved", "debe ser booleano: distingue requisito de propuesta")
             )
+        elif task.get("approved") and task.get("origin") != "franco":
+            # La garantia de que una recomendacion de ingenieria nunca se
+            # presenta como un pedido depende de esto: sin el cruce, un
+            # `approved: true` mal puesto legitima cualquier sugerencia.
+            problems.append(
+                Problem(
+                    "error",
+                    f"{location}.approved",
+                    f"solo una tarea de origen 'franco' puede estar aprobada; esta es '{task.get('origin')}'",
+                )
+            )
 
         acceptance = _require_list(task, "acceptance", location, problems)
         if not acceptance:
@@ -269,16 +309,29 @@ def validate_catalog(catalog: dict) -> list[Problem]:
                     )
 
         depends_on = _require_list(task, "depends_on", location, problems)
-        for position, dependency in enumerate(depends_on):
+        for position, dependency in enumerate(_iterable_or_empty(task.get("depends_on"))):
             if not isinstance(dependency, str) or not dependency.strip():
                 problems.append(
                     Problem("error", f"{location}.depends_on[{position}]", "debe ser un id de tarea")
                 )
             elif dependency == task_id:
                 problems.append(Problem("error", f"{location}.depends_on", "una tarea no puede depender de si misma"))
+            elif dependency in cancelled_ids:
+                # Esperar algo que se descarto deja la tarea bloqueada para
+                # siempre, sin que nada lo diga.
+                problems.append(
+                    Problem("error", f"{location}.depends_on", f"depende de '{dependency}', que esta cancelada")
+                )
 
         github_issue = task.get("github_issue")
-        if github_issue is not None and (not isinstance(github_issue, int) or github_issue <= 0):
+        # `isinstance(True, int)` es True en Python: un booleano pasaria como
+        # numero de issue y colisionaria con el issue 1. Se rechaza en vez de
+        # normalizarlo a null, porque aceptarlo en silencio seria peor.
+        if isinstance(github_issue, bool):
+            problems.append(
+                Problem("error", f"{location}.github_issue", "debe ser null o un numero de issue, no un booleano")
+            )
+        elif github_issue is not None and (not isinstance(github_issue, int) or github_issue <= 0):
             problems.append(Problem("error", f"{location}.github_issue", "debe ser null o un numero de issue positivo"))
 
         if status == "done" and not acceptance:
@@ -290,7 +343,7 @@ def validate_catalog(catalog: dict) -> list[Problem]:
     for index, task in enumerate(tasks):
         if not isinstance(task, dict):
             continue
-        for position, dependency in enumerate(task.get("depends_on", []) or []):
+        for position, dependency in enumerate(_iterable_or_empty(task.get("depends_on"))):
             if isinstance(dependency, str) and dependency.strip() and dependency not in known_task_ids:
                 problems.append(
                     Problem("error", f"tasks[{index}].depends_on[{position}]", f"dependencia inexistente '{dependency}'")
@@ -304,7 +357,7 @@ def validate_catalog(catalog: dict) -> list[Problem]:
             continue
         issue = task.get("github_issue")
         task_id = task.get("id")
-        if isinstance(issue, int) and isinstance(task_id, str):
+        if isinstance(issue, int) and not isinstance(issue, bool) and isinstance(task_id, str):
             if issue in seen_issues:
                 problems.append(
                     Problem(
@@ -338,6 +391,17 @@ def _render_table(headers: tuple[str, ...], rows: list[tuple[object, ...]]) -> l
         lines.append("| " + " | ".join(_escape_cell(cell) for cell in row) + " |")
     lines.append("")
     return lines
+
+
+def _escape_block_text(text: object) -> str:
+    """Convierte texto multilinea en algo que no rompe el Markdown.
+
+    Una descripcion o un criterio de aceptacion con un salto de linea se
+    insertaba crudo y partia el parrafo o inyectaba marcado.
+    """
+
+    collapsed = " ".join(str(text or "").split())
+    return collapsed
 
 
 def _origin_label(origin: str) -> str:
@@ -525,9 +589,9 @@ def _render_task(task: dict, compact: bool = False) -> list[str]:
             ("Proxima accion", task.get("next_action")),
         ],
     )
-    lines += [task.get("description", ""), "", "**Criterios de aceptacion**", ""]
+    lines += [_escape_block_text(task.get("description")), "", "**Criterios de aceptacion**", ""]
     for criterion in task.get("acceptance") or []:
-        lines.append(f"- [ ] {criterion}")
+        lines.append(f"- [ ] {_escape_block_text(criterion)}")
     lines.append("")
     if compact:
         lines = [line for line in lines if line]
@@ -742,14 +806,18 @@ def command_check(arguments: argparse.Namespace) -> int:
     for filename, expected in rendered.items():
         target = DOCUMENTS_DIRECTORY / filename
         try:
-            actual = target.read_text(encoding="utf-8")
+            # Se comparan BYTES, no texto: `read_text()` normaliza los finales
+            # de linea, asi que un archivo con CRLF pareceria identico y la
+            # deriva pasaria inadvertida justo en un repositorio con politica
+            # de EOL declarada.
+            actual = target.read_bytes()
         except FileNotFoundError:
             missing.append(filename)
             continue
         except OSError as error:
             drifted.append(f"{filename}: no se pudo leer ({error})")
             continue
-        if actual != expected:
+        if actual != expected.encode("utf-8"):
             drifted.append(filename)
 
     if missing or drifted:
