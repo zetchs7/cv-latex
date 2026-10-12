@@ -11,7 +11,7 @@
 | Rama estable | main |
 | Rama de integracion | development |
 | Ultima verificacion | 2026-10-12 |
-| Evidencia de la verificacion | `development` en `e19ea5a`; suite Python 248 passed en host y en Docker con rootfs de solo lectura; 8 tests JavaScript; `docker compose config` exit 0; `main` en `a28d1fd`. |
+| Evidencia de la verificacion | `development` en `9ddaf25`; `main` en `a28d1fd`, sin ancestry de los commits de desarrollo: `97e2577` y `e19ea5a` son alcanzables solo desde `development`. Suite Python 322 passed en host y en Docker con rootfs de solo lectura y sin red; 8 tests JavaScript; `project_control.py validate` y `check` en verde; GitHub Actions en verde sobre cada PR hacia `development`. |
 
 ## Ramas: que hay en cada una
 
@@ -64,10 +64,10 @@
 | Estado | Tareas |
 | --- | --- |
 | backlog | 13 |
-| ready | 5 |
+| ready | 4 |
 | in_progress | 2 |
 | blocked | 0 |
-| done | 0 |
+| done | 1 |
 | cancelled | 0 |
 
 ## Proxima tarea concreta
@@ -78,7 +78,5 @@
   - Siguiente paso: Franco debe decidir la version objetivo y si el release incluye tambien el Project Control Center.
 - **SEC-002** (P1) Proteccion CSRF para formularios POST
   - Siguiente paso: Confirmar con Franco si el modelo de uso sigue siendo estrictamente local antes de implementar.
-- **QLT-001** (P2) Pipeline que ejecute la suite en la imagen del proyecto
-  - Siguiente paso: Decidir si se habilita GitHub Actions o si la suite queda deliberadamente local.
 - **SEC-004** (P2) Unificar la confirmacion destructiva del tracker con el criterio de los demas modulos
   - Siguiente paso: Implementar siguiendo el patron ya establecido en `tests/test_confirmation_modal_security.py`.

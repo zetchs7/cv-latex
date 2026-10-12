@@ -10,7 +10,7 @@
     "main_branch": "main",
     "development_branch": "development",
     "last_verified_on": "2026-10-12",
-    "last_verification_evidence": "`development` en `e19ea5a`; suite Python 248 passed en host y en Docker con rootfs de solo lectura; 8 tests JavaScript; `docker compose config` exit 0; `main` en `a28d1fd`.",
+    "last_verification_evidence": "`development` en `9ddaf25`; `main` en `a28d1fd`, sin ancestry de los commits de desarrollo: `97e2577` y `e19ea5a` son alcanzables solo desde `development`. Suite Python 322 passed en host y en Docker con rootfs de solo lectura y sin red; 8 tests JavaScript; `project_control.py validate` y `check` en verde; GitHub Actions en verde sobre cada PR hacia `development`.",
     "mvp_criteria": [
       "Los modulos core — CV Builder, editor estructurado, ATS, cartas, tracker, dashboard, exportaciones y documentacion — estan integrados en `development` con suite verde.",
       "Todo backlog con prioridad P0 esta cerrado o cuenta con decision explicita de Franco.",
@@ -411,10 +411,10 @@
     {
       "id": "QLT-001",
       "title": "Pipeline que ejecute la suite en la imagen del proyecto",
-      "description": "Las 248 pruebas solo corren localmente. No existe `.github/`, ni configuracion de pytest, y la unica via automatizada es ejecutar pytest dentro del contenedor.",
+      "description": "Resuelto por el PR #19: `.github/workflows/ci.yml` corre en cada push y PR hacia `development` y `main`, con permisos `contents: read` y sin secretos. La suite corre `python -m pytest -q` sobre el checkout, sin montar `./data` del host.",
       "origin": "engineering",
       "priority": "P2",
-      "status": "ready",
+      "status": "done",
       "module": "tests_isolation",
       "depends_on": [],
       "acceptance": [
@@ -423,9 +423,9 @@
         "El resultado es visible en el PR",
         "El pipeline no requiere secretos"
       ],
-      "evidence": "Ausencia de `.github/`; `requirements.txt` ya fija `pytest 8.3.4`.",
+      "evidence": "`.github/workflows/ci.yml` en `development` (`9ddaf25`): dispara en `push` y `pull_request` hacia `development` y `main`; `permissions: contents: read`; sin `secrets`; valida ademas el catalogo con `project_control.py validate` y `check`. Suite completa en verde en GitHub Actions.",
       "github_issue": null,
-      "next_action": "Decidir si se habilita GitHub Actions o si la suite queda deliberadamente local.",
+      "next_action": "Ninguno. Evidencia vigente en el workflow y en las corridas de CI.",
       "approved": false
     },
     {

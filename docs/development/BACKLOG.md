@@ -271,29 +271,6 @@ Sistema interno de gobierno del proyecto: catalogo canonico en JSON, herramienta
 - [ ] Los documentos distinguen requisito aprobado de propuesta de ingenieria
 - [ ] Los tests nuevos pasan y no escriben en `data/` ni en `app/static/docs/`
 
-### QLT-001 — Pipeline que ejecute la suite en la imagen del proyecto
-
-| Campo | Valor |
-| --- | --- |
-| Prioridad | P2 |
-| Estado | ready |
-| Origen | Recomendacion de ingenieria |
-| Aprobado por Franco | no |
-| Modulo | tests_isolation |
-| Issue de GitHub | — |
-| Depende de | — |
-| Evidencia | Ausencia de `.github/`; `requirements.txt` ya fija `pytest 8.3.4`. |
-| Proxima accion | Decidir si se habilita GitHub Actions o si la suite queda deliberadamente local. |
-
-Las 248 pruebas solo corren localmente. No existe `.github/`, ni configuracion de pytest, y la unica via automatizada es ejecutar pytest dentro del contenedor.
-
-**Criterios de aceptacion**
-
-- [ ] La suite completa se ejecuta automaticamente sobre cada PR hacia `development`
-- [ ] El pipeline usa el aislamiento de datos integrado y no monta `./data` del host
-- [ ] El resultado es visible en el PR
-- [ ] El pipeline no requiere secretos
-
 ### QLT-002 — Reejecutar los flujos de navegador real del editor estructurado
 
 | Campo | Valor |
@@ -480,4 +457,21 @@ No hay cap de tamaño de request. Una version previa de la propuesta proponia un
 
 ### Cerradas
 
-_Sin tareas cerradas registradas en el catalogo._
+### QLT-001 — Pipeline que ejecute la suite en la imagen del proyecto
+| Campo | Valor |
+| --- | --- |
+| Prioridad | P2 |
+| Estado | done |
+| Origen | Recomendacion de ingenieria |
+| Aprobado por Franco | no |
+| Modulo | tests_isolation |
+| Issue de GitHub | — |
+| Depende de | — |
+| Evidencia | `.github/workflows/ci.yml` en `development` (`9ddaf25`): dispara en `push` y `pull_request` hacia `development` y `main`; `permissions: contents: read`; sin `secrets`; valida ademas el catalogo con `project_control.py validate` y `check`. Suite completa en verde en GitHub Actions. |
+| Proxima accion | Ninguno. Evidencia vigente en el workflow y en las corridas de CI. |
+Resuelto por el PR #19: `.github/workflows/ci.yml` corre en cada push y PR hacia `development` y `main`, con permisos `contents: read` y sin secretos. La suite corre `python -m pytest -q` sobre el checkout, sin montar `./data` del host.
+**Criterios de aceptacion**
+- [ ] La suite completa se ejecuta automaticamente sobre cada PR hacia `development`
+- [ ] El pipeline usa el aislamiento de datos integrado y no monta `./data` del host
+- [ ] El resultado es visible en el PR
+- [ ] El pipeline no requiere secretos

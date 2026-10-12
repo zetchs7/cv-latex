@@ -13,7 +13,7 @@ por dependencia. Para reconstruir el camino critico, mirar `depends_on` en `BACK
 
 ## 1. Trabajo completado
 
-_Vacio._
+- **QLT-001** [P2] Pipeline que ejecute la suite en la imagen del proyecto _(propuesta, no aprobada)_ — sin dependencias
 
 ## 2. Trabajo en curso
 
@@ -25,7 +25,6 @@ _Vacio._
 - **SEC-001** [P0] TrustedHostMiddleware y proteccion contra DNS rebinding _(propuesta, no aprobada)_ — sin dependencias
 - **REL-001** [P1] Publicar v0.10.0 con la etapa 9.x _(propuesta, no aprobada)_ — espera: DOC-001
 - **SEC-002** [P1] Proteccion CSRF para formularios POST _(propuesta, no aprobada)_ — espera: SEC-001
-- **QLT-001** [P2] Pipeline que ejecute la suite en la imagen del proyecto _(propuesta, no aprobada)_ — sin dependencias
 - **SEC-004** [P2] Unificar la confirmacion destructiva del tracker con el criterio de los demas modulos _(propuesta, no aprobada)_ — sin dependencias
 
 ## 4. Trabajo pendiente acordado
