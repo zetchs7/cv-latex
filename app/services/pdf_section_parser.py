@@ -495,8 +495,8 @@ def _apply_labelled_field(line: str, fields: list[StagedField]) -> None:
                 StagedField(
                     key=key,
                     section=key.split(".")[0],
-                    value=value[:400],
-                    source_text=line[:300],
+                    value=value,
+                    source_text=line,
                     confidence=CONFIDENCE_HIGH,
                     reason="El valor aparece con una etiqueta explicita en el PDF.",
                 )
@@ -517,8 +517,8 @@ def _apply_email(line: str, fields: list[StagedField]) -> None:
         StagedField(
             key="contact.email",
             section="contact",
-            value=email[:180],
-            source_text=line[:300],
+            value=email,
+            source_text=line,
             confidence=CONFIDENCE_HIGH,
             reason="Direccion de correo con formato valido. Es la senal mas inequivoca de un CV.",
         )
@@ -540,8 +540,8 @@ def _apply_phone(line: str, fields: list[StagedField]) -> None:
         StagedField(
             key="contact.phone",
             section="contact",
-            value=digits[0].strip()[:80],
-            source_text=line[:300],
+            value=digits[0].strip(),
+            source_text=line,
             confidence=CONFIDENCE_MEDIUM,
             reason="Numero junto a una palabra que indica telefono. La persona deberia confirmarlo: "
                    "el PDF tambien puede contener otros numeros.",
@@ -574,8 +574,8 @@ def _apply_links(line: str, links: list[StagedField]) -> None:
             StagedField(
                 key=f"links.{len(links)}",
                 section="links",
-                value=value[:200],
-                source_text=line[:300],
+                value=value,
+                source_text=line,
                 confidence=confidence,
                 reason=reason,
             )
@@ -597,8 +597,8 @@ def _extract_summary(segments: list[_Section], fields: list[StagedField]) -> Non
             StagedField(
                 key="summary",
                 section="summary",
-                value=body[:1200],
-                source_text=body[:300],
+                value=body,
+                source_text=body,
                 confidence=CONFIDENCE_MEDIUM,
                 reason="Texto bajo un encabezado de perfil. Conviene revisarlo: puede incluir "
                        "lineas que no pertenecen al resumen.",
@@ -704,13 +704,13 @@ def _build_experience_item(block: list[str]) -> StagedItem:
 
     separated = _split_role_and_company(remainder)
     if separated is not None:
-        values["role"] = separated[0][:120]
-        values["company"] = separated[1][:120]
+        values["role"] = separated[0]
+        values["company"] = separated[1]
         notes.append("Verificar que empresa y cargo no esten invertidos")
         confidence = CONFIDENCE_MEDIUM
         reason = "Cargo y empresa separados por un delimitador entre dos fechas."
     elif remainder:
-        values["role"] = remainder.strip()[:120]
+        values["role"] = remainder.strip()
         notes.append("No se pudo separar empresa y cargo con certeza")
         confidence = CONFIDENCE_LOW
         reason = "Hay fecha pero el encabezado no permite distinguir empresa de cargo con seguridad."
@@ -736,9 +736,9 @@ def _build_experience_item(block: list[str]) -> StagedItem:
     if technology_parts:
         values["technologies"] = ", ".join(technology_parts)[:400]
     if summary_parts:
-        values["summary"] = ". ".join(summary_parts)[:2000]
+        values["summary"] = ". ".join(summary_parts)
     if highlight_parts:
-        values["highlights"] = "\n".join(highlight_parts)[:2000]
+        values["highlights"] = "\n".join(highlight_parts)
 
     if not values.get("end_date"):
         confidence = CONFIDENCE_LOW if confidence == CONFIDENCE_HIGH else confidence
@@ -782,8 +782,8 @@ def _split_role_and_company(text: str) -> tuple[str, str] | None:
         left_normalized = normalize_for_matching(left)
         left_is_role = any(_matches_keyword(left_normalized, token) for token in _ROLE_TOKENS)
         if left_is_role:
-            return left[:160], right[:160]
-        return right[:160], left[:160]
+            return left, right
+        return right, left
 
     return None
 
@@ -834,8 +834,8 @@ def _build_education_item(block: list[str]) -> StagedItem:
 
     remainder = _strip_date_range(block[0])
     if remainder:
-        values["degree"] = remainder[:120]
-        values["institution"] = block[1][:120] if len(block) > 1 else ""
+        values["degree"] = remainder
+        values["institution"] = block[1] if len(block) > 1 else ""
         confidence = CONFIDENCE_MEDIUM
         reason = "Formacion con rango de fechas. Verificar que el titulo y la institucion no esten invertidos."
     else:
@@ -843,7 +843,7 @@ def _build_education_item(block: list[str]) -> StagedItem:
         reason = "Entrada de formacion sin titulo legible."
 
     if len(block) > 2:
-        values["summary"] = " ".join(block[2:])[:800]
+        values["summary"] = " ".join(block[2:])
 
     return StagedItem(
         key="education.0",
@@ -885,7 +885,7 @@ def _build_skill_items(lines: list[str]) -> list[StagedItem]:
             StagedItem(
                 key="skills.0",
                 section="skills",
-                values={"label": candidate[:60], "category": category or ""},
+                values={"label": candidate, "category": category or ""},
                 source_text=candidate[:200],
                 confidence=confidence,
                 reason=reason,
@@ -935,7 +935,7 @@ def _build_language_items(lines: list[str]) -> list[StagedItem]:
                 StagedItem(
                     key="languages.0",
                     section="languages",
-                    values={"name": name[:60], "level": level},
+                    values={"name": name, "level": level},
                     source_text=chunk[:200],
                     confidence=confidence,
                     reason=reason,
@@ -967,7 +967,7 @@ def _parse_language_entry(entry: str) -> tuple[str, str]:
     # terminaba clasificado como C2.
     for label in ("C2", "C1", "B2", "B1", "A2", "A1"):
         if re.search(rf"(?<![A-Z0-9]){label}(?![A-Z0-9])", normalized):
-            return re.split(r"[-–—(:(]", entry)[0].strip()[:60], label
+            return re.split(r"[-–—(:(]", entry)[0].strip(), label
 
     for label, keywords in LANGUAGE_LEVEL_KEYWORDS.items():
         if label in ("C2", "C1", "B2", "B1", "A2", "A1"):
@@ -977,7 +977,7 @@ def _parse_language_entry(entry: str) -> tuple[str, str]:
             break
 
     name = re.split(r"[-–—(:(]", entry)[0].strip()
-    return name[:60], level
+    return name, level
 
 
 def _build_certification_items(lines: list[str]) -> list[StagedItem]:
@@ -990,7 +990,7 @@ def _build_certification_items(lines: list[str]) -> list[StagedItem]:
             if not cleaned or len(cleaned) < 3:
                 continue
 
-            values: dict[str, str] = {"name": cleaned[:160], "issuer": "", "date": ""}
+            values: dict[str, str] = {"name": cleaned, "issuer": "", "date": ""}
             confidence = CONFIDENCE_MEDIUM
             reason = "Certificacion detectada en su seccion. Verificar institucion y fecha."
 
@@ -999,14 +999,14 @@ def _build_certification_items(lines: list[str]) -> list[StagedItem]:
                 values["date"] = date_match.group("start")
                 remainder = _strip_date_range(cleaned)
                 if remainder and remainder != cleaned:
-                    values["name"] = remainder[:160]
+                    values["name"] = remainder
                     confidence = CONFIDENCE_HIGH
                     reason = "Certificacion con fecha explicita."
 
             if "," in values["name"] and not values["issuer"]:
                 head, _, tail = values["name"].partition(",")
-                values["name"] = head.strip()[:160]
-                values["issuer"] = tail.strip()[:160]
+                values["name"] = head.strip()
+                values["issuer"] = tail.strip()
 
             items.append(
                 StagedItem(
@@ -1030,7 +1030,7 @@ def _build_project_items(lines: list[str]) -> list[StagedItem]:
         if not cleaned or len(cleaned) < 3:
             continue
 
-        values = {"name": cleaned[:160], "summary": "", "link": "", "technologies": ""}
+        values = {"name": cleaned, "summary": "", "link": "", "technologies": ""}
         confidence = CONFIDENCE_MEDIUM
         reason = "Proyecto detectado en su seccion. El nombre puede ser la primera parte de la linea."
 
@@ -1041,20 +1041,20 @@ def _build_project_items(lines: list[str]) -> list[StagedItem]:
         ]
         if separator_positions:
             split_at = min(separator_positions)
-            values["name"] = cleaned[:split_at].strip()[:160]
+            values["name"] = cleaned[:split_at].strip()
             rest = cleaned[split_at + 3:].strip()
             if _looks_like_technology_line(rest):
-                values["technologies"] = rest[:400]
+                values["technologies"] = rest
                 confidence = CONFIDENCE_HIGH
                 reason = "Proyecto con nombre y tecnologias separados por un separador claro."
             else:
-                values["summary"] = rest[:1000]
+                values["summary"] = rest
         else:
-            values["summary"] = cleaned[:1000]
+            values["summary"] = cleaned
 
         link_match = URL_PATTERN.search(cleaned)
         if link_match:
-            values["link"] = link_match.group(0).rstrip(".,;:)")[:200]
+            values["link"] = link_match.group(0).rstrip(".,;:)")
 
         items.append(
             StagedItem(

@@ -355,12 +355,12 @@ def _with_submitted(draft: ImportDraft, submitted: dict) -> ImportDraft:
 
     for entry in clone.entries:
         if entry.key in submitted["values"]:
-            entry.value = submitted["values"][entry.key][:400]
+            entry.value = submitted["values"][entry.key]
         for submitted_key, value in submitted["values"].items():
             if submitted_key.startswith(f"{entry.key}:") and entry.values:
                 field_name = submitted_key.split(":", 1)[1]
                 if field_name in entry.values:
-                    entry.values[field_name] = value[:600]
+                    entry.values[field_name] = value
 
     for item in clone.unclassified:
         if item.key in submitted["assignments"]:

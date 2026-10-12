@@ -777,3 +777,70 @@ def test_no_confirmed_value_is_ever_silently_shortened():
     payload = st.confirm_draft(draft, title="CV")
 
     assert payload["personal"]["location"] == values["personal.location"]
+
+
+def test_long_submitted_value_is_not_truncated_on_save():
+    """Un valor editido en la revision se guarda entero, sin recorte."""
+
+    from app.services import import_staging_service as st
+
+    long_location = "Buenos Aires, Argentina, " * 20
+    assert len(long_location) > 400
+
+    parsed = parse_cv_text("DATOS PERSONALES\nNombre: Ana Perez\nUbicacion: Corta\n")
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+
+    draft = st.apply_review(
+        draft,
+        values={"personal.location": long_location},
+        decisions={},
+        unclassified_assignments={},
+    )
+
+    entry = next(e for e in draft.entries if e.key == "personal.location")
+    assert entry.value == long_location, "no debe recortarse lo que la persona escribio"
+
+
+def test_overlong_summary_is_rejected_at_confirm_not_truncated():
+    """Un resumen que supera el limite se rechaza con mensaje, no se corta."""
+
+    from app.services import import_staging_service as st
+
+    long_summary = "Perfil profesional muy extenso. " * 60
+    assert len(long_summary) > st.FIELD_LIMITS["summary"]
+
+    parsed = parse_cv_text(f"PERFIL PROFESIONAL\n{long_summary}\n")
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+
+    decisions = {entry.key: st.STATUS_CONFIRMED for entry in draft.entries}
+    values = {entry.key: entry.value for entry in draft.entries}
+    draft = st.apply_review(draft, values=values, decisions=decisions, unclassified_assignments={})
+
+    with pytest.raises(st.ImportStagingError) as error:
+        st.confirm_draft(draft, title="CV")
+    assert error.value.code == "review_value_too_long"
+
+    # El texto sigue completo en el borrador.
+    stored = st.load_draft(draft.draft_id)
+    assert any(entry.value == long_summary.strip() for entry in stored.entries)
+
+
+def test_long_additional_info_content_is_validated():
+    from app.services import import_staging_service as st
+
+    long_text = "Bloque de contenido muy extenso. " * 60
+    parsed = parse_cv_text(f"DATOS PERSONALES\nNombre: Ana Perez\n{long_text}\n")
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+    item = draft.unclassified[0]
+
+    draft = st.apply_review(
+        draft,
+        values={},
+        decisions={**{e.key: st.STATUS_CONFIRMED for e in draft.entries}, item.key: st.STATUS_KEPT},
+        unclassified_assignments={item.key: ""},
+    )
+
+    with pytest.raises(st.ImportStagingError) as error:
+        st.confirm_draft(draft, title="CV")
+    assert error.value.code == "review_value_too_long"
+    assert "informacion adicional" in error.value.user_message

@@ -84,6 +84,7 @@ FIELD_LIMITS: dict[str, dict[str, int]] = {
 }
 
 MAX_ADDITIONAL_INFO = 20
+ADDITIONAL_INFO_CONTENT_LIMIT = 1000
 
 UNCLASSIFIED_TARGET_SECTIONS = (
     "additional_info",
@@ -470,11 +471,11 @@ def apply_review(
         # item pise el valor escalar de otra entrada.
         for submitted_key, submitted_value in values.items():
             if submitted_key == entry.key:
-                entry.value = submitted_value[:400]
+                entry.value = submitted_value
             elif submitted_key.startswith(f"{entry.key}:") and entry.values:
                 field_name = submitted_key.split(":", 1)[1]
                 if field_name in entry.values:
-                    entry.values[field_name] = submitted_value[:600]
+                    entry.values[field_name] = submitted_value
 
         if entry.key in decisions:
             entry.status = decisions[entry.key]
@@ -620,7 +621,7 @@ def _build_assigned_unclassified(draft: ImportDraft) -> dict[str, list[dict]]:
             assigned["projects"].append(
                 {
                     "name": (name if separator else text).strip()[:160],
-                    "summary": rest.strip()[:1000],
+                    "summary": rest.strip(),
                     "link": "",
                     "technologies": [],
                 }
@@ -675,7 +676,7 @@ def _split_additional_text(text: str) -> tuple[str, str]:
 
     match = _LABELLED_VALUE.match(text.strip())
     if match:
-        return match.group("label").strip()[:60], match.group("value").strip()[:1000]
+        return match.group("label").strip(), match.group("value").strip()
     return "Informacion del PDF", text[:1000]
 
 
@@ -701,9 +702,19 @@ def _validate_field_limits(draft: ImportDraft) -> None:
     for item in draft.unclassified:
         if item.status != STATUS_KEPT:
             continue
-        limit = FIELD_LIMITS.get(f"{item.assigned_section}.name") if item.assigned_section else None
+
+        # Asignado a una seccion concreta: se valida el campo `name` de esa
+        # seccion. Sin seccion (o "informacion adicional"): se valida el
+        # contenido de `additional_info`, que antes no se comprobaba nunca.
+        if item.assigned_section and item.assigned_section != "additional_info":
+            limit = FIELD_LIMITS.get(f"{item.assigned_section}.name")
+            section = item.assigned_section
+        else:
+            limit = ADDITIONAL_INFO_CONTENT_LIMIT
+            section = "informacion adicional"
+
         if limit is not None and len(item.text) > limit:
-            overlong.append(f"{item.assigned_section} ({len(item.text)} de {limit} caracteres)")
+            overlong.append(f"{section} ({len(item.text)} de {limit} caracteres)")
 
     if overlong:
         raise ImportStagingError(
