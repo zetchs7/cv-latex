@@ -1,0 +1,85 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Producer (cv-latex pdf_builder) >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 2818 >>
+stream
+BT /F1 10 Tf 40 760 Td (Jane Q. Public) Tj ET
+BT /F1 10 Tf 40 748 Td (Software Engineer) Tj ET
+BT /F1 10 Tf 40 736 Td () Tj ET
+BT /F1 10 Tf 40 724 Td (CONTACT) Tj ET
+BT /F1 10 Tf 40 712 Td (Name: Jane Q. Public) Tj ET
+BT /F1 10 Tf 40 700 Td (Email: jane.public.demo@example.com) Tj ET
+BT /F1 10 Tf 40 688 Td (Phone: +1 555 010 2030) Tj ET
+BT /F1 10 Tf 40 676 Td (Location: Austin, United States) Tj ET
+BT /F1 10 Tf 40 664 Td (LinkedIn: https://www.linkedin.com/in/jane-public-demo) Tj ET
+BT /F1 10 Tf 40 652 Td (GitHub: https://github.com/jane-public-demo) Tj ET
+BT /F1 10 Tf 40 640 Td () Tj ET
+BT /F1 10 Tf 40 628 Td (PROFILE) Tj ET
+BT /F1 10 Tf 40 616 Td (Software engineer with eight years of experience building web) Tj ET
+BT /F1 10 Tf 40 604 Td (applications and backend services in production environments.) Tj ET
+BT /F1 10 Tf 40 592 Td () Tj ET
+BT /F1 10 Tf 40 580 Td (WORK EXPERIENCE) Tj ET
+BT /F1 10 Tf 40 568 Td (Company: Aurora Solutions LLC) Tj ET
+BT /F1 10 Tf 40 556 Td (Role: Senior Backend Engineer) Tj ET
+BT /F1 10 Tf 40 544 Td (Dates: 03/2021 - Present) Tj ET
+BT /F1 10 Tf 40 532 Td (Responsibilities: REST API design, query optimization and) Tj ET
+BT /F1 10 Tf 40 520 Td (mentoring of junior engineers.) Tj ET
+BT /F1 10 Tf 40 508 Td (Company: Pearson Data Inc.) Tj ET
+BT /F1 10 Tf 40 496 Td (Role: Data Analyst) Tj ET
+BT /F1 10 Tf 40 484 Td (Dates: 09/2018 - 02/2021) Tj ET
+BT /F1 10 Tf 40 472 Td (Responsibilities: automated reporting and indicator dashboards.) Tj ET
+BT /F1 10 Tf 40 460 Td () Tj ET
+BT /F1 10 Tf 40 448 Td (EDUCATION) Tj ET
+BT /F1 10 Tf 40 436 Td (School: Austin State University) Tj ET
+BT /F1 10 Tf 40 424 Td (Degree: Bachelor of Science in Computer Engineering) Tj ET
+BT /F1 10 Tf 40 412 Td (Dates: 2012 - 2016) Tj ET
+BT /F1 10 Tf 40 400 Td () Tj ET
+BT /F1 10 Tf 40 388 Td (SKILLS) Tj ET
+BT /F1 10 Tf 40 376 Td (Python, FastAPI, SQL, PostgreSQL, Docker, Git, Linux, REST APIs,) Tj ET
+BT /F1 10 Tf 40 364 Td (automated testing, continuous integration, LaTeX.) Tj ET
+BT /F1 10 Tf 40 352 Td () Tj ET
+BT /F1 10 Tf 40 340 Td (LANGUAGES) Tj ET
+BT /F1 10 Tf 40 328 Td (English: Native) Tj ET
+BT /F1 10 Tf 40 316 Td (Spanish: B2 - Upper intermediate) Tj ET
+BT /F1 10 Tf 40 304 Td () Tj ET
+BT /F1 10 Tf 40 292 Td (CERTIFICATIONS) Tj ET
+BT /F1 10 Tf 40 280 Td (Certification: AWS Certified Solutions Architect - Associate) Tj ET
+BT /F1 10 Tf 40 268 Td (Issuer: Amazon Web Services) Tj ET
+BT /F1 10 Tf 40 256 Td (Year: 2023) Tj ET
+BT /F1 10 Tf 40 244 Td () Tj ET
+BT /F1 10 Tf 40 232 Td (PROJECTS) Tj ET
+BT /F1 10 Tf 40 220 Td (Project: Operations metrics control panel) Tj ET
+BT /F1 10 Tf 40 208 Td (Description: internal tool to visualize service indicators for) Tj ET
+BT /F1 10 Tf 40 196 Td (the operations team.) Tj ET
+BT /F1 10 Tf 40 184 Td (Stack: Python, FastAPI, SQLite, LaTeX) Tj ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000272 00000 n 
+0000000398 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R /Info 4 0 R >>
+startxref
+3267
+%%EOF

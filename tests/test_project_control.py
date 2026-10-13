@@ -19,6 +19,12 @@ from pathlib import Path
 import pytest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+
+REQUIRES_REPOSITORY = pytest.mark.skipif(
+    not (REPOSITORY_ROOT / ".git").exists(),
+    reason="verifica el estado del repositorio: indice de Git o archivos que solo estan en un checkout",
+)
+
 TOOL_PATH = REPOSITORY_ROOT / "tools" / "project_control.py"
 CATALOG_PATH = REPOSITORY_ROOT / "docs" / "development" / "project_control" / "catalog.json"
 
@@ -104,11 +110,13 @@ def test_real_catalog_is_valid():
     assert problems == [], "\n".join(problem.render() for problem in problems)
 
 
+@REQUIRES_REPOSITORY
 def test_real_catalog_and_documents_are_in_sync():
     arguments = argparse.Namespace(only=None)
     assert project_control.command_check(arguments) == 0
 
 
+@REQUIRES_REPOSITORY
 def test_real_catalog_distinguishes_approved_from_proposed():
     catalog = project_control.load_catalog()
     approved = [task for task in catalog["tasks"] if task["approved"]]
@@ -202,6 +210,15 @@ def test_dependency_cycle_is_rejected():
     assert any("ciclo de dependencias" in message for message in _errors(catalog))
 
 
+# Los tests del validador puro (prioridad invalida, IDs duplicados, ciclos de
+# dependencias, schema_version booleana) trabajan sobre catalogos construidos y
+# corren en cualquier entorno, incluida la imagen de ejecucion. Los que si
+# necesitan el repositorio —indice de Git, documentos generados, enlaces de la
+# documentacion— llevan este marcador, para no quedarse con la cobertura
+# completa saltada por una sola raz�n.
+
+
+
 def test_task_depending_on_itself_is_rejected():
     catalog = _valid_catalog()
     catalog["tasks"][0]["depends_on"] = ["TAREA-001"]
@@ -251,6 +268,7 @@ def test_generated_documents_carry_the_generated_notice():
         assert project_control.GENERATED_NOTICE in content, filename
 
 
+@REQUIRES_REPOSITORY
 def test_render_refuses_an_invalid_catalog(tmp_path, monkeypatch):
     catalog = _valid_catalog()
     catalog["tasks"][0]["acceptance"] = []
@@ -266,6 +284,7 @@ def test_render_refuses_an_invalid_catalog(tmp_path, monkeypatch):
 # --- check: solo lectura -------------------------------------------------
 
 
+@REQUIRES_REPOSITORY
 def test_check_does_not_modify_documents():
     targets = [
         project_control.DOCUMENTS_DIRECTORY / filename
@@ -281,6 +300,7 @@ def test_check_does_not_modify_documents():
     assert catalog_before == hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest()
 
 
+@REQUIRES_REPOSITORY
 def test_check_reports_drift_without_writing(tmp_path, monkeypatch):
     documents = tmp_path / "docs"
     documents.mkdir()
@@ -305,6 +325,7 @@ def test_check_reports_drift_without_writing(tmp_path, monkeypatch):
     assert hashlib.sha256(drifted.read_bytes()).hexdigest() == drifted_hash
 
 
+@REQUIRES_REPOSITORY
 def test_check_detects_a_missing_document(tmp_path, monkeypatch):
     documents = tmp_path / "docs"
     documents.mkdir()
@@ -338,6 +359,7 @@ def test_non_object_catalog_is_rejected(tmp_path):
         project_control.load_catalog(listed)
 
 
+@REQUIRES_REPOSITORY
 def test_validate_and_status_do_not_write():
     targets = [
         project_control.DOCUMENTS_DIRECTORY / filename
@@ -353,6 +375,7 @@ def test_validate_and_status_do_not_write():
 # --- Restricciones de diseno ---------------------------------------------
 
 
+@REQUIRES_REPOSITORY
 def test_tool_has_no_network_imports():
     """`subprocess` si se permite: `check` lee el indice de git.
 
@@ -366,17 +389,20 @@ def test_tool_has_no_network_imports():
     assert not banned.intersection(imported), f"imports de red prohibidos: {banned.intersection(imported)}"
 
 
+@REQUIRES_REPOSITORY
 def test_tool_never_references_the_application_database():
     source = TOOL_PATH.read_text(encoding="utf-8")
     for forbidden in ("sqlite3", "app.db", "get_data_dir", "from app"):
         assert forbidden not in source, f"la herramienta no debe conocer {forbidden}"
 
 
+@REQUIRES_REPOSITORY
 def test_tool_lives_outside_the_application_package():
     assert TOOL_PATH.parts[-2] == "tools"
     assert not (REPOSITORY_ROOT / "app" / "tools").exists()
 
 
+@REQUIRES_REPOSITORY
 def test_catalog_is_not_inside_the_application_data_directory():
     assert "data" not in CATALOG_PATH.parts
     assert CATALOG_PATH.suffix == ".json"
@@ -399,6 +425,7 @@ PCC_REQUIRED_PATHS = (
 )
 
 
+@REQUIRES_REPOSITORY
 def test_required_paths_exist():
     missing = [name for name in PCC_REQUIRED_PATHS if not (REPOSITORY_ROOT / name).exists()]
     assert missing == [], f"referencias del Control Center inexistentes: {missing}"
@@ -408,6 +435,7 @@ def test_required_paths_exist():
     "document",
     ["README.md", "docs/development/MODULE_INDEX.md", "docs/development/PROJECT_PLAYBOOK.md"],
 )
+@REQUIRES_REPOSITORY
 def test_control_center_links_in_documents_resolve(document):
     """Toda referencia relativa a un archivo del Control Center debe resolver."""
 
@@ -420,6 +448,7 @@ def test_control_center_links_in_documents_resolve(document):
     assert broken == [], f"{document} referencia rutas inexistentes: {broken}"
 
 
+@REQUIRES_REPOSITORY
 def test_catalog_readme_documents_every_required_field():
     """El esquema esta documentado junto al JSON porque JSON no admite comentarios."""
 
@@ -607,6 +636,7 @@ def test_render_escapes_block_level_content():
     assert "Criterio con\n" not in rendered
 
 
+@REQUIRES_REPOSITORY
 def test_check_detects_crlf_drift(tmp_path, monkeypatch):
     """La deriva de EOL se compara a nivel de bytes, no de texto."""
 
@@ -697,12 +727,14 @@ def _check(git_repository: Path) -> int:
     return project_control.command_check(argparse.Namespace(only=None))
 
 
+@REQUIRES_REPOSITORY
 def test_git_index_all_four_states_in_sync(git_repository):
     """Catalogo y documentos, en arbol e indice, todos iguales."""
 
     assert _check(git_repository) == 0
 
 
+@REQUIRES_REPOSITORY
 def test_git_invalid_staged_catalog_fails_instead_of_falling_back(git_repository):
     """El indice con un catalogo invalido es fallo, no un fallback al arbol."""
 
@@ -722,6 +754,7 @@ def test_git_invalid_staged_catalog_fails_instead_of_falling_back(git_repository
     assert _check(git_repository) == 1
 
 
+@REQUIRES_REPOSITORY
 def test_git_staged_document_missing_from_index_is_drift(git_repository):
     """`git rm --cached` de un documento generado debe detectarse."""
 
@@ -739,6 +772,7 @@ def test_git_staged_document_missing_from_index_is_drift(git_repository):
     assert _check(git_repository) == 1
 
 
+@REQUIRES_REPOSITORY
 def test_git_staged_catalog_missing_from_index_is_drift(git_repository, capsys):
     """`git rm --cached` del catalogo no puede saltarse la validacion del indice.
 
@@ -763,6 +797,7 @@ def test_git_staged_catalog_missing_from_index_is_drift(git_repository, capsys):
     assert catalog.relative_to(git_repository).as_posix() in capsys.readouterr().out
 
 
+@REQUIRES_REPOSITORY
 def test_git_staged_catalog_and_document_missing_from_index_both_reported(git_repository, capsys):
     """Catalogo y documento ausentes del indice se reportan juntos."""
 
@@ -786,6 +821,7 @@ def test_git_staged_catalog_and_document_missing_from_index_both_reported(git_re
     assert "ROADMAP.md" in output
 
 
+@REQUIRES_REPOSITORY
 def test_git_catalog_missing_from_working_tree_fails_even_if_staged(git_repository):
     """Camino inverso: el indice tiene el catalogo pero el arbol no."""
 
@@ -795,6 +831,7 @@ def test_git_catalog_missing_from_working_tree_fails_even_if_staged(git_reposito
     assert _check(git_repository) == 1
 
 
+@REQUIRES_REPOSITORY
 def test_git_stale_staged_document_is_drift(git_repository):
     import subprocess
 
@@ -808,12 +845,14 @@ def test_git_stale_staged_document_is_drift(git_repository):
     assert _check(git_repository) == 1
 
 
+@REQUIRES_REPOSITORY
 def test_git_working_tree_only_change_is_drift(git_repository):
     target = git_repository / "docs" / "development" / "PROJECT_STATUS.md"
     target.write_text(target.read_text(encoding="utf-8") + "\nsolo en el working tree\n", encoding="utf-8")
     assert _check(git_repository) == 1
 
 
+@REQUIRES_REPOSITORY
 def test_git_crlf_in_staged_document_is_drift(git_repository):
     import subprocess
 
@@ -827,6 +866,7 @@ def test_git_crlf_in_staged_document_is_drift(git_repository):
     assert _check(git_repository) == 1
 
 
+@REQUIRES_REPOSITORY
 def test_validate_status_and_check_are_read_only_in_git(git_repository):
     before = {
         path.relative_to(git_repository).as_posix(): path.read_bytes()
@@ -846,6 +886,7 @@ def test_validate_status_and_check_are_read_only_in_git(git_repository):
     assert before == after
 
 
+@REQUIRES_REPOSITORY
 def test_check_without_a_git_index_reports_the_real_reason(git_repository, monkeypatch, capsys):
     """Sin indice consultable, `check` dice eso y no acusa una omision inexistente.
 
@@ -864,6 +905,7 @@ def test_check_without_a_git_index_reports_the_real_reason(git_repository, monke
         (git_repository / ".git-away").rename(git_repository / ".git")
 
 
+@REQUIRES_REPOSITORY
 def test_boolean_schema_version_is_rejected(git_repository):
     """`True == 1` en Python: un schema_version booleano pasaba como version 1."""
 
@@ -884,6 +926,7 @@ def test_boolean_schema_version_is_rejected(git_repository):
     assert "schema_version" in buffer.getvalue()
 
 
+@REQUIRES_REPOSITORY
 def test_audit_sees_routers_without_an_explicit_prefix():
     """`APIRouter()` sin prefix explicito sigue trayendo sus rutas al audit.
 

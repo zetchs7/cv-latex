@@ -1,0 +1,243 @@
+{% extends "layout.html" %}
+
+{% block title %}Resultado de la importacion del CV - CV LaTeX Builder{% endblock %}
+{% block topbar_title %}Resultado de la importacion del CV{% endblock %}
+
+{% block content %}
+{#- Helper local: los nombres de campo del formulario necesitan el prefijo
+    que lee la ruta. Se centraliza aca para no repetir prefijos a mano. -#}
+{% macro input_for(entry, field_name, value, label) %}
+<label>
+  <span>{{ label }}</span>
+  <input
+    type="text"
+    name="value__{{ entry.key }}{% if field_name %}:{{ field_name }}{% endif %}"
+    value="{{ value or '' }}"
+    maxlength="{{ 1200 if entry.key == "summary" else 800 }}">
+</label>
+{% endmacro %}
+
+<section class="confirm-panel confirm-panel-strong">
+  <p class="eyebrow">Revision obligatoria</p>
+  <h1>Resultado de la importacion del CV</h1>
+
+  <p>
+    Archivo: <strong>{{ draft.source_filename }}</strong> ({{ draft.page_count }} pagina{{ 's' if draft.page_count != 1 else '' }}).
+    Se detectaron {{ draft.entries|length }} dato{{ 's' if draft.entries|length != 1 else '' }} y
+    {{ draft.unclassified|length }} bloque{{ 's' if draft.unclassified|length != 1 else '' }} sin clasificar.
+  </p>
+
+  <p>
+    El PDF original <strong>no se guardo</strong>. Lo que ves abajo es una propuesta
+    derivada de su texto. Revisa, corrige y decide que se conserva antes de crear el CV.
+  </p>
+
+  {% if error_message %}
+  <div class="flash-message flash-message-error" role="alert">{{ error_message }}</div>
+  {% endif %}
+  {% if notice %}
+  <div class="flash-message" role="status">{{ notice }}</div>
+  {% endif %}
+
+  {% if draft.conflicts %}
+  <h2>Contradicciones detectadas</h2>
+  <div class="flash-message flash-message-error" role="alert">
+    {% for conflict in draft.conflicts %}
+    <p>
+      <strong>{{ conflict.key }}</strong>: {{ conflict.reason }}
+      {% for candidate in conflict.candidates %}<br><small>{{ candidate }}</small>{% endfor %}
+    </p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if entries_pending or unclassified_pending %}
+  <div class="flash-message flash-message-error" role="alert">
+    Quedan {{ entries_pending }} dato{{ 's' if entries_pending != 1 else '' }} y
+    {{ unclassified_pending }} bloque{{ 's' if unclassified_pending != 1 else '' }} sin decidir.
+    Cada elemento necesita una decision antes de poder guardar.
+  </div>
+  {% else %}
+  <div class="flash-message" role="status">
+    Todo esta decidido. Podes confirmar para crear el CV estructurado.
+  </div>
+  {% endif %}
+</section>
+
+<form method="post" action="{{ url_for('pdf_import_save', draft_id=draft.draft_id) }}">
+  <section class="confirm-panel">
+    <h2>1. Datos del CV</h2>
+    <label>
+      <span>Titulo del CV (obligatorio)</span>
+      <input type="text" name="cv_title" value="{{ draft.proposed_title or '' }}" placeholder="Se completa con el nombre detectado si lo dejas vacio" maxlength="120">
+    </label>
+  </section>
+
+  <section class="confirm-panel">
+    <h2>2. Datos detectados</h2>
+
+    {#- Aqui solo lo confiable: los dudosos se editan en su propia seccion, mas
+        abajo. Renderizarlos dos veces producia dos inputs con el mismo `name`,
+        y el navegador enviaba el primero. -#}
+    {% for section, entries in draft.by_section().items() %}
+    {% set certain = entries | selectattr('confidence', 'equalto', 'high') | list %}
+    {% if certain %}
+    <h3>{{ section.replace('_', ' ')|capitalize }}</h3>
+
+    {% for entry in certain %}
+    <fieldset class="import-entry">
+      <legend>
+        {{ entry.key }}
+        <span class="text-link">confianza {{ draft.confidence_label(entry.confidence) }}</span>
+      </legend>
+
+      <p><small>{{ entry.reason }}</small></p>
+
+      {% if entry.values %}
+        {% for field_name, value in entry.values.items() %}
+          {{ input_for(entry, field_name, value, field_name.replace('_', ' ')) }}
+        {% endfor %}
+      {% else %}
+        {{ input_for(entry, '', entry.value, 'valor') }}
+      {% endif %}
+
+      {% if entry.source_text %}
+      <details>
+        <summary>Texto original del PDF</summary>
+        <pre>{{ entry.source_text }}</pre>
+      </details>
+      {% endif %}
+
+      <fieldset>
+        <legend>Decision</legend>
+        <label><input type="radio" name="decision__{{ entry.key }}" value="confirmed"
+          {% if entry.status == 'confirmed' %}checked{% endif %}> Confirmar y usar</label>
+        <label><input type="radio" name="decision__{{ entry.key }}" value="discarded"
+          {% if entry.status == 'discarded' %}checked{% endif %}> Descartar</label>
+        {% if entry.status == 'pending' %}
+        <label><input type="radio" name="decision__{{ entry.key }}" value="pending" checked> Sin decidir</label>
+        {% endif %}
+      </fieldset>
+    </fieldset>
+    {% endfor %}
+    {% endif %}
+    {% endfor %}
+  </section>
+
+  <section class="confirm-panel">
+    <h2>3. Campos con dudas o informacion incompleta</h2>
+    <p>
+      Son los datos con confianza baja o media, o los que el PDF no dejo claros.
+      Confirmalos, conservalos o descartalos explicitamente.
+    </p>
+
+    {#- Solo confianza media y baja. Los de confianza alta ya se editaron
+        arriba y duplicarlos seria mostrar el mismo input dos veces. -#}
+    {% set doubtful = draft.entries | rejectattr('confidence', 'equalto', 'high') | list %}
+    {% if not doubtful %}
+    <p><small>No se detectaron datos dudosos.</small></p>
+    {% endif %}
+
+    {% for entry in doubtful %}
+    <fieldset class="import-entry">
+      <legend>{{ entry.key }} — confianza {{ draft.confidence_label(entry.confidence) }}</legend>
+      <p><small>{{ entry.reason }}</small></p>
+      {% if entry.values %}
+        {% for field_name, value in entry.values.items() %}
+          {{ input_for(entry, field_name, value, field_name.replace('_', ' ')) }}
+        {% endfor %}
+      {% else %}
+        {{ input_for(entry, '', entry.value, 'valor') }}
+      {% endif %}
+      <fieldset>
+        <legend>Decision</legend>
+        <label><input type="radio" name="decision__{{ entry.key }}" value="confirmed"
+          {% if entry.status == 'confirmed' %}checked{% endif %}> Confirmar</label>
+        <label><input type="radio" name="decision__{{ entry.key }}" value="discarded"
+          {% if entry.status == 'discarded' %}checked{% endif %}> Descartar</label>
+        {% if entry.status == 'pending' %}
+        <label><input type="radio" name="decision__{{ entry.key }}" value="pending" checked> Sin decidir</label>
+        {% endif %}
+      </fieldset>
+    </fieldset>
+    {% endfor %}
+  </section>
+
+  <section class="confirm-panel">
+    <h2>4. Informacion no clasificada</h2>
+    <p>
+      Texto del PDF que el sistema no pudo ubicar con certeza. No se descarta en
+      silencio: decide donde va o descarta.
+    </p>
+
+    {% if not draft.unclassified %}
+    <p><small>No quedo texto sin clasificar.</small></p>
+    {% endif %}
+
+    {% for item in draft.unclassified %}
+    <fieldset class="import-entry">
+      <legend>{{ item.key }}</legend>
+
+      {#- Editable, no read-only: si el sistema rechaza el bloque por su largo,
+          la persona tiene que poder acortarlo aca. Un <pre> la obligaba a
+          descartar todo y reescribir de cero.
+          El texto original del PDF queda visible como evidencia en el details. -#}
+      <label>
+        <span>Contenido</span>
+        <textarea name="value__{{ item.key }}" rows="4" maxlength="2000">{{ item.text }}</textarea>
+      </label>
+
+      {% if item.source_text and item.source_text != item.text %}
+      <details>
+        <summary>Texto original del PDF</summary>
+        <pre>{{ item.source_text }}</pre>
+      </details>
+      {% endif %}
+
+      <p><small>{{ item.reason }}</small></p>
+
+      <label>
+        <span>Asignar a</span>
+        <select name="assign__{{ item.key }}">
+          <option value="" {% if not item.assigned_section %}selected{% endif %}>Informacion adicional</option>
+          <option value="skills" {% if item.assigned_section == 'skills' %}selected{% endif %}>Skills</option>
+          <option value="certifications" {% if item.assigned_section == 'certifications' %}selected{% endif %}>Certificaciones</option>
+          <option value="projects" {% if item.assigned_section == 'projects' %}selected{% endif %}>Proyectos</option>
+        </select>
+      </label>
+
+      <fieldset>
+        <legend>Decision</legend>
+        <label><input type="radio" name="decision__{{ item.key }}" value="kept"
+          {% if item.status == 'kept' %}checked{% endif %}> Conservar</label>
+        <label><input type="radio" name="decision__{{ item.key }}" value="discarded"
+          {% if item.status == 'discarded' %}checked{% endif %}> Descartar</label>
+        {% if item.status == 'pending' %}
+        <label><input type="radio" name="decision__{{ item.key }}" value="pending" checked> Sin decidir</label>
+        {% endif %}
+      </fieldset>
+    </fieldset>
+    {% endfor %}
+  </section>
+
+  <section class="confirm-panel">
+    <button class="button primary" type="submit">Guardar revision</button>
+    <button class="button" type="submit" formaction="{{ url_for('pdf_import_confirm', draft_id=draft.draft_id) }}"
+      {% if not can_confirm %}aria-disabled="true"{% endif %}>
+      Confirmar y crear el CV
+    </button>
+    {#- El descarte pide el mismo texto exacto que usan CVs y cartas. La
+        comprobacion va en el servidor: sin esto, un clic accidental sobre el
+        boton de peligro destruiria toda la revision. -#}
+    <div class="confirm-inline">
+      <label>
+        <span>Para descartar, escribe: {{ suggested_title }}</span>
+        <input type="text" name="confirm_discard" autocomplete="off">
+      </label>
+      <button class="button danger" type="submit" formaction="{{ url_for('pdf_import_discard', draft_id=draft.draft_id) }}">
+        Descartar la importacion
+      </button>
+    </div>
+  </section>
+</form>
+{% endblock %}

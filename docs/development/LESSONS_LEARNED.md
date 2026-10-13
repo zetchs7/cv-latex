@@ -260,6 +260,25 @@ Consolidar errores reales detectados durante `cv-latex`, su causa raiz, la corre
 - Regla futura para evitarlo: ningun test debe depender de que alguien recuerde exportar una variable. Si un recurso escribible se resuelve desde una constante de modulo en lugar de la funcion de datos, ese recurso queda fuera del aislamiento y hay que corregirlo en el codigo. La regla de LL-023 queda SUPERADA por esta.
 - Instruccion sugerida para proximos prompts: "Un aislamiento que depende del comando de ejecucion no es aislamiento: va en `conftest.py` y con una proteccion que aborte."
 
+## LL-028 - Un patron de regex construido por interpolacion puede aplanar su propia alternacion
+
+- Problema detectado: el parser de importacion de PDF no reconocia los meses escritos con letra. `January 2019` matcheaba solo `Jan` y `enero 2019` matcheaba solo `enero`.
+- Causa raiz: `_MONTH` estaba definida como una concatenacion de strings entre parentesis, es decir, una cadena normal, **no un grupo de regex**. Al interpolarla dentro de `_DATE` con un f-string, su alternacion interna sedistributed sobre la expresion completa en lugar de quedar agrupada. El patron resultante era `(?:` + una rama + `|` + `february` + `|` + `february` + ... en vez de un grupo de meses.
+- Impacto/riesgo: silencioso y total. Los meses no se detectaban, pero el parser seguia funcionando con años, asi que la suite pasaba y los CVs con fechas en letra se clasificaban con confianza baja sin que nada lo delatara. Es la clase de defecto mas dificil de detectar: no rompe, degrada.
+- Como se corrigio: el grupo `(?:...)` paso a formar parte de la constante `_MONTH`, no de cada sitio de uso. Ahora `_MONTH` es un fragmento de regex, no un texto.
+- Validacion que lo confirmo: `re.compile(_DATE, re.IGNORECASE)` sobre `January 2019`, `enero 2019` y `marzo 2020` devuelve la fecha completa en los tres casos. Ademas se agrego el formato `01/2020` (mes/anio), que antes se reducia a `2020` perdiendo el mes en silencio.
+- Regla futura para evitarlo: cuando una constante de patron se interpola dentro de otra expresion, tiene que traer sus propios parentesis de agrupacion. Interpolar texto plano en un patron cambia el significado del patron compuesto.
+- Instruccion sugerida para proximos prompts: "Si un patron se compone de partes, cada parte debe ser un fragmento de regex con su grupo, no un texto que se pegue dentro."
+
+## LL-029 - En tests HTTP, `data=` con lista de tuplas produce un formulario vacio y sin error
+
+- Problema detectado: veinte pruebas de la importacion de PDF fallaban con "Todavia hay datos sin decidir" cuando la aplicacion estaba correcta y el staging funcionaba.
+- Causa raiz: `TestClient.post(..., data=[("a", "1"), ("b", "2")])` envia un formulario **vacio** en esta combinacion de httpx y Starlette, sin lanzar excepcion. Un `data=dict` si funciona. El sintoma aparece lejos de la causa: la ruta leia `request.form()`, no encontraba decisiones y rechazaba la confirmacion, que era un mensaje de negocio perfectamente logico.
+- Impacto/riesgo: perder tiempo depurando codigo correcto y, peor, aprender a desconfiar de un mensaje de error que era cierto. Un fallo silencioso en el arnes de tests es mas peligroso que uno ruidoso.
+- Como se corrigio: los tests envian el formulario con `content=urlencode(campos).encode()` y el encabezado `content-type: application/x-www-form-urlencoded`, que es exactamente lo que produce un navegador y ademas conserva claves repetidas. El helper quedo documentado con el motivo.
+- Validacion que lo confirmo: una ruta minima de prueba demuestra el comportamiento: `data=dict` devuelve 2 claves, `data=[tuplas]` devuelve 0, y `content=` urlencoded devuelve 2.
+- Regla futura para evitarlo: en tests de rutas con formulario, usar `urlencode` y no `data=` con listas. Y cuando un mensaje de negocio aparezca en un test de integracion, sospechar primero del arnes antes que del codigo de negocio.
+- Instruccion sugerida para proximos prompts: "Los formularios de test se envian con urlencode, no con data= y listas de tuplas: esa forma llega vacia."
 ## LL-026 - Una afirmacion de backlog sin verificar es peor que no tener backlog
 
 - Problema detectado: al construir el catálogo inicial, se registró `OPS-001` como "sin procedimiento de backup ni restauracion". El README ya tenia las secciones "Backup basico" y "Restore basico" en `README.md:112-151`.

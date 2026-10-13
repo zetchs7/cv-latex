@@ -44,6 +44,14 @@ jobs:
       - name: Install project dependencies
         run: python -m pip install -r requirements.txt
 
+      # `pdfinfo` y `pdftotext` de poppler son dependencias del extractor de PDFs.
+      # Estan en la imagen del proyecto (Dockerfile instala poppler-utils), pero
+      # el runner de Ubuntu no los trae: sin este paso la suite fallaba con
+      # `pdf_tool_missing` y el CI quedaba en rojo sin que el codigo estuviera mal.
+      - name: Install poppler-utils (PDF extraction)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
+        continue-on-error: true
+
       - name: Compile Python sources
         run: python -m compileall -q app tests
 
