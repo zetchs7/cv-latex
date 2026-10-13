@@ -490,6 +490,11 @@ def _extract_contact_fields(
         _apply_email(line, fields)
         _apply_phone(line, fields)
         _apply_links(line, links)
+        # Una cabecera que mezcla nombre con un valor capturado
+        # (`Ana Perez | ana@example.com | Buenos Aires`) deja el nombre sin
+        # campo, y `personal.full_name` es obligatorio: sin extraerlo la
+        # importacion no puede completarse aunque el texto este a la vista.
+        _apply_mixed_header_name(line, fields)
 
 
 def _apply_labelled_field(
@@ -532,6 +537,42 @@ def _apply_labelled_field(
                     source_text=line,
                     confidence=CONFIDENCE_HIGH,
                     reason="El valor aparece con una etiqueta explicita en el PDF.",
+                )
+            )
+            return
+
+
+MIXED_HEADER_SEPARATORS = (" | ", " - ", " — ", " · ", "\u2022")
+
+
+def _apply_mixed_header_name(line: str, fields: list[StagedField]) -> None:
+    """Saca el nombre de una cabecera que tambien trae un valor capturado.
+
+    Es la senal mas fuerte que tiene un CV sin encabezados: nombre junto al
+    correo y la ciudad en una sola linea. Sin campo de nombre la confirmacion no
+    pasa, asi que el texto visible no alcanzaba.
+    """
+
+    if any(staged.key == "personal.full_name" for staged in fields):
+        return
+    if not EMAIL_PATTERN.search(line) and not URL_PATTERN.search(line):
+        return
+
+    for separator in MIXED_HEADER_SEPARATORS:
+        head, found, _ = line.partition(separator)
+        if not found:
+            continue
+        name = head.strip()
+        if 1 < len(name) <= 120 and ":" not in name:
+            fields.append(
+                StagedField(
+                    key="personal.full_name",
+                    section="personal",
+                    value=name,
+                    source_text=line,
+                    confidence=CONFIDENCE_MEDIUM,
+                    reason="Nombre tomado de una cabecera que tambien contiene "
+                           "un correo o un enlace. Revisalo antes de confirmar.",
                 )
             )
             return
@@ -1159,8 +1200,19 @@ def _has_uncaptured_remainder(cleaned: str) -> bool:
         return False
     # La etiqueta no es contenido: `Email:` nombra el campo, no aporta datos. Sin
     # esto, una linea con etiqueta y un unico valor capturado se habria mostrado
-    # igual como pendiente. Se quita el prefijo `algo:` aunque no quede valor.
-    resto = re.sub(r"^[^:]{1,40}:\s*", " ", resto.strip())
+    # igual como pendiente. Solo se quita un prefijo que sea etiqueta reconocida:
+    # en `Ana Perez: ana@example.com` los dos puntos separan, y el nombre es
+    # justamente el contenido que no hay que perder.
+    resto = resto.strip()
+    if ":" in resto:
+        posible, _, resto_despues = resto.partition(":")
+        etiquetas = {
+            candidate.lower()
+            for etiquetas_de_campo in FIELD_LABELS.values()
+            for candidate in etiquetas_de_campo
+        }
+        if posible.strip().lower() in etiquetas:
+            resto = resto_despues
     return any(character.isalnum() for character in resto)
 
 

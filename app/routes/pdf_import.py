@@ -167,11 +167,16 @@ async def pdf_import_save(request: Request, draft_id: str) -> HTMLResponse:
 
     try:
         draft = load_draft(draft_id)
+        # `await_form` va DENTRO de la region reclamada: si el cuerpo llega
+        # malformado o el cliente se desconecta, la excepcion salia antes del
+        # `try` y el marcador sobrevivia, bloqueando todo reintento.
+        form = await await_form(request)
     except ImportStagingError as error:
         release_draft(draft_id)
         return _render_gone(request, error)
-
-    form = await await_form(request)
+    except Exception:
+        release_draft(draft_id)
+        raise
 
     try:
         draft = apply_review(
