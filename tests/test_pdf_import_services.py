@@ -1411,3 +1411,20 @@ def test_a_labelled_line_with_one_value_is_not_pending_again():
 
     assert parse_cv_text("Email: ana@example.com").unclassified == ()
     assert parse_cv_text("Nombre: Ana Perez").unclassified == ()
+
+
+def test_a_labelled_email_with_accents_is_not_reported_as_pending():
+    """`Correo electrónico:` se reconoce al extraer, tiene que reconocerse al
+    suprimir: si no, la linea ya capturada volvia como pendiente y se duplicaba."""
+
+    parsed = parse_cv_text("Correo electrónico: ana@example.com\n")
+    assert any(item.value == "ana@example.com" for item in parsed.fields)
+    assert parsed.unclassified == ()
+
+
+def test_a_colon_separator_keeps_the_name_it_is_supposed_to_keep():
+    """En `Ana Perez: correo` los dos puntos separan, no etiquetan."""
+
+    parsed = parse_cv_text("Ana Perez: ana@example.com\n")
+    assert any(item.value == "ana@example.com" for item in parsed.fields)
+    assert "Ana Perez" in " ".join(parsed.unclassified)

@@ -552,3 +552,32 @@ def _claim_exists(draft_id: str) -> bool:
     from app.services.import_staging_service import _draft_path, DRAFT_CLAIM_SUFFIX
 
     return _draft_path(draft_id).with_suffix(DRAFT_CLAIM_SUFFIX).exists()
+
+
+def test_discard_releases_the_claim_when_the_body_is_malformed(client, monkeypatch):
+    """Descartar cubre toda la region posterior al reclamo.
+
+    `await_form` quedaba fuera del `try`, asi que un cuerpo malformado dejaba el
+    marcador puesto y bloqueaba todo reintento durante dos horas.
+    """
+
+    draft_id = _upload(client)
+    claim_draft(draft_id)
+    release_draft(draft_id)
+
+    from app.routes import pdf_import as rutas
+
+    async def cuerpo_roto(request):
+        raise RuntimeError("cuerpo malformado")
+
+    monkeypatch.setattr(rutas, "await_form", cuerpo_roto)
+
+    with pytest.raises(RuntimeError):
+        client.post(
+            f"/cvs/import/{draft_id}/discard",
+            content=b"no-es-un-formulario",
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
+
+    assert not _claim_exists(draft_id), "el reclamo quedo puesto y bloquea el reintento"
+    assert _load_draft(draft_id).draft_id == draft_id

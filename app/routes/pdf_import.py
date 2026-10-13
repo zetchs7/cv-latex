@@ -289,27 +289,34 @@ async def pdf_import_discard(request: Request, draft_id: str) -> RedirectRespons
     except ImportStagingError:
         return RedirectResponse(url=request.url_for("cvs_list"), status_code=303)
 
+    # Toda la region posterior al reclamo cubierta: `await_form` cae fuera de un
+    # `try` si no se envuelve, y un cuerpo malformado dejaba el marcador puesto
+    # bloqueando todo reintento durante dos horas.
+    descartado = False
     try:
-        draft = load_draft(draft_id)
-    except ImportStagingError:
-        release_draft(draft_id)
-        return RedirectResponse(url=request.url_for("cvs_list"), status_code=303)
+        try:
+            draft = load_draft(draft_id)
+        except ImportStagingError:
+            return RedirectResponse(url=request.url_for("cvs_list"), status_code=303)
 
-    form = await await_form(request)
-    expected = _suggest_title(draft)
-    if (form["discard_confirmation"] or "").strip() != expected:
+        form = await await_form(request)
+        expected = _suggest_title(draft)
         # Un error de tipeo en la confirmacion no puede bloquear el borrador
         # durante las dos horas de la limpieza de reclamos.
-        release_draft(draft_id)
-        return _render_review(
-            request,
-            draft,
-            error_message="Para descartar la importacion escribe exactamente el nombre del CV.",
-            status=422,
-            submitted=form,
-        )
+        if (form["discard_confirmation"] or "").strip() != expected:
+            return _render_review(
+                request,
+                draft,
+                error_message="Para descartar la importacion escribe exactamente el nombre del CV.",
+                status=422,
+                submitted=form,
+            )
 
-    delete_draft(draft_id)
+        delete_draft(draft_id)
+        descartado = True
+    finally:
+        if not descartado:
+            release_draft(draft_id)
     return RedirectResponse(url=request.url_for("cvs_list"), status_code=303)
 
 

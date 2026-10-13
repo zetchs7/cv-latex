@@ -1206,12 +1206,16 @@ def _has_uncaptured_remainder(cleaned: str) -> bool:
     resto = resto.strip()
     if ":" in resto:
         posible, _, resto_despues = resto.partition(":")
+        # `normalize_for_matching` en los dos lados: quitar acentos es lo que hace
+        # que `Correo electrónico:` coincida con `ELECTRONICO` durante la
+        # extraccion. Comparando solo en minusculas, la etiqueta con acento no
+        # coincidia y la linea ya capturada volvia como pendiente, duplicandose.
         etiquetas = {
-            candidate.lower()
+            normalize_for_matching(candidate)
             for etiquetas_de_campo in FIELD_LABELS.values()
             for candidate in etiquetas_de_campo
         }
-        if posible.strip().lower() in etiquetas:
+        if normalize_for_matching(posible) in etiquetas:
             resto = resto_despues
     return any(character.isalnum() for character in resto)
 
