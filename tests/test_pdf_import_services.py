@@ -1389,3 +1389,25 @@ def test_two_emails_on_one_line_both_reach_the_review():
     assert parsed.unclassified, "la linea con el segundo correo tiene que llegar a revision"
     assert "ana.work@example.org" in " ".join(parsed.unclassified)
     assert "ana@example.com" in " ".join(parsed.unclassified)
+
+
+def test_a_mixed_header_line_keeps_its_uncaptured_parts():
+    """Cabecera con un valor capturado y otros que no: la linea entra entera.
+
+    `Ana Perez | ana@example.com | Buenos Aires` deja el correo capturado y el
+    nombre y la ciudad en ningun campo, asi que sin el nombre obligatorio la
+    confirmacion no podia completarse.
+    """
+
+    parsed = parse_cv_text("Ana Perez | ana@example.com | Buenos Aires")
+    assert any(item.value == "ana@example.com" for item in parsed.fields)
+    assert parsed.unclassified, "la linea tiene contenido sin capturar"
+    assert "Buenos Aires" in " ".join(parsed.unclassified)
+    assert "Ana Perez" in " ".join(parsed.unclassified)
+
+
+def test_a_labelled_line_with_one_value_is_not_pending_again():
+    """La etiqueta no es contenido: `Email:` solo no deja la linea pendiente."""
+
+    assert parse_cv_text("Email: ana@example.com").unclassified == ()
+    assert parse_cv_text("Nombre: Ana Perez").unclassified == ()

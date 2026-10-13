@@ -145,10 +145,20 @@ async def pdf_import_save(request: Request, draft_id: str) -> HTMLResponse:
     # un snapshot que ya se esta usando para crear el CV: el confirmer persistia
     # su version y el "Cambios guardados" se perdia sin aviso. Se rechaza con un
     # motivo claro en vez de aceptar la escritura y descartarla.
-    if draft_is_claimed(draft_id):
+    # Reclamo atomico, no una verificacion previa: entre el "no esta reclamado"
+    # y la escritura la peticion cede leyendo el formulario, y una confirmacion
+    # que entra en ese hueco reclama, carga y borra despues. El borrador es el
+    # mismo que la confirmacion esta usando, asi que la edicion se pierde.
+    try:
+        claim_draft(draft_id)
+    except ImportStagingError:
+        try:
+            draft = load_draft(draft_id)
+        except ImportStagingError as error:
+            return _render_gone(request, error)
         return _render_review(
             request,
-            load_draft(draft_id),
+            draft,
             error_message="Esta importacion se esta confirmando en este momento. "
                           "Espera a que termine antes de seguir editando.",
             status=409,
@@ -158,6 +168,7 @@ async def pdf_import_save(request: Request, draft_id: str) -> HTMLResponse:
     try:
         draft = load_draft(draft_id)
     except ImportStagingError as error:
+        release_draft(draft_id)
         return _render_gone(request, error)
 
     form = await await_form(request)
@@ -174,6 +185,8 @@ async def pdf_import_save(request: Request, draft_id: str) -> HTMLResponse:
         # El borrador NO se toco: apply_review valida antes de aplicar. Se
         # vuelve a pintar con los valores enviados para que no se pierda nada.
         return _render_review(request, draft, error_message=error.user_message, status=422, submitted=form)
+    finally:
+        release_draft(draft_id)
 
     return _render_review(request, draft, notice="Cambios guardados en la revision.")
 
@@ -264,17 +277,25 @@ async def pdf_import_discard(request: Request, draft_id: str) -> RedirectRespons
     servidor: `confirm()` del navegador no es una validacion.
     """
 
-    if draft_is_claimed(draft_id):
+    # Mismo razonamiento que al guardar: descartar entre el reclamo y la
+    # eliminacion borraria el marcador de una confirmacion en curso.
+    try:
+        claim_draft(draft_id)
+    except ImportStagingError:
         return RedirectResponse(url=request.url_for("cvs_list"), status_code=303)
 
     try:
         draft = load_draft(draft_id)
     except ImportStagingError:
+        release_draft(draft_id)
         return RedirectResponse(url=request.url_for("cvs_list"), status_code=303)
 
     form = await await_form(request)
     expected = _suggest_title(draft)
     if (form["discard_confirmation"] or "").strip() != expected:
+        # Un error de tipeo en la confirmacion no puede bloquear el borrador
+        # durante las dos horas de la limpieza de reclamos.
+        release_draft(draft_id)
         return _render_review(
             request,
             draft,

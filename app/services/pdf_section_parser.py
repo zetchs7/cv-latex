@@ -1145,6 +1145,25 @@ def _has_recognized_values(cleaned: str) -> bool:
     return bool(DATE_RANGE_PATTERN.search(cleaned) and len(cleaned) < 40)
 
 
+def _has_uncaptured_remainder(cleaned: str) -> bool:
+    """True si la linea tiene contenido ademas de los valores reconocidos.
+
+    Una cabecera asi mezcla un correo capturado con nombre y ciudad, que no
+    estan en ningun campo. Descartar la linea entera porque "contiene un correo
+    ya guardado" se llevaba puestos justamente esos.
+    """
+
+    resto = EMAIL_PATTERN.sub(" ", cleaned)
+    resto = URL_PATTERN.sub(" ", resto)
+    if DATE_RANGE_PATTERN.search(resto) and len(resto.strip()) < 40:
+        return False
+    # La etiqueta no es contenido: `Email:` nombra el campo, no aporta datos. Sin
+    # esto, una linea con etiqueta y un unico valor capturado se habria mostrado
+    # igual como pendiente. Se quita el prefijo `algo:` aunque no quede valor.
+    resto = re.sub(r"^[^:]{1,40}:\s*", " ", resto.strip())
+    return any(character.isalnum() for character in resto)
+
+
 def _extracted_values_are_captured(cleaned: str, consumed: set[str]) -> bool:
     """True si todos los valores reconocidos de la linea ya estan capturados.
 
@@ -1226,16 +1245,15 @@ def _collect_orphan_lines(
             # primero, asi que el chequeo de contencion la daba por consumida y el
             # segundo correo no llegaba nunca a revision.
             if _has_recognized_values(cleaned):
-                if _extracted_values_are_captured(cleaned, consumed):
+                # Que el valor reconocido este capturado no alcanza para descartar
+                # la linea: `Ana Perez | ana@example.com | Buenos Aires` tiene el
+                # correo capturado y el nombre y la ciudad sin capturar. Si al
+                # quitar los valores reconocidos queda contenido, la linea entra.
+                if _extracted_values_are_captured(cleaned, consumed) and not _has_uncaptured_remainder(
+                    cleaned
+                ):
                     continue
             elif any(cleaned in text or text in cleaned for text in consumed):
-                continue
-            # Un correo o una fecha que ya quedo capturada en un campo o item no
-            # se repite. Uno que NO quedo capturada es contenido que desaparecia:
-            # `_apply_email` se detiene en el primer correo —`contact.email` es un
-            # campo unico— y una fecha suelta no genera ningun item. Se suprime
-            # solo lo que este efectivamente consumido; lo demas va a revision.
-            if _extracted_values_are_captured(cleaned, consumed):
                 continue
             seen.add(cleaned)
             # Sin recorte por linea: el unico limite es el total del documento,

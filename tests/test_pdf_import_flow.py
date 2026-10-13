@@ -520,3 +520,35 @@ def test_discarding_is_ignored_while_confirmation_owns_the_draft(client):
         assert _load_draft(draft_id).draft_id == draft_id, "el borrador no se descarta en curso"
     finally:
         release_draft(draft_id)
+
+
+def test_save_and_discard_are_atomic_with_confirmation(client):
+    """Guardar o descartar no pueden colarse entre el reclamo y la escritura.
+
+    Verificarlo antes y actuar despues dejaba un hueco: la peticion cede leyendo
+    el formulario y una confirmacion reclamaba ahi. Ahora guardar y descartar
+    reclaman, y cualquier salida que no sea la propia libera el borrador.
+    """
+
+    draft_id = _upload(client)
+
+    # Un descarte con la confirmacion mal escrita libera el reclamo: un error de
+    # tipeo no puede bloquear el borrador durante dos horas.
+    draft = _load_draft(draft_id)
+    respuesta = client.post(
+        f"/cvs/import/{draft_id}/discard",
+        data={"discard_confirmation": "no coincide"},
+        follow_redirects=False,
+    )
+    assert respuesta.status_code == 422
+    assert _load_draft(draft_id).draft_id == draft_id
+    assert not _claim_exists(draft_id)
+
+    # Y guardar sigue funcionando con el reclamo libre.
+    assert client.post(f"/cvs/import/{draft_id}", data={"cv_title": "X"}).status_code == 200
+
+
+def _claim_exists(draft_id: str) -> bool:
+    from app.services.import_staging_service import _draft_path, DRAFT_CLAIM_SUFFIX
+
+    return _draft_path(draft_id).with_suffix(DRAFT_CLAIM_SUFFIX).exists()
