@@ -56,7 +56,6 @@ DECISION_STATUSES = (STATUS_CONFIRMED, STATUS_DISCARDED, STATUS_KEPT)
 # El bloque de tecnologias excedentes NO es una skill mas: vive en su propia
 # seccion para que `_collect_items(confirmed, "skills")` no lo convierta en la
 # skill 41, que el schema rechaza despues de una revision aparentemente valida.
-SKILLS_OVERFLOW_SECTION = "skills_overflow"
 
 # Limites de schema 2, DERIVADOS del contrato real en lugar de copiados a mano.
 # La tabla duplicada que habia antes se desincronizo: permitia 30 skills cuando el
@@ -963,18 +962,23 @@ def confirm_draft(draft: ImportDraft, *, title: str) -> dict:
     # Las tecnologias excedentes no son una skill mas: viven en su propia seccion
     # para no romper el tope del schema. Si la persona las conserva sin resolver,
     # se rechaza con un motivo accionable en vez de dejarlas caer en silencio.
+    # Cualquier seccion puede desbordar, no solo skills: el parser marca el
+    # excedente con una seccion `<seccion>_overflow` que ningun armador de payload
+    # recoge. Conservarlo sin resolverlo se rechaza con un motivo accionable, y
+    # descartarlo es una decision explicita de la persona.
     kept_overflow = [
         entry for entry in draft.entries
-        if entry.section == SKILLS_OVERFLOW_SECTION and entry.status != STATUS_DISCARDED
+        if entry.section.endswith("_overflow") and entry.status != STATUS_DISCARDED
     ]
     if kept_overflow:
-        limite = schema.ITEM_SECTION_SPECS["skills"].max_items
+        seccion = kept_overflow[0].section[: -len("_overflow")]
+        tope = schema.ITEM_SECTION_SPECS[seccion].max_items
         raise ImportStagingError(
-            "review_skills_overflow_pending",
-            "El PDF lista mas tecnologias de las que el CV admite "
-            f"({limite}). Las que sobraron quedaron aparte, en un bloque que no se guarda. "
-            "Quita las que no quieras de la lista de tecnologias y despues descarta "
-            "ese bloque, o borra tecnologias de la lista hasta que entre todas.",
+            "review_section_overflow_pending",
+            f"El PDF lista mas elementos de los que el CV admite en esta seccion "
+            f"({tope}). Los que sobraron quedaron aparte, en un bloque que no se guarda. "
+            f"Editalos para conservar los que quieras y despues descarta ese bloque, "
+            f"o quita elementos de la lista hasta que entren todos.",
         )
 
     payload = build_schema2_payload(draft, title=title)

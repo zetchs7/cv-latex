@@ -719,15 +719,46 @@ def _extract_items(section_name: str, segments: list[_Section], items: list[Stag
         return [value] if isinstance(value, StagedItem) else list(value)
 
     counter = 0
+    overflow: list[str] = []
     for segment in matching:
         for candidate in _candidates_for(segment.lines):
-            # El item de overflow no cuenta contra el tope: es la senal de que
-            # hubo excedente, no un elemento mas. Si se cortara, el excedente
-            # volveria a desaparecer en silencio.
-            if counter >= _max_items(section_name) and not candidate.key.endswith(".overflow"):
-                return
+            if counter >= _max_items(section_name):
+                # El excedente NO se descarta: se guarda como item de desborde en
+                # su propia seccion, para que llegue a revision. Recortarlo aqui
+                # hacia que el colector de huerfanos suprimiera la linea completa
+                # —porque parte de ella si quedo capturada— y el excedente
+                # desapareciera sin que nada lo dijera.
+                overflow.append(candidate.source_text)
+                continue
             items.append(candidate)
             counter += 1
+
+    if overflow:
+        items.append(_overflow_item(section_name, overflow))
+
+
+def _overflow_item(section_name: str, overflow: list[str]) -> StagedItem:
+    """Item que avisa que una seccion excedio su tope y conserva el texto.
+
+    Vive en una seccion `<seccion>_overflow`, asi que ningun armador de payload lo
+    recoge: no puede convertirse en el elemento que rompe el tope del contrato.
+    """
+
+    texto = ", ".join(dict.fromkeys(part.strip() for part in overflow if part.strip()))
+    tope = _max_items(section_name)
+    return StagedItem(
+        key=f"{section_name}.overflow",
+        section=f"{section_name}_overflow",
+        values={"label": texto},
+        source_text=texto,
+        confidence=CONFIDENCE_LOW,
+        reason=(
+            f"El PDF lista mas elementos de los que el CV admite en esta seccion "
+            f"({tope}). Los que sobraron quedaron aparte y no se guardan. Editalos "
+            f"para conservar los que quieras y descarta este bloque, o quita "
+            f"elementos de la lista hasta que entren todos."
+        ),
+    )
 
 
 def _blocks_anchored_by_dates(lines: list[str]) -> list[list[str]]:

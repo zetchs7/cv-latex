@@ -978,7 +978,7 @@ def test_skills_overflow_is_never_silent(count: int):
     )
 
     skills = [item for item in parsed.items if item.section == "skills"]
-    overflow = [item for item in parsed.items if item.section == st.SKILLS_OVERFLOW_SECTION]
+    overflow = [item for item in parsed.items if item.section == "skills_overflow"]
 
     # El bloque de skills nunca excede el tope, con o sin excedente.
     assert len(skills) == min(count, limit)
@@ -995,12 +995,12 @@ def test_skills_overflow_is_never_silent(count: int):
         draft = st.apply_review(draft, values={}, decisions=decisions, unclassified_assignments={})
         with pytest.raises(st.ImportStagingError) as error:
             st.confirm_draft(draft, title="CV")
-        assert error.value.code == "review_skills_overflow_pending"
+        assert error.value.code == "review_section_overflow_pending"
         assert str(limit) in error.value.user_message
 
         # Descartarlo explicitamente si: el payload entra y respects el tope.
         decisions = {
-            entry.key: (st.STATUS_DISCARDED if entry.section == st.SKILLS_OVERFLOW_SECTION
+            entry.key: (st.STATUS_DISCARDED if entry.section.endswith("_overflow")
                         else st.STATUS_CONFIRMED)
             for entry in draft.entries
         }
@@ -1428,3 +1428,66 @@ def test_a_colon_separator_keeps_the_name_it_is_supposed_to_keep():
     parsed = parse_cv_text("Ana Perez: ana@example.com\n")
     assert any(item.value == "ana@example.com" for item in parsed.fields)
     assert "Ana Perez" in " ".join(parsed.unclassified)
+
+
+@pytest.mark.parametrize("count", [29, 30, 31, 35, 60])
+def test_section_overflow_is_explicit_for_every_section(count: int):
+    """Ninguna seccion puede desbordar en silencio, no solo skills.
+
+    El despachador cortaba en el tope y el colector de huerfanos suprimia la
+    linea completa porque parte de ella si habia quedado capturada.
+    """
+
+    from app.validations.structured_cv_validations import ITEM_SECTION_SPECS
+
+    tope = ITEM_SECTION_SPECS["certifications"].max_items
+    texto = "CERTIFICACIONES\n" + "; ".join(
+        f"Certificacion numero {index} de la lista" for index in range(count)
+    )
+    parsed = parse_cv_text(texto)
+
+    certificaciones = [i for i in parsed.items if i.section == "certifications"]
+    desborde = [i for i in parsed.items if i.section == "certifications_overflow"]
+
+    assert len(certificaciones) == min(count, tope)
+    assert len(desborde) == (1 if count > tope else 0)
+    if count > tope:
+        assert desborde[0].confidence == CONFIDENCE_LOW
+        assert str(tope) in desborde[0].reason
+        # El texto excedente se conserva, no se resume ni se recorta.
+        assert desborde[0].values["label"]
+        assert "Certificacion numero 30" in desborde[0].values["label"]
+
+
+def test_a_section_overflow_is_rejected_until_it_is_decided():
+    """Conservar el desborde sin resolverlo se rechaza con motivo accionable."""
+
+    from app.services import import_staging_service as st
+
+    from app.validations.structured_cv_validations import ITEM_SECTION_SPECS
+
+    tope = ITEM_SECTION_SPECS["certifications"].max_items
+    texto = (
+        "DATOS PERSONALES\nNombre: Ana Perez\n"
+        "CERTIFICACIONES\n"
+        + "; ".join(f"Certificacion numero {index} de la lista" for index in range(tope + 5))
+    )
+    parsed = parse_cv_text(texto)
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+
+    decisiones = {entry.key: st.STATUS_CONFIRMED for entry in draft.entries}
+    draft = st.apply_review(draft, values={}, decisions=decisiones, unclassified_assignments={})
+    with pytest.raises(st.ImportStagingError) as error:
+        st.confirm_draft(draft, title="CV")
+    assert error.value.code == "review_section_overflow_pending"
+    assert str(tope) in error.value.user_message
+
+    # Descartandolo explicitamente, entra.
+    decisiones = {
+        entry.key: (st.STATUS_DISCARDED if entry.section.endswith("_overflow")
+                    else st.STATUS_CONFIRMED)
+        for entry in draft.entries
+    }
+    draft = st.apply_review(draft, values={}, decisions=decisiones, unclassified_assignments={})
+    payload = st.confirm_draft(draft, title="CV")
+    assert len(payload["certifications"]) == tope
