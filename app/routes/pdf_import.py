@@ -173,66 +173,63 @@ async def pdf_import_confirm(request: Request, draft_id: str) -> HTMLResponse:
     except ImportStagingError as error:
         return _render_gone(request, error)
 
+    # El reclamo se suelta en CUALQUIER salida fallida, no solo en
+    # `ImportStagingError`. Un `OSError` al guardar, o cualquier otro error
+    # inesperado, dejaba el marcador puesto y bloqueaba todo reintento durante
+    # las dos horas que tarda la limpieza: un fallo transitorio se convertia en
+    # un bloqueo largo sobre una revision que la persona ya habia corregido.
+    persisted = False
     try:
-        draft = load_draft(draft_id)
-        form = await await_form(request)
-        draft = apply_review(
-            draft,
-            values=form["values"],
-            decisions=form["decisions"],
-            unclassified_assignments=form["assignments"],
-            title=form["title"],
-        )
-    except ImportStagingError as error:
-        # El reclamo se devuelve: nada de la revision de la persona se pierde.
-        release_draft(draft_id)
         try:
             draft = load_draft(draft_id)
-        except ImportStagingError:
-            return _render_gone(request, error)
-        return _render_review(
-            request, draft, error_message=error.user_message, status=422, submitted={}
-        )
+            form = await await_form(request)
+            draft = apply_review(
+                draft,
+                values=form["values"],
+                decisions=form["decisions"],
+                unclassified_assignments=form["assignments"],
+                title=form["title"],
+            )
+        except ImportStagingError as error:
+            # El reclamo es un marcador: el borrador sigue en su sitio, asi que se
+            # puede volver a cargar para mostrarlo con el mensaje.
+            draft = load_draft(draft_id)
+            return _render_review(
+                request, draft, error_message=error.user_message, status=422, submitted={}
+            )
 
-    try:
-        draft = apply_review(
-            draft,
-            values=form["values"],
-            decisions=form["decisions"],
-            unclassified_assignments=form["assignments"],
-            title=form["title"],
-        )
-    except ImportStagingError as error:
-        return _render_review(request, draft, error_message=error.user_message, status=422, submitted=form)
+        default_title = _suggest_title(draft)
+        title = (form["title"] or "").strip() or draft.proposed_title or default_title
 
-    default_title = _suggest_title(draft)
-    title = (form["title"] or "").strip() or draft.proposed_title or default_title
+        try:
+            payload = confirm_draft(draft, title=title)
+        except ImportStagingError as error:
+            return _render_review(
+                request, draft, error_message=error.user_message, status=422, submitted=form
+            )
 
-    try:
-        payload = confirm_draft(draft, title=title)
-    except ImportStagingError as error:
-        release_draft(draft_id)
-        return _render_review(request, draft, error_message=error.user_message, status=422, submitted=form)
-
-    try:
-        cv_id = cv_repository.create_structured_cv(
-            title=title,
-            payload=payload,
-            metadata_source="pdf_import",
-        )
-    except StructuredCVWriteError as error:
-        # El borrador sobrevive: la persona puede reintentar sin perder nada de
-        # lo que corrigio. No se expone el detalle tecnico.
-        logger.info("pdf import write failed: %s", error)
-        release_draft(draft_id)
-        return _render_review(
-            request,
-            draft,
-            error_message="No se pudo guardar el CV con los datos revisados. "
-                          "Revisa los campos obligatorios e intenta de nuevo; tu revision se conserva.",
-            status=422,
-            submitted=form,
-        )
+        try:
+            cv_id = cv_repository.create_structured_cv(
+                title=title,
+                payload=payload,
+                metadata_source="pdf_import",
+            )
+        except StructuredCVWriteError as error:
+            # El borrador sobrevive: la persona puede reintentar sin perder nada
+            # de lo que corrigio. No se expone el detalle tecnico.
+            logger.info("pdf import write failed: %s", error)
+            return _render_review(
+                request,
+                draft,
+                error_message="No se pudo guardar el CV con los datos revisados. "
+                              "Revisa los campos obligatorios e intenta de nuevo; tu revision se conserva.",
+                status=422,
+                submitted=form,
+            )
+        persisted = True
+    finally:
+        if not persisted:
+            release_draft(draft_id)
 
     delete_draft(draft_id)
     logger.info("pdf import finalized: cv_id=%s", cv_id)

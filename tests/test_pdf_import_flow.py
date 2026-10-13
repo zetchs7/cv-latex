@@ -445,3 +445,39 @@ def test_english_pdf_is_imported(client: TestClient):
     payload = json.loads(cv_repository.get_cv(cv_id).structured_payload)
     assert payload["personal"]["full_name"] == "Jane Q. Public"
     assert payload["contact"]["email"] == "jane.public.demo@example.com"
+
+def test_a_failure_that_is_not_a_staging_error_still_releases_the_claim(client, monkeypatch):
+    """El reclamo se suelta ante CUALQUIER fallo, no solo `ImportStagingError`.
+
+    Un `OSError` al escribir, con el volumen lleno, dejaba el marcador puesto y
+    bloqueaba todo reintento durante las dos horas que tarda la limpieza. Un
+    fallo transitorio no puede convertirse en un bloqueo largo sobre una revision
+    que la persona ya corrigio.
+    """
+
+    draft_id = _upload(client)
+    draft = _load_draft(draft_id)
+    formulario = _form_from_draft(draft)
+
+    def fallo(*args, **kwargs):
+        raise OSError("No queda espacio en el dispositivo")
+
+    monkeypatch.setattr(
+        "app.routes.pdf_import.cv_repository.create_structured_cv", fallo
+    )
+
+    respuesta = client.post(f"/cvs/import/{draft_id}/confirm", data=formulario)
+    assert respuesta.status_code == 422
+
+    # El reclamo quedo libre: se puede reintentar sin esperar la limpieza.
+    from app.services.import_staging_service import _draft_path, DRAFT_CLAIM_SUFFIX
+
+    marcador = _draft_path(draft_id).with_suffix(DRAFT_CLAIM_SUFFIX)
+    assert not marcador.exists(), "el reclamo quedo puesto y bloquea el reintento"
+
+    reintento = client.post(f"/cvs/import/{draft_id}/confirm", data=formulario)
+    assert reintento.status_code == 422, "con el reclamo liberado se puede reintentar"
+    assert not marcador.exists()
+
+    # Y el borrador sigue entero para poder corregir.
+    assert _load_draft(draft_id).draft_id == draft_id

@@ -379,7 +379,9 @@ def parse_cv_text(text: str) -> ParsedCvDocument:
     items: list[StagedItem] = []
     unclassified: list[str] = []
 
-    _extract_contact_fields(segments, fields, links)
+    conflicts: list[StagedConflict] = []
+
+    _extract_contact_fields(segments, fields, links, conflicts)
     _extract_summary(segments, fields)
 
     fields.extend(links)
@@ -389,7 +391,7 @@ def parse_cv_text(text: str) -> ParsedCvDocument:
 
     _collect_orphan_lines(segments, items, unclassified, fields)
 
-    conflicts = _detect_conflicts(fields, items)
+    conflicts.extend(_detect_conflicts(fields, items))
 
     total_unclassified_characters = sum(len(block) for block in unclassified)
     if total_unclassified_characters > MAX_UNCLASSIFIED_CHARACTERS:
@@ -470,6 +472,7 @@ def _extract_contact_fields(
     segments: list[_Section],
     fields: list[StagedField],
     links: list[StagedField],
+    conflicts: list[StagedConflict],
 ) -> None:
     """Datos personales: etiquetados, o deducidos solo con senal inequivoca.
 
@@ -483,13 +486,15 @@ def _extract_contact_fields(
     candidates = preamble.lines + [line for segment in contact_segments for line in segment.lines]
 
     for line in candidates:
-        _apply_labelled_field(line, fields)
+        _apply_labelled_field(line, fields, conflicts)
         _apply_email(line, fields)
         _apply_phone(line, fields)
         _apply_links(line, links)
 
 
-def _apply_labelled_field(line: str, fields: list[StagedField]) -> None:
+def _apply_labelled_field(
+    line: str, fields: list[StagedField], conflicts: list[StagedConflict]
+) -> None:
     match = _LABELLED_VALUE.match(line)
     if not match:
         return
@@ -499,6 +504,26 @@ def _apply_labelled_field(line: str, fields: list[StagedField]) -> None:
 
     for key, labels in FIELD_LABELS.items():
         if any(label == candidate or label.startswith(candidate + " ") for candidate in labels):
+            # `contact.email` y los demas campos etiquetados son UNICOS en el
+            # payload: un segundo "Email:" no tiene donde caer, y si se guardaba
+            # como campo repetido el payload se quedaba con el ultimo y el
+            # primero desaparecia sin aviso.
+            #
+            # El que ya existe gana, y el segundo NO se descarta: la linea se
+            # deja en el documento, asi que llega a revision. Y ademas se reporta
+            # el conflicto, porque antes el aviso dependia de que el campo
+            # duplicado existiera para que `_detect_conflicts` lo viera.
+            duplicado = next((existing for existing in fields if existing.key == key), None)
+            if duplicado is not None:
+                if duplicado.value.strip().lower() != value.lower():
+                    conflicts.append(
+                        StagedConflict(
+                            key=key,
+                            reason="El PDF menciona valores distintos para el mismo campo.",
+                            candidates=(duplicado.value, value),
+                        )
+                    )
+                return
             fields.append(
                 StagedField(
                     key=key,
@@ -1112,6 +1137,26 @@ def _build_project_items(lines: list[str]) -> list[StagedItem]:
 # --- Textos sin clasificar y conflictos -----------------------------------
 
 
+def _extracted_values_are_captured(cleaned: str, consumed: set[str]) -> bool:
+    """True si todos los valores reconocidos de la linea ya estan capturados.
+
+    Una linea con un correo que no entro en `contact.email`, o con una fecha que
+    no corresponde a ningun item, no esta representada en ningun campo.
+    Descartarla era perdida silenciosa.
+    """
+
+    reconocidos: list[str] = []
+    reconocidos.extend(match for match in EMAIL_PATTERN.findall(cleaned) if match)
+    reconocidos.extend(match for match in URL_PATTERN.findall(cleaned) if match)
+    if DATE_RANGE_PATTERN.search(cleaned) and len(cleaned) < 40:
+        reconocidos.append(cleaned)
+
+    if not reconocidos:
+        return False
+
+    return all(any(value in text for text in consumed) for value in reconocidos)
+
+
 def _collect_orphan_lines(
     segments: list[_Section],
     items: list[StagedItem],
@@ -1164,9 +1209,12 @@ def _collect_orphan_lines(
                 continue
             if any(cleaned in text or text in cleaned for text in consumed):
                 continue
-            if EMAIL_PATTERN.search(cleaned) or URL_PATTERN.search(cleaned):
-                continue
-            if DATE_RANGE_PATTERN.search(cleaned) and len(cleaned) < 40:
+            # Un correo o una fecha que ya quedo capturada en un campo o item no
+            # se repite. Uno que NO quedo capturada es contenido que desaparecia:
+            # `_apply_email` se detiene en el primer correo —`contact.email` es un
+            # campo unico— y una fecha suelta no genera ningun item. Se suprime
+            # solo lo que este efectivamente consumido; lo demas va a revision.
+            if _extracted_values_are_captured(cleaned, consumed):
                 continue
             seen.add(cleaned)
             # Sin recorte por linea: el unico limite es el total del documento,

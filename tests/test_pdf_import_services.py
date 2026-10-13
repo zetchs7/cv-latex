@@ -1319,3 +1319,57 @@ def test_purge_does_not_remove_a_live_claim():
     finally:
         st.release_draft(draft_id)
         st.delete_draft(draft_id)
+
+
+def test_a_second_email_reaches_the_review_instead_of_vanishing():
+    """`_apply_email` se detiene en el primer correo; el resto se perdia."""
+
+    parsed = parse_cv_text(
+        "Nombre: Ana Perez\n"
+        "Email: ana@example.com\n"
+        "Email: ana.dev@other.org\n"
+    )
+    assert any("other.org" in item.value for item in parsed.fields) is False
+    assert any("other.org" in block for block in parsed.unclassified), (
+        "el segundo correo no aparece en ningun campo ni bloque"
+    )
+
+
+def test_an_unmatched_date_reaches_the_review():
+    """Una fecha suelta no genera item: descartarla era perdida silenciosa."""
+
+    parsed = parse_cv_text("Nombre: Ana Perez\nAWS Practitioner\n2020\n")
+    conservado = " ".join(parsed.unclassified)
+    assert "2020" in conservado, "la fecha suelta no quedo en ninguna parte"
+
+
+def test_a_captured_email_is_not_duplicated_into_the_review():
+    """Lo que si quedo capturado no se muestra ademas como pendiente."""
+
+    parsed = parse_cv_text("Nombre: Ana Perez\nEmail: ana@example.com\n")
+    assert any(block.strip() == "Email: ana@example.com" for block in parsed.unclassified) is False
+    assert any(item.value == "ana@example.com" for item in parsed.fields)
+
+
+def test_a_second_labelled_email_is_reported_not_silently_overwritten():
+    """El campo es unico: el segundo valor se reporta y va a revision.
+
+    Antes se guardaba como campo repetido y el payload se quedaba con el ultimo,
+    asi que el primero desaparecia sin aviso. El conflicto se sigue reportando
+    para que la persona sepa que hay dos.
+    """
+
+    parsed = parse_cv_text(
+        "DATOS PERSONALES\nEmail: primero@example.com\nEMAIL: segundo@example.com\n"
+    )
+
+    assert [item.value for item in parsed.fields if item.key == "contact.email"] == [
+        "primero@example.com"
+    ]
+    assert any("segundo@example.com" in block for block in parsed.unclassified)
+    assert parsed.conflicts
+    assert any("valores distintos" in conflict.reason for conflict in parsed.conflicts)
+    assert {candidate for conflict in parsed.conflicts for candidate in conflict.candidates} == {
+        "primero@example.com",
+        "segundo@example.com",
+    }
