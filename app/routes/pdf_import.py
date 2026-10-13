@@ -38,6 +38,7 @@ from app.services.import_staging_service import (
     apply_review,
     claim_draft,
     confirm_draft,
+    draft_is_claimed,
     create_draft,
     release_draft,
     delete_draft,
@@ -140,6 +141,20 @@ def pdf_import_review(request: Request, draft_id: str) -> HTMLResponse:
 
 @router.post("/{draft_id}", response_class=HTMLResponse)
 async def pdf_import_save(request: Request, draft_id: str) -> HTMLResponse:
+    # Si una confirmacion en curso es duena del borrador, guardar encima escribiria sobre
+    # un snapshot que ya se esta usando para crear el CV: el confirmer persistia
+    # su version y el "Cambios guardados" se perdia sin aviso. Se rechaza con un
+    # motivo claro en vez de aceptar la escritura y descartarla.
+    if draft_is_claimed(draft_id):
+        return _render_review(
+            request,
+            load_draft(draft_id),
+            error_message="Esta importacion se esta confirmando en este momento. "
+                          "Espera a que termine antes de seguir editando.",
+            status=409,
+            submitted={},
+        )
+
     try:
         draft = load_draft(draft_id)
     except ImportStagingError as error:
@@ -248,6 +263,9 @@ async def pdf_import_discard(request: Request, draft_id: str) -> RedirectRespons
     patron es el mismo que usan CVs y cartas, y la comprobacion va en el
     servidor: `confirm()` del navegador no es una validacion.
     """
+
+    if draft_is_claimed(draft_id):
+        return RedirectResponse(url=request.url_for("cvs_list"), status_code=303)
 
     try:
         draft = load_draft(draft_id)

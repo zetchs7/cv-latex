@@ -1137,6 +1137,14 @@ def _build_project_items(lines: list[str]) -> list[StagedItem]:
 # --- Textos sin clasificar y conflictos -----------------------------------
 
 
+def _has_recognized_values(cleaned: str) -> bool:
+    """True si la linea trae un correo, una URL o una fecha reconocibles."""
+
+    if EMAIL_PATTERN.search(cleaned) or URL_PATTERN.search(cleaned):
+        return True
+    return bool(DATE_RANGE_PATTERN.search(cleaned) and len(cleaned) < 40)
+
+
 def _extracted_values_are_captured(cleaned: str, consumed: set[str]) -> bool:
     """True si todos los valores reconocidos de la linea ya estan capturados.
 
@@ -1184,8 +1192,13 @@ def _collect_orphan_lines(
             if cleaned:
                 consumed.add(cleaned)
 
+    # `consumed` guarda los VALORES capturados, no las lineas de origen. Un
+    # campo con dos correos en la misma linea (o una linea larga partida en
+    # varios valores) quedaba registrado como una sola linea, y cualquier valor
+    # de esa linea se daba por consumido: el segundo correo no llegaba nunca a
+    # revision.
     for staged_field in fields:
-        _mark(staged_field.source_text)
+        _mark(staged_field.value)
     for staged_item in items:
         _mark(staged_item.source_text)
 
@@ -1207,7 +1220,15 @@ def _collect_orphan_lines(
                 continue
             if cleaned in consumed:
                 continue
-            if any(cleaned in text or text in cleaned for text in consumed):
+
+            # Una linea con valores reconocibles se juzga por ESOS valores, no por
+            # pertenencia laxa. La linea `a@x.com b@y.com` esta cubierta por el
+            # primero, asi que el chequeo de contencion la daba por consumida y el
+            # segundo correo no llegaba nunca a revision.
+            if _has_recognized_values(cleaned):
+                if _extracted_values_are_captured(cleaned, consumed):
+                    continue
+            elif any(cleaned in text or text in cleaned for text in consumed):
                 continue
             # Un correo o una fecha que ya quedo capturada en un campo o item no
             # se repite. Uno que NO quedo capturada es contenido que desaparecia:

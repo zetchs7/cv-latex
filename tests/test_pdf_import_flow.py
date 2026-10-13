@@ -23,6 +23,8 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.services.import_staging_service import (
     STATUS_CONFIRMED,
+    claim_draft,
+    release_draft,
     STATUS_DISCARDED,
     STATUS_KEPT,
     drafts_directory,
@@ -481,3 +483,40 @@ def test_a_failure_that_is_not_a_staging_error_still_releases_the_claim(client, 
 
     # Y el borrador sigue entero para poder corregir.
     assert _load_draft(draft_id).draft_id == draft_id
+
+
+def test_saving_is_blocked_while_confirmation_owns_the_draft(client):
+    """Guardar sobre un borrador que se esta confirmando perderia la edicion.
+
+    El confirmer persistia su snapshot y borraba el borrador despues de que
+    "Cambios guardados" ya habia vuelto, asi que esos cambios no llegaban al CV.
+    """
+
+    draft_id = _upload(client)
+    claim_draft(draft_id)
+    try:
+        respuesta = client.post(f"/cvs/import/{draft_id}", data={"cv_title": "X"})
+        assert respuesta.status_code == 409
+        assert "confirmand" in respuesta.text.lower()
+    finally:
+        release_draft(draft_id)
+
+    # Liberado, guardar vuelve a funcionar.
+    assert client.post(f"/cvs/import/{draft_id}", data={"cv_title": "X"}).status_code == 200
+
+
+def test_discarding_is_ignored_while_confirmation_owns_the_draft(client):
+    """Descartar por debajo de una confirmacion en curso perderia la revision."""
+
+    draft_id = _upload(client)
+    claim_draft(draft_id)
+    try:
+        respuesta = client.post(
+            f"/cvs/import/{draft_id}/discard",
+            data={"confirm": "lo que sea"},
+            follow_redirects=False,
+        )
+        assert respuesta.status_code == 303
+        assert _load_draft(draft_id).draft_id == draft_id, "el borrador no se descarta en curso"
+    finally:
+        release_draft(draft_id)

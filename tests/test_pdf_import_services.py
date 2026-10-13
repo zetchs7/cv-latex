@@ -1373,3 +1373,19 @@ def test_a_second_labelled_email_is_reported_not_silently_overwritten():
         "primero@example.com",
         "segundo@example.com",
     }
+
+
+def test_two_emails_on_one_line_both_reach_the_review():
+    """Dos correos en la MISMA linea: el segundo no se da por consumido.
+
+    `_apply_email` guarda solo el primero, pero registraba la linea entera como
+    su origen, asi que el chequeo de contencion daba la linea por consumida y el
+    segundo correo no aparecia en ningun campo ni bloque.
+    """
+
+    parsed = parse_cv_text("Nombre: Ana Perez\nana@example.com ana.work@example.org\n")
+
+    assert [f.value for f in parsed.fields if f.key == "contact.email"] == ["ana@example.com"]
+    assert parsed.unclassified, "la linea con el segundo correo tiene que llegar a revision"
+    assert "ana.work@example.org" in " ".join(parsed.unclassified)
+    assert "ana@example.com" in " ".join(parsed.unclassified)

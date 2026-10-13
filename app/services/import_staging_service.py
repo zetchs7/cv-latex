@@ -500,6 +500,16 @@ def claim_draft(draft_id: str) -> None:
     os.close(descriptor)
 
 
+def draft_is_claimed(draft_id: str) -> bool:
+    """True si una confirmacion en curso es duen~a del borrador.
+
+    Guardar o descartar por encima escribiria sobre un snapshot que ya se esta
+    usando para crear el CV, y la edicion se perderia sin que nada lo dijera.
+    """
+
+    return _draft_path(draft_id).with_suffix(DRAFT_CLAIM_SUFFIX).exists()
+
+
 def release_draft(draft_id: str) -> None:
     """Suelta el reclamo si la confirmacion fallo.
 
