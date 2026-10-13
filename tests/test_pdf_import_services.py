@@ -1491,3 +1491,40 @@ def test_a_section_overflow_is_rejected_until_it_is_decided():
     draft = st.apply_review(draft, values={}, decisions=decisiones, unclassified_assignments={})
     payload = st.confirm_draft(draft, title="CV")
     assert len(payload["certifications"]) == tope
+
+
+@pytest.mark.parametrize("count", [19, 20, 21, 25])
+def test_language_overflow_reaches_the_review(count: int):
+    """El builder de idiomas cortaba antes de que el despachador pudiera marcar.
+
+    Con 25 idiomas salian 20 items, sin bloque de desborde y sin texto sin
+    clasificar: el excedente no aparecia en ningun lado.
+    """
+
+    from app.validations.structured_cv_validations import ITEM_SECTION_SPECS
+
+    tope = ITEM_SECTION_SPECS["languages"].max_items
+    parsed = parse_cv_text("IDIOMAS\n" + "; ".join(f"Idioma {index}" for index in range(count)))
+
+    idiomas = [i for i in parsed.items if i.section == "languages"]
+    desborde = [i for i in parsed.items if i.section == "languages_overflow"]
+    assert len(idiomas) == min(count, tope)
+    assert len(desborde) == (1 if count > tope else 0)
+    if count > tope:
+        assert desborde[0].confidence == CONFIDENCE_LOW
+        assert str(tope) in desborde[0].reason
+
+
+def test_an_overflow_marker_preserves_the_whole_candidate():
+    """El marcador guarda el contenido completo, no el `source_text` recortado."""
+
+    from app.validations.structured_cv_validations import ITEM_SECTION_SPECS
+
+    tope = ITEM_SECTION_SPECS["certifications"].max_items
+    largo = "Certificacion con un nombre deliberadamente muy largo " * 12
+    parsed = parse_cv_text(
+        "CERTIFICACIONES\n" + "; ".join(["Cert corta"] * tope + [largo])
+    )
+    desborde = [i for i in parsed.items if i.section == "certifications_overflow"]
+    assert desborde, "el candidato excedente tiene que llegar al marcador"
+    assert largo.strip() in desborde[0].values["label"]

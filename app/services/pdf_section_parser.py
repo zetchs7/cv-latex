@@ -719,7 +719,7 @@ def _extract_items(section_name: str, segments: list[_Section], items: list[Stag
         return [value] if isinstance(value, StagedItem) else list(value)
 
     counter = 0
-    overflow: list[str] = []
+    overflow: list[StagedItem] = []
     for segment in matching:
         for candidate in _candidates_for(segment.lines):
             if counter >= _max_items(section_name):
@@ -728,7 +728,7 @@ def _extract_items(section_name: str, segments: list[_Section], items: list[Stag
                 # hacia que el colector de huerfanos suprimiera la linea completa
                 # —porque parte de ella si quedo capturada— y el excedente
                 # desapareciera sin que nada lo dijera.
-                overflow.append(candidate.source_text)
+                overflow.append(candidate)
                 continue
             items.append(candidate)
             counter += 1
@@ -737,14 +737,22 @@ def _extract_items(section_name: str, segments: list[_Section], items: list[Stag
         items.append(_overflow_item(section_name, overflow))
 
 
-def _overflow_item(section_name: str, overflow: list[str]) -> StagedItem:
+def _overflow_item(section_name: str, overflow: list[StagedItem]) -> StagedItem:
     """Item que avisa que una seccion excedio su tope y conserva el texto.
 
     Vive en una seccion `<seccion>_overflow`, asi que ningun armador de payload lo
     recoge: no puede convertirse en el elemento que rompe el tope del contrato.
     """
 
-    texto = ", ".join(dict.fromkeys(part.strip() for part in overflow if part.strip()))
+    # El contenido completo del candidato, no su `source_text`: los builders
+    # recortan ese campo como diagnostico, y un candidato largo aparecia cortado
+    # en el marcador con el resto perdido sin rastro.
+    partes = [
+        ", ".join(value for value in candidate.values.values() if value).strip()
+        or candidate.source_text
+        for candidate in overflow
+    ]
+    texto = ", ".join(dict.fromkeys(part for part in partes if part))
     tope = _max_items(section_name)
     return StagedItem(
         key=f"{section_name}.overflow",
@@ -984,7 +992,7 @@ def _build_skill_items(lines: list[str]) -> list[StagedItem]:
 
     limite = _max_items("skills")
     items: list[StagedItem] = []
-    overflow: list[str] = []
+    overflow: list[StagedItem] = []
 
     # Los excedentes NO se descartan: van a revision para que la persona decida.
     # Recortarlos en silencio era perdida de informacion, que es exactamente lo
@@ -1077,9 +1085,8 @@ def _build_language_items(lines: list[str]) -> list[StagedItem]:
                     reason=reason,
                 )
             )
-            if len(items) >= MAX_LANGUAGES:
-                return items
-
+    # Sin tope aca: el despachador decide que entra y que desborda, y es el que
+    # crea el marcador. Un corte previo escondia el excedente incluso del marcador.
     return items
 
 
