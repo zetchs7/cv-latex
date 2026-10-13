@@ -36,8 +36,10 @@ from app.services.import_staging_service import (
     ImportDraft,
     ImportStagingError,
     apply_review,
+    claim_draft,
     confirm_draft,
     create_draft,
+    release_draft,
     delete_draft,
     load_draft,
     pending_summary,
@@ -163,12 +165,34 @@ async def pdf_import_save(request: Request, draft_id: str) -> HTMLResponse:
 
 @router.post("/{draft_id}/confirm", response_class=HTMLResponse)
 async def pdf_import_confirm(request: Request, draft_id: str) -> HTMLResponse:
+    # El reclamo va ANTES de tocar nada: dos peticiones simultaneas sobre el mismo
+    # borrador podian llegar las dos a la escritura y crear dos CV. La segunda
+    # falla aqui, con el borrador intacto y sin CV duplicado.
     try:
-        draft = load_draft(draft_id)
+        claim_draft(draft_id)
     except ImportStagingError as error:
         return _render_gone(request, error)
 
-    form = await await_form(request)
+    try:
+        draft = load_draft(draft_id)
+        form = await await_form(request)
+        draft = apply_review(
+            draft,
+            values=form["values"],
+            decisions=form["decisions"],
+            unclassified_assignments=form["assignments"],
+            title=form["title"],
+        )
+    except ImportStagingError as error:
+        # El reclamo se devuelve: nada de la revision de la persona se pierde.
+        release_draft(draft_id)
+        try:
+            draft = load_draft(draft_id)
+        except ImportStagingError:
+            return _render_gone(request, error)
+        return _render_review(
+            request, draft, error_message=error.user_message, status=422, submitted={}
+        )
 
     try:
         draft = apply_review(
@@ -187,6 +211,7 @@ async def pdf_import_confirm(request: Request, draft_id: str) -> HTMLResponse:
     try:
         payload = confirm_draft(draft, title=title)
     except ImportStagingError as error:
+        release_draft(draft_id)
         return _render_review(request, draft, error_message=error.user_message, status=422, submitted=form)
 
     try:
@@ -199,6 +224,7 @@ async def pdf_import_confirm(request: Request, draft_id: str) -> HTMLResponse:
         # El borrador sobrevive: la persona puede reintentar sin perder nada de
         # lo que corrigio. No se expone el detalle tecnico.
         logger.info("pdf import write failed: %s", error)
+        release_draft(draft_id)
         return _render_review(
             request,
             draft,

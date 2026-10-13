@@ -254,6 +254,7 @@ def test_text_is_never_dropped_between_parser_and_unclassified():
         "Texto de descripcion que no se uso en ninguna parte.\n"
         "APTITUDES TECNICAS\nPython, Docker\n"
         "SECCION RARA\nContenido de una seccion que el parser no reconoce.\n"
+        "Python\nAWS\nSQL\nGo\n"
     )
     parsed = parse_cv_text(text)
 
@@ -266,7 +267,11 @@ def test_text_is_never_dropped_between_parser_and_unclassified():
     headings = {normalize_for_matching(h) for group in SECTION_HEADINGS.values() for h in group}
 
     for line in text.splitlines():
-        if len(line) < 8:
+        # Este helper tenia el MISMO defecto que el codigo: saltaba las lineas
+        # de menos de 8 caracteres, asi que el invariante nunca revisaba el caso
+        # que permitio que `Python`, `AWS`, `SQL` y `Go` desaparecieran. Ahora
+        # solo excluye lo que no es informacion, igual que el parser.
+        if not any(character.isalnum() for character in line):
             continue
         # Un encabezado marca la seccion: consume la linea como delimitador y no
         # es un dato que pueda perderse.
@@ -275,6 +280,43 @@ def test_text_is_never_dropped_between_parser_and_unclassified():
         # Una linea puede quedar partida en varias unidades ("Python, Docker"
         # son dos skills), asi que alcanza con que este cubierta por ellas.
         assert any(unit in line or line[:40] in unit for unit in units), f"linea perdida: {line!r}"
+
+
+def test_short_lines_reach_the_review_instead_of_vanishing():
+    """Regresion: `Python`, `AWS`, `SQL` y `Go` desaparecian del todo.
+
+    El colector de texto sin clasificar saltaba toda linea de menos de 8
+    caracteres. Un PDF sin encabezado de skills reconocido, con el nombre y el
+    email en su sitio y esas cuatro lineas, producia un CV sin ninguna de las
+    cuatro: ni como skill ni como bloque sin clasificar, y la confirmacion
+    seguia adelante.
+    """
+
+    text = (
+        "DATOS PERSONALES\n"
+        "Nombre: Ana Perez\n"
+        "Email: ana@example.com\n"
+        "Python\nAWS\nSQL\nGo\n"
+    )
+    parsed = parse_cv_text(text)
+
+    assert parsed.unclassified, "las lineas cortas tienen que llegar a revision"
+    conservadas = {line for line in parsed.unclassified}
+    for esperado in ("Python", "AWS", "SQL", "Go"):
+        assert esperado in conservadas, f"{esperado} se perdio en silencio"
+
+    # Y no se invento nada: las cinco lineas del documento son cinco fuentes.
+    assert len(conservadas) == 4
+
+    # La decoracion no es contenido y puede filtrarse; la informacion, no.
+    assert "—" not in parse_cv_text("Nombre: Ana Perez\n—\n***\n").unclassified
+
+
+def test_only_decoration_without_content_is_filtered():
+    """Una linea que no tiene ni letra ni digito no es informacion."""
+
+    parsed = parse_cv_text("Nombre: Ana Perez\n—\n***\n...\n")
+    assert parsed.unclassified == ()
 
 
 def test_dates_in_common_formats_are_recognised():
@@ -1200,3 +1242,80 @@ def test_additional_info_content_above_the_schema_limit_is_rejected():
     draft = st.apply_review(draft, values={item.key: allowed}, decisions=decisions, unclassified_assignments={item.key: ""})
     payload = st.confirm_draft(draft, title="CV")
     assert any(entry["content"] == allowed for entry in payload["additional_info"])
+
+
+def test_project_with_a_long_summary_is_not_rejected():
+    """El bloque se parte en `name` y `summary`: el limite de `name` no se aplica
+    al bloque entero, que rechazaba proyectos validos."""
+
+    from app.services import import_staging_service as st
+    from app.validations.structured_cv_validations import ITEM_SECTION_SPECS
+
+    limite_nombre = ITEM_SECTION_SPECS["projects"].string_fields
+    nombre = next(f.max_length for f in limite_nombre if f.field == "name")
+    resumen = "Descripcion larga del proyecto con varios detalles tecnicos relevantes. " * 4
+
+    texto = f"MiProyecto - {resumen}"
+    assert len(texto) > nombre, "el bloque entero supera el limite de `name`"
+
+    parsed = parse_cv_text(f"DATOS PERSONALES\nNombre: Ana Perez\n{texto}\n")
+    draft = st.create_draft(parsed, source_filename="cv.pdf", page_count=1)
+    item = draft.unclassified[0]
+    decisiones = {
+        **{entry.key: st.STATUS_CONFIRMED for entry in draft.entries},
+        item.key: st.STATUS_KEPT,
+    }
+    draft = st.apply_review(
+        draft, values={}, decisions=decisiones, unclassified_assignments={item.key: "projects"}
+    )
+
+    payload = st.confirm_draft(draft, title="CV")
+    proyectos = payload["projects"]
+    assert proyectos, "el bloque asignado a proyectos tiene que llegar al CV"
+    assert proyectos[0]["name"] == "MiProyecto"
+    assert resumen.strip() in proyectos[0]["summary"], "el resumen no se recorta ni se pierde"
+
+
+def test_double_confirmation_of_the_same_draft_is_rejected():
+    """Un doble clic no puede producir dos CV: el reclamo es atomico."""
+
+    from app.services import import_staging_service as st
+
+    draft = st.create_draft(
+        parse_cv_text("DATOS PERSONALES\nNombre: Ana Perez\n"), source_filename="cv.pdf", page_count=1
+    )
+    draft_id = draft.draft_id
+
+    st.claim_draft(draft_id)
+    try:
+        with pytest.raises(st.ImportStagingError) as error:
+            st.claim_draft(draft_id)
+        assert error.value.code == "draft_already_being_confirmed"
+
+        # El borrador sigue ahi: el reclamo es un marcador, no un movimiento.
+        assert st.load_draft(draft_id).draft_id == draft_id
+    finally:
+        st.release_draft(draft_id)
+
+    # Liberado, se puede volver a reclamar.
+    st.claim_draft(draft_id)
+    st.delete_draft(draft_id)
+    assert st._draft_path(draft_id).exists() is False
+
+
+def test_purge_does_not_remove_a_live_claim():
+    """Un reclamo vive milisegundos: borrarlo cortaria una confirmacion en curso."""
+
+    from app.services import import_staging_service as st
+
+    draft = st.create_draft(
+        parse_cv_text("DATOS PERSONALES\nNombre: Ana Perez\n"), source_filename="cv.pdf", page_count=1
+    )
+    draft_id = draft.draft_id
+    st.claim_draft(draft_id)
+    try:
+        st.purge_expired_drafts()
+        assert st._draft_path(draft_id).with_suffix(st.DRAFT_CLAIM_SUFFIX).exists()
+    finally:
+        st.release_draft(draft_id)
+        st.delete_draft(draft_id)

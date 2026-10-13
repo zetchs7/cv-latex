@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 import json
+import os
 from pathlib import Path
 import re
 import secrets
@@ -303,6 +304,19 @@ def purge_expired_drafts(*, now: datetime | None = None) -> int:
     reference = now or _now()
     removed = 0
 
+    # Un reclamo huerfano solo aparece si el proceso muere en el instante exacto
+    # entre el reclamo y la escritura. Todo otro camino lo libera. Se limpia por
+    # antiguedad: un reclamo vivo dura milisegundos, asi que tocar uno reciente
+    # romperia una confirmacion en curso. Sin esa condicion, mis primeras versiones
+    # de este bloque borraban todos los reclamos y dejaban via libre al duplicado.
+    for claimant in sorted(directory.glob(f"*{DRAFT_CLAIM_SUFFIX}")):
+        try:
+            claimed_at = datetime.fromtimestamp(claimant.stat().st_mtime, UTC)
+        except OSError:
+            continue
+        if claimed_at < reference - DRAFT_TTL:
+            claimant.unlink(missing_ok=True)
+
     for candidate in sorted(directory.glob("*.json")):
         if not DRAFT_ID_PATTERN.match(candidate.stem):
             candidate.unlink(missing_ok=True)
@@ -452,8 +466,53 @@ def load_draft(draft_id: str) -> ImportDraft:
     return draft
 
 
+DRAFT_CLAIM_SUFFIX = ".claiming"
+
+
+def claim_draft(draft_id: str) -> None:
+    """Reclama el borrador de forma atomica para que no se confirme dos veces.
+
+    Dos peticiones simultaneas sobre el mismo borrador podian llegar las dos a la
+    escritura: la primera creaba el CV y borraba el borrador, y la segunda seguia
+    teniendo el objeto en memoria, asi que creaba un segundo CV. Un doble clic o
+    un reintento bastaban.
+
+    El reclamo es un archivo MARCADOR creado con `O_CREAT | O_EXCL`, que es
+    atomico y falla si el archivo ya existe: solo una peticion puede pasar. El
+    borrador en si no se mueve, asi que sigue siendo legible durante toda la
+    confirmacion — moverlo de sitio dejaba la ruta vacia y rompia la recarga.
+    """
+
+    claim = _draft_path(draft_id).with_suffix(DRAFT_CLAIM_SUFFIX)
+    try:
+        descriptor = os.open(claim, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError as error:
+        raise ImportStagingError(
+            "draft_already_being_confirmed",
+            "Esta importacion ya se esta procesando. Espera a que termine o empeza de nuevo.",
+        ) from error
+    except FileNotFoundError as error:
+        raise ImportStagingError(
+            "draft_expired",
+            "El borrador de importacion ya no existe. Empeza de nuevo la importacion.",
+        ) from error
+
+    os.close(descriptor)
+
+
+def release_draft(draft_id: str) -> None:
+    """Suelta el reclamo si la confirmacion fallo.
+
+    Sin esto, un fallo de escritura dejaria el borrador bloqueado y la persona
+    no podria reintentar: perderia toda la revision que ya habia corregido.
+    """
+
+    _draft_path(draft_id).with_suffix(DRAFT_CLAIM_SUFFIX).unlink(missing_ok=True)
+
+
 def delete_draft(draft_id: str) -> None:
     _draft_path(draft_id).unlink(missing_ok=True)
+    _draft_path(draft_id).with_suffix(DRAFT_CLAIM_SUFFIX).unlink(missing_ok=True)
 
 
 def apply_review(
@@ -758,9 +817,15 @@ def _validate_field_limits(draft: ImportDraft) -> None:
         if item.status != STATUS_KEPT:
             continue
 
-        # Asignado a una seccion concreta: se valida el campo `name` de esa
-        # seccion. Sin seccion (o "informacion adicional"): se valida el
-        # contenido de `additional_info`, que antes no se comprobaba nunca.
+        # Asignado a skills o certificaciones: los campos construidos se validan
+        # solos, porque el texto entra en uno. Asignado a proyectos, el bloque se
+        # parte en `name` y `summary`, asi que medir el bloque crudo contra el
+        # limite de `name` rechazaba proyectos perfectamente validos
+        # ("MiProyecto - " + un resumen largo excede 160, pero `name` son pocos).
+        # Sin seccion (o "informacion adicional"): se valida el contenido de
+        # `additional_info`, que antes no se comprobaba nunca.
+        if item.assigned_section == "projects":
+            continue
         if item.assigned_section and item.assigned_section != "additional_info":
             limit = FIELD_LIMITS.get(f"{item.assigned_section}.name")
             section = item.assigned_section

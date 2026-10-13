@@ -1150,7 +1150,15 @@ def _collect_orphan_lines(
             cleaned = line.strip()
             if not cleaned or cleaned in seen:
                 continue
-            if len(cleaned) < 8:
+            # Una linea corta sigue siendo contenido. `Python`, `AWS`, `SQL` y
+            # `Go` son nombres normales en un CV, y el filtro por longitud los
+            # descartaba sin que nada lo dijera: no llegaban ni a skills ni a
+            # revision. Ahora solo se salta lo que no tiene ni una letra ni un
+            # digito, que es decoracion, no informacion. El limite del documento
+            # completo se comprueba antes de crear el borrador, asi que un PDF
+            # con demasiadas lineas cortas se rechaza de forma controlada en vez
+            # de recortarse en silencio.
+            if not any(character.isalnum() for character in cleaned):
                 continue
             if cleaned in consumed:
                 continue
