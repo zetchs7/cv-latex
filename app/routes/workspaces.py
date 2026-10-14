@@ -260,12 +260,13 @@ def _selected_rows(environment: Environment, selection: dict[str, list[int]]) ->
 
 
 def _kept_dependencies(environment: Environment, selection: dict[str, list[int]]) -> list[dict]:
-    """Postulaciones que usan registros seleccionados pero no están seleccionadas."""
+    """Postulaciones y cartas vinculadas que usan registros seleccionados
+    pero no están seleccionadas."""
 
     dependencies = dependencies_of(environment, selection)
     kept = dependencies.get("applications_kept", []) + dependencies.get(
         "applications_kept_by_letter", []
-    )
+    ) + dependencies.get("cover_letters_kept_by_cv", [])
     seen: set[int] = set()
     unique: list[dict] = []
     for row in kept:
@@ -518,6 +519,17 @@ async def workspace_migrate(
                     "Espera unos segundos y volvé a intentarlo.",
                     code="migration_busy",
                 )
+            # Revalidar el plan DESPUES del drenaje: un request admitido
+            # antes del candado pudo haber escrito en TEST mientras drenabamos.
+            # Si el destino ya no esta vacio, abortamos sin mutar nada.
+            plan = plan_migration()
+            if plan.status != "ready":
+                raise DummyDataError(
+                    "El destino cambi\u00f3 durante la espera: "
+                    + "; ".join(plan.problems),
+                    code="migration_blocked",
+                )
+            validate_migration(plan, require_confirmation=confirmation.strip())
             result = run_migration(plan)
     except DummyDataError as error:
         return _render(

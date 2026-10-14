@@ -557,6 +557,15 @@ def dependencies_of(environment: Environment, selection: dict[str, list[int]]) -
                 (*cv_ids, *application_ids),
             ).fetchall()
             result["applications_kept"] = [dict(row) for row in dependents]
+
+            # Cartas vinculadas a los CVs seleccionados que NO estan en la seleccion
+            dependents = connection.execute(
+                f"SELECT id, company, position, associated_cv_id FROM cover_letters "
+                f"WHERE associated_cv_id IN ({','.join('?' * len(cv_ids))}) "
+                f"AND id NOT IN ({','.join('?' * len(letter_ids)) or '0'})",
+                (*cv_ids, *letter_ids),
+            ).fetchall()
+            result["cover_letters_kept_by_cv"] = [dict(row) for row in dependents]
         if letter_ids:
             dependents = connection.execute(
                 f"SELECT id, company, associated_cover_letter_id FROM applications "

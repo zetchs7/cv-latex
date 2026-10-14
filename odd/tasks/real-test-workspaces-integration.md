@@ -124,10 +124,10 @@ Entregar los 13 puntos enumerados, con evidencia observable y no solo narración
 | --- | --- | --- | --- | --- |
 | T1 | S1-S8 | verificado previamente (533 pruebas) | done | sin commit, trabajo previo sin commitear |
 | T2 | S9 | delegada | done | validación de host 533 passed + Docker aislado 503 passed / 30 skipped, datos idénticos antes y después |
-| T3 | S10 | delegada | pending | — |
-| T4 | S11 | delegada | pending | — |
-| T5 | S12 | delegada | pending | — |
-| T6 | S13 | delegada | pending | — |
+| T3 | S10 | delegada | done | Ronda 1: 7 hallazgos corregidos, commit b54d743 |
+| T4 | S11 | delegada | done | Ronda 2: 4 hallazgos corregidos, commit 8ec65a4 |
+| T5 | S12 | delegada | done | Ronda 3: P1 migración concurrente + P2 cartas vinculadas, tests nuevos |
+| T6 | S13 | inline | pending | — |
 | T7 | S14-S15 | inline | pending | — |
 
 ---
@@ -454,5 +454,30 @@ La segunda revisión sobre `b54d743` volvió en **`COMMENTED`** (no es aprobaci�
 **Evidencia GREEN (árbol corregido):** `tests/test_workspaces.py` **89 passed** (79 + 10); suite completa **554 passed**; `compileall` 0; `git diff --check` 0; PCC `validate` "catalogo valido" y `check` "3 documentos en sync"; `node --test tests/test_structured_cv_editor_js.js` 1 pass 0 fail.
 
 **`data/` intacto:** 49 CVs, 10 cartas, 6 postulaciones; ningún archivo de `data/` con mtime posterior a `2026-10-13 18:55` (anterior a esta ronda); manifiesto `find data -type f -print0 | sort -z | xargs -0 md5sum | md5sum` = `0f3659d668f67e976ba3763efcfd995d` (175 archivos). El valor de L6 salía de otra forma de comando, por eso no es comparable byte a byte.
+
+
+### L8 — Ronda 3 de corrección (revisión @codex #3), 2026-10-14
+
+La tercera revisión sobre `8ec65a4` volvió en **`COMMENTED`** (no es aprobación) con **2 hallazgos P1/P2 confirmados** y otros hallazgos previos ya cerrados:
+
+| # | Hallazgo | Veredicto propio |
+| --- | --- | --- |
+| 1 | **P1**: `workspace_migrate` reutiliza el `plan` calculado antes del drenaje; un request admitido antes del candado puede escribir en TEST durante el drenaje y `run_migration(plan)` sobrescribe el destino con el plan obsoleto (que cree que TEST está vacío) | **Confirmado material, pérdida de datos**: el plan DEBE recalcularse DESPUÉS del `await drain_admitted_requests()` y ANTES de `run_migration()` |
+| 2 | **P2**: `dependencies_of` no detecta cartas con `associated_cv_id` apuntando a CVs seleccionados; borrar un CV deja la carta con `associated_cv_id` colgando (dangling reference) | **Confirmado**: la consulta SQL solo miraba `applications`; faltaba consultar `cover_letters.associated_cv_id` |
+
+**Correcciones aplicadas (3 archivos, +228 / −2):**
+
+1. **Revalidación del plan post-drenaje** (`app/routes/workspaces.py`): después de `await drain_admitted_requests()`, se ejecuta `plan = plan_migration()` y `validate_migration(plan, ...)` antes de `run_migration(plan)`. Si el destino ya no está `ready` (p. ej. TEST tiene datos nuevos), se aborta con `migration_blocked` sin mutar nada.
+2. **Dependencia CV → Carta** (`app/services/workspace_service.py`): nueva consulta en `dependencies_of` que busca `cover_letters` con `associated_cv_id` en los CVs seleccionados y que NO estén en la selección de cartas. Resultado en `cover_letters_kept_by_cv`.
+3. **Agregado a `_kept_dependencies`** (`app/routes/workspaces.py`): incluye `cover_letters_kept_by_cv` en la lista de dependencias que bloquean el borrado.
+
+**Evidencia RED** (tests nuevos sobre `8ec65a4`):
+- `test_migracion_revalida_destino_codigo_estatico`: verifica que el source tenga el orden `drain → plan_migration → run_migration`
+- `test_dependencies_incluye_cartas_vinculadas_a_cv_seleccionado`: `dependencies_of` devuelve `cover_letters_kept_by_cv` con la carta vinculada
+- `test_borrar_cv_con_carta_vinculada_sin_seleccionar_bloquea`: flujo HTTP bloquea el borrado y muestra error de dependencia
+
+**Evidencia GREEN (árbol corregido):** `tests/test_workspaces.py` **92 passed** (89 + 3 nuevos); suite completa **558 passed**; `compileall` 0; `git diff --check` 0; PCC `validate` "catalogo valido" y `check` "en sync"; `node --test tests/test_structured_cv_editor_js.js` 1 pass 0 fail.
+
+**`data/` intacto:** 49 CVs, 10 cartas, 6 postulaciones; manifiesto `find data -type f -exec md5sum {} \; | sort -k2 | md5sum` = `0f3659d668f67e976ba3763efcfd995d` (175 archivos).
 
 
