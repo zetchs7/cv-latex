@@ -308,3 +308,33 @@ Consolidar errores reales detectados durante `cv-latex`, su causa raiz, la corre
 - Validacion que lo confirmo: `grep -nE '\[:[0-9]+\]'` sobre los cuatro modulos del camino de importacion como barrido de referencia, y tres tests que afirman el invariante directamente: un valor editado sobrevive entero, un resumen demasiado largo se rechaza al confirmar en vez de guardarse cortado, y el contenido de informacion adicional se valida.
 - Regla futura para evitarlo: cuando el mismo defecto aparece dos veces, dejar de corregir instancias y enumerar la clase entera. Un `grep` del patron sobre el campo completo es mas barato que otra ronda de review.
 - Instruccion sugerida para proximos prompts: "Si un defecto se repite, no corrijas la instancia: lista todas las ocurrencias del patron en el campo y decide una regla unica."
+
+## LL-031 - Un `except Exception` dentro de un bucle convierte un error de programacion en un resultado "parcial"
+
+- Problema detectado: el borrado selectivo devolvia `cvs: 0` sin fallar, aunque el registro existia y el borrado tenia que funcionar. Nada explotaba.
+- Causa raiz: el bucle de borrado llamaba a `repository.hard_delete(...)`, una funcion que nunca existio. Los repositorios definen `hard_delete_cv`, `hard_delete_cover_letter` y `hard_delete_application`. El `except Exception` del bucle capturaba cada `AttributeError`, lo metia en la lista `pending` y seguia. El resultado era un exito con cero borrar y una lista `pending` que nadie miraba en el test.
+- Impacto/riesgo: la operacion destructiva mas delicada de la feature quedo inoperante y la unica senal era un conteo en cero. En produccion se habria leido como "no habia nada que borrar".
+- Como se corrigio: los nombres de borrado pasaron a ser referencias explicitas a las funciones reales, tomadas una vez al armar la tabla de borrado, y el test afirma ahora `result["cvs"] == 1` ademas de comprobar que el registro desaparecio de la base.
+- Validacion que lo confirmo: `pytest tests/test_workspaces.py -q` con 46 pruebas, entre ellas `test_borrado_es_fisico_y_no_soft_delete` y `test_fallo_a_mitad_del_borrado_no_se_declara_exitoso`.
+- Regla futura para evitarlo: un `except Exception` que agrega a un lista de pendientes debe ir acompañado de una asercion sobre el exito esperado. Si la asercion no pasa, el error de fondo no se esta viendo. Y antes de delegar una accion en un objeto, comprobar que el metodo existe: `repository.hard_delete` no era una abstraccion, era un nombre inventado.
+- Instruccion sugerida para proximos prompts: "Cuando una operacion reporte pendientes en vez de fallar, verifica que el exito esperado no sea cero antes de darla por buena."
+
+## LL-032 - Subdividir el directorio de datos exige inicializar el subdirectorio: el arranque solo prepara el default
+
+- Problema detectado: la primera peticion a `/test/` moria con `sqlite3.OperationalError: unable to open database file` antes de llegar a ninguna ruta, y las siguientes morian por tablas ausentes.
+- Causa raiz: `lifespan` llama `initialize_database()`, que crea el directorio y las tablas del path por defecto. Al subdividir por entorno, el subdirectorio no existia y nada lo creaba. El fallo aparecia como si fuera un problema de SQLite, no de arquitectura.
+- Impacto/riesgo: la feature entera era inutilizable en navegador hasta que se creaba el directorio a mano. Ademas el sintoma apuntaba al motor equivocado.
+- Como se corrigio: `ensure_environment_ready()` crea el directorio, las carpetas de exportes y borradores, y llama `initialize_database()`; el middleware lo corre antes de despachar cualquier peticion de un entorno, memoizado por entorno y re-ejecutado si la base desaparece (por ejemplo tras un vaciado).
+- Validacion que lo confirmo: `pytest tests/test_workspaces.py -q`, mas el smoke test con `TestClient` sobre once rutas de ambos entornos, todas en 200.
+- Regla futura para evitarlo: cuando el almacenamiento se subdivida, el arranque deja de ser suficiente por construccion. Cada subalcance necesita su propia preparacion lazy y memoizada, y esa preparacion debe correr en el punto de entrada, no dentro del servicio.
+- Instruccion sugerida para proximos prompts: "Al agregar un subdirectorio de datos, preguntate quien lo crea y en que momento, antes de asumir que el arranque lo cubre."
+
+## LL-033 - Documentar una intencion en vez de un invariante deja un defecto disfrazado de procedimiento
+
+- Problema detectado: despues de migrar quedaban **tres** bases de datos operativas a la vez. Las rutas sin prefijo seguan leyendo y escribiendo datos historicos, y el arranque creaba o reutilizaba `data/app.db` en cada boot.
+- Causa raiz: el documento de etapa decia "la base historica se conserva como checkpoint", que era una descripcion de la intencion, no del comportamiento. En realidad `execute_migration` dejaba la base exactamente donde estaba y `lifespan` la seguia inicializando. El test que debia cubrirlo (`test_migracion_completa_mueve_datos_y_deja_real_vacio`) afirmaba `legacy.exists()`, o sea que estaba verificando la pieza, no el invariante, y por eso pasaba en verde con el defecto adentro.
+- Impacto/riesgo: el requisito explicito era "solo REAL y PRUEBAS como entornos operativos". Se cumplia en los tests y no en la aplicacion. El rollback documentado tampoco funcionaba: describia `ls -l data/app.db` sobre un archivo que la migracion ya no dejaba ahi.
+- Como se corrigio: la migracion renombra la base fuera del camino vivo (`app.db.retirado-<hex>`, sin borrarla), escribe `.environments-migrated`, el `lifespan` deja de inicializar la raiz y las rutas sin prefijo redirigen a MODO REAL. Se reemplazo `legacy.exists()` por una asercion sobre el invariante: sin base en la raiz, marcador presente, unico archivo retirado todavia legible, y dos espacios operativos.
+- Validacion que lo confirmo: los 22 tests nuevos de la etapa 11.1, en particular `test_tras_migrar_no_queda_un_tercer_espacio_de_trabajo`, `test_tras_migrar_el_arranque_no_recrea_la_base_legacy` y `test_tras_migrar_un_post_sin_prefijo_no_escribe_nada`, mas la suite completa en 533 passed.
+- Regla futura para evitarlo: cuando el documento describa un invariante ("solo quedan dos espacios", "nada se pierde"), el test debe afirmar el invariante y no la presencia de un artefacto. Y al escribir un procedimiento de rollback, ejecutarlo mentalmente sobre el estado real que deja la implementacion, no sobre el estado que se tenia la intencion de dejar.
+- Instruccion sugerida para proximos prompts: "Para cada invariante que documentes, deci cual es y escribe el test que lo afirme; si el test solo comprueba que un archivo existe, todavia no estas probando el invariante."

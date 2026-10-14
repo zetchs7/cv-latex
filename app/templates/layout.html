@@ -16,7 +16,7 @@
   <script defer src="{{ url_for('static', path='/js/app.js') }}?v={{ request.app.state.asset_version }}"></script>
 </head>
 <body>
-  {% set current_path = request.url.path %}
+  {% set current_path = workspace_path or request.url.path %}
   <div class="app-shell">
     <aside class="app-sidebar" aria-label="Navegacion principal">
       <a class="brand-mark" href="{{ url_for('dashboard') }}">
@@ -33,7 +33,7 @@
         <a class="sidebar-link{% if current_path.startswith('/cover-letters') %} is-active{% endif %}" data-nav-path="/cover-letters" href="{{ url_for('cover_letters_list') }}">Cartas de presentacion</a>
         <a class="sidebar-link{% if current_path.startswith('/applications') %} is-active{% endif %}" data-nav-path="/applications" href="{{ url_for('applications_list') }}">Postulaciones</a>
         <a class="sidebar-link{% if current_path.startswith('/documentation') %} is-active{% endif %}" data-nav-path="/documentation" href="{{ url_for('documentation_index') }}">Documentacion</a>
-        <span class="sidebar-link sidebar-link-muted" aria-disabled="true">Configuracion local</span>
+        <a class="sidebar-link{% if current_path.startswith('/config') %} is-active{% endif %}" data-nav-path="/config" href="{{ url_for('workspace_settings') }}">Configuracion</a>
       </nav>
 
       <div class="sidebar-footer">
@@ -45,6 +45,33 @@
     </aside>
 
     <div class="app-main">
+      {% if environment %}
+      <div
+        class="workspace-banner workspace-banner--{{ 'test' if is_test_mode else 'real' }}"
+        role="status"
+        data-workspace-banner="{{ environment.value }}"
+      >
+        <span class="workspace-banner__icon" aria-hidden="true">{{ '🧪' if is_test_mode else '🔒' }}</span>
+        <span class="workspace-banner__text">
+          <strong>{{ 'MODO PRUEBAS' if is_test_mode else 'MODO REAL' }}</strong>
+          {% if is_test_mode %}
+          — Estas trabajando con datos ficticios. Nada de aca se mezcla con tu informacion real.
+          {% else %}
+          — Estas trabajando con tu informacion real.
+          {% endif %}
+        </span>
+        <a class="workspace-banner__action" href="{{ url_for('workspace_settings') }}">Cambiar de entorno</a>
+      </div>
+      {% elif legacy_storage_pending %}
+      <div class="workspace-banner workspace-banner--pending" role="status">
+        <span class="workspace-banner__icon" aria-hidden="true">⚠️</span>
+        <span class="workspace-banner__text">
+          <strong>DATOS SIN CLASIFICAR</strong>
+          — Todavia no se migro la base historica a los entornos. Entra a
+          Configuracion &rarr; Entornos y datos para ver el diagnostico.
+        </span>
+      </div>
+      {% endif %}
       <header class="app-topbar">
         <div>
           <p class="topbar-kicker">App privada local</p>

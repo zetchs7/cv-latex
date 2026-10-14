@@ -1,0 +1,135 @@
+{% extends "layout.html" %}
+
+{% block title %}Entornos y datos - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Configuracion</p>
+    <h1>Entornos y datos</h1>
+    <p class="section-copy">
+      Elegi en que entorno trabajar. Cada entorno tiene sus propios datos y sus propios
+      archivos: nunca se mezclan.
+    </p>
+  </div>
+</section>
+
+{% if notice %}
+<div class="notice {% if notice_level == 'success' %}notice--success{% else %}notice--error{% endif %}" role="status">
+  {{ notice }}
+</div>
+{% endif %}
+
+{% if legacy_pending %}
+<div class="notice" role="status">
+  <strong>Todavia no se clasificaron los datos actuales.</strong>
+  <p>
+    La aplicacion sigue usando la base historica, que todavia no pertenece a ningun entorno.
+    Para moverla a MODO PRUEBAS y dejar MODO REAL vacio, abri el diagnostico de migracion.
+  </p>
+  <p><a class="button small" href="{{ url_for('workspace_migration') }}">Ver diagnostico de migracion</a></p>
+</div>
+{% endif %}
+
+<div class="workspace-choice-grid">
+  <article class="workspace-card{% if is_real_mode %} workspace-card--active{% endif %}">
+    <div class="workspace-card-head">
+      <span class="workspace-choice-icon" aria-hidden="true">🔒</span>
+      <h2>Modo Real</h2>
+      {% if is_real_mode %}<span class="status-pill">Estas aca</span>{% endif %}
+    </div>
+    <p>
+      Tu informacion personal. Tiene su propia base de datos y sus propias exportaciones.
+      No muestra datos ficticios.
+    </p>
+    <ul class="workspace-feature-list">
+      <li>Base de datos propia</li>
+      <li>Exportaciones propias</li>
+      <li>Sin datos de prueba</li>
+    </ul>
+    <form method="post" action="{{ url_for('workspace_enter') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="environment" value="real">
+      <button class="button" type="submit">Entrar a MODO REAL</button>
+    </form>
+  </article>
+
+  <article class="workspace-card{% if is_test_mode %} workspace-card--active{% endif %} workspace-card--test">
+    <div class="workspace-card-head">
+      <span class="workspace-choice-icon" aria-hidden="true">🧪</span>
+      <h2>Modo Pruebas</h2>
+      {% if is_test_mode %}<span class="status-pill">Estas aca</span>{% endif %}
+    </div>
+    <p>
+      Datos ficticios para ensayar. Podes generar, borrar y vaciar todo lo que quieras sin
+      tocar tu informacion real.
+    </p>
+    <ul class="workspace-feature-list">
+      <li>Base de datos propia</li>
+      <li>Generador de datos de prueba</li>
+      <li>Borrado y vaciado completo</li>
+    </ul>
+    <form method="post" action="{{ url_for('workspace_enter') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="environment" value="test">
+      <button class="button" type="submit">Entrar a MODO PRUEBAS</button>
+    </form>
+  </article>
+</div>
+
+{% if is_test_mode %}
+<section class="surface-panel">
+  <h2>Generar datos de prueba</h2>
+  <p class="section-copy">
+    Indica cuantos registros queres. Podes generar tantas veces como quieras.
+    La cantidad maxima por operacion es de {{ max_generate_per_kind }} de cada tipo.
+  </p>
+
+  <form method="post" action="{{ url_for('workspace_generate') }}" class="form-panel">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-grid">
+      <label>
+        <span>Currículums</span>
+        <input name="cvs" type="number" min="0" max="{{ max_generate_per_kind }}" value="8">
+      </label>
+      <label>
+        <span>Cartas de presentacion</span>
+        <input name="cover_letters" type="number" min="0" max="{{ max_generate_per_kind }}" value="4">
+      </label>
+      <label>
+        <span>Postulaciones</span>
+        <input name="applications" type="number" min="0" max="{{ max_generate_per_kind }}" value="6">
+      </label>
+    </div>
+    <p class="form-context-copy">
+      Los registros usan nombres, empresas y contactos de mentira. Ninguno es real.
+    </p>
+    <div class="form-actions">
+      <button class="button" type="submit">Generar datos de prueba</button>
+    </div>
+  </form>
+</section>
+
+<section class="surface-panel">
+  <h2>Administrar datos de prueba</h2>
+  <p class="section-copy">
+    Revisa y borra registros de uno en uno, o vacia todo el entorno de una vez.
+  </p>
+  <div class="form-actions">
+    <a class="button" href="{{ url_for('workspace_manage', kind='cvs') }}>Administrar datos</a>
+    <a class="button danger-link" href="{{ url_for('workspace_purge_confirm') }}">Vaciar todos los datos de Pruebas</a>
+  </div>
+</section>
+{% endif %}
+
+{% if is_real_mode %}
+<section class="surface-panel">
+  <h2>Modo Real activo</h2>
+  <p class="section-copy">
+    Estas viendo tu informacion personal. Las herramientas de datos de prueba no estan
+    disponibles aca a proposito: no existe ninguna accion que pueda borrar o generar
+    datos ficticios en este entorno.
+  </p>
+</section>
+{% endif %}
+{% endblock %}

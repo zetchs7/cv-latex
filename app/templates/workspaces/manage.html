@@ -1,0 +1,112 @@
+{% extends "layout.html" %}
+
+{% block title %}Administrar datos de prueba - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">MODO PRUEBAS</p>
+    <h1>Administrar datos de prueba</h1>
+    <p class="section-copy">
+      Selecciona los registros que queres borrar. No se borra nada hasta que confirmes.
+    </p>
+  </div>
+  <a class="button" href="{{ url_for('workspace_settings') }}">Volver a entornos</a>
+</section>
+
+<nav class="workspace-kind-tabs" aria-label="Tipo de registro">
+  <a class="sidebar-link{% if kind == 'cvs' %} is-active{% endif %}" href="{{ url_for('workspace_manage', kind='cvs') }}">Currículums ({{ counts.cvs }})</a>
+  <a class="sidebar-link{% if kind == 'cover_letters' %} is-active{% endif %}" href="{{ url_for('workspace_manage', kind='cover_letters') }}">Cartas ({{ counts.cover_letters }})</a>
+  <a class="sidebar-link{% if kind == 'applications' %} is-active{% endif %}" href="{{ url_for('workspace_manage', kind='applications') }}">Postulaciones ({{ counts.applications }})</a>
+</nav>
+
+{% if notice %}
+<div class="notice {% if notice_level == 'success' %}notice--success{% else %}notice--error{% endif %}" role="status">
+  {{ notice }}
+</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('workspace_delete_preview') }}" class="surface-panel">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">
+            <input type="checkbox" data-select-all aria-label="Seleccionar todo">
+          </th>
+          <th scope="col">Titulo</th>
+          <th scope="col">Detalle</th>
+          <th scope="col">ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for record in records %}
+        <tr>
+          <td>
+            <input
+              type="checkbox"
+              name="{{ kind }}"
+              value="{{ record.id }}"
+              aria-label="Seleccionar registro {{ record.id }}"
+            >
+          </td>
+          <td>
+            {% if kind == 'cvs' %}{{ record.title }}
+            {% elif kind == 'cover_letters' %}{{ record.title }}
+            {% else %}{{ record.company }}
+            {% endif %}
+          </td>
+          <td>
+            {% if kind == 'cvs' %}{{ record.full_name }}
+            {% elif kind == 'cover_letters' %}{{ record.recipient_company }}
+            {% else %}{{ record.position }}
+            {% endif %}
+          </td>
+          <td><code>{{ record.id }}</code></td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4">
+            <div class="empty-card">
+              <p class="ats-empty-copy">Todavia no hay registros de este tipo en MODO PRUEBAS.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if records %}
+  <div class="form-actions">
+    <button class="button" type="submit">Revisar y eliminar seleccion</button>
+  </div>
+  {% endif %}
+</form>
+
+<section class="surface-panel">
+  <h2>Vaciar todo el entorno de Pruebas</h2>
+  <p class="section-copy">
+    Elimina permanentemente todos los datos de MODO PRUEBAS: currículums, cartas,
+    postulaciones, exportaciones y borradores. Deja el entorno vacio y listo para
+    volver a generar datos.
+  </p>
+  <div class="form-actions">
+    <a class="button danger-link" href="{{ url_for('workspace_purge_confirm') }}">Vaciar todos los datos de Pruebas</a>
+  </div>
+</section>
+
+<script>
+  (() => {
+    const selectAll = document.querySelector("[data-select-all]");
+    if (!selectAll) return;
+    selectAll.addEventListener("change", () => {
+      document
+        .querySelectorAll('input[type="checkbox"][name]')
+        .forEach((box) => { box.checked = selectAll.checked; });
+    });
+  })();
+</script>
+{% endblock %}

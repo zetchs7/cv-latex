@@ -38,6 +38,7 @@
 | Project Control Center | `tools/project_control.py`, `docs/development/project_control/catalog.json` | in_development_branch | no | no | Rama `feature/project-control-center`, sin publicar por instruccion explicita. Diseno en `docs/adr/ADR-0005-project-control-center.md`. |
 | Editor estructurado de CV (schema 2) | `app/routes/cvs.py:71,367`, `app/services/structured_cv_*.py`, `app/validations/structured_cv_validations.py` | in_development | si | no | PR #16 squash-mergeado en `97e2577`. Sin version, release ni tag: no publicado. ADR-0003 lo declara 'implementada sin publicar'. |
 | Aislamiento de la suite de pruebas | `tests/conftest.py`, `app/database.py`, `tests/test_test_isolation.py` | in_development | si | no | PR #17 squash-mergeado en `e19ea5a`. Aislamiento fail-closed en codigo con manifiesto `(size, mtime_ns)` comparado en `pytest_sessionfinish`. |
+| Entornos y datos (MODO REAL / MODO PRUEBAS) | `app/environments.py`, `app/workspace_middleware.py`, `app/routes/workspaces.py`, `app/services/workspace_service.py`, `app/templates/workspaces/` | in_development | si | no | Rama `feature/real-test-workspaces` desde `development` `ea4c979`; suite completa 533 passed. Sin merge: la migracion de los datos actuales requiere autorizacion explicita. |
 
 ## Riesgos abiertos
 
@@ -51,6 +52,7 @@
 | RSK-006 | La version de release de la documentacion esta fijada por constante | low | Derivar la constante de `VERSION` o de `APP_VERSION`. Ver DOC-002. | `documentation_service.py:19` fija `DOCUMENTATION_RELEASE_VERSION = 'v0.9.0'` y la fecha en `:21`; un cambio de version no las actualiza. |
 | RSK-007 | Sin formatters disponibles: el control de formato es solo el diff check | low | Adoptar `black` y `ruff` como dependencias de desarrollo. Ver QLT-003. | `DEVELOPMENT_LOG.md:36-38`: 'black y ruff no estan disponibles en host ni en la imagen'. |
 | RSK-008 | Backup documentado puede producir una copia inconsistente | medium | Usar `sqlite3 data/app.db ".backup"` o detener la app antes de copiar. Ver OPS-001/SEC-003. | `README.md:149` y `docs/user/WEB_USAGE_MANUAL.md` hacen `cp data/app.db` con la app corriendo. |
+| RSK-009 | Migracion de la base historica sin ejecutar | medium | `plan_migration()` audita sin mutar y se niega a sobrescribir un destino ocupado; la ejecucion exige la frase `MIGRAR`, genera un checkpoint con la API de backup de SQLite, renombra la base historica fuera del camino vivo, marca `.environments-migrated` y revierte ante cualquier fallo. Ese retiro impide que quede un tercer espacio de trabajo: el arranque deja de inicializar la raiz y las rutas sin prefijo redirigen a MODO REAL. No se ejecuta sin autorizacion explicita de Franco. | `docs/development/REAL_TEST_WORKSPACES.md` §7; `tests/test_workspaces.py::test_plan_de_migracion_no_modifica_nada` y `::test_migracion_con_destino_ocupado_no_toca_nada`. |
 
 ## Backlog en un vistazo
 

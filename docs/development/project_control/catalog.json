@@ -123,6 +123,16 @@
       "evidence": "Acepta schema 1 y 2, limite de 520 KB en dos capas (streaming por chunks `export_service.py:68` y guard de tamano `:265`). No existe importacion de PDF, DOCX, LaTeX ni Markdown."
     },
     {
+      "id": "workspaces",
+      "name": "Entornos y datos (MODO REAL / MODO PRUEBAS)",
+      "routes": "`app/environments.py`, `app/workspace_middleware.py`, `app/routes/workspaces.py`, `app/services/workspace_service.py`, `app/templates/workspaces/`",
+      "state": "in_development",
+      "in_development": true,
+      "in_main": false,
+      "verified_by": "tests/test_workspaces.py (68 tests)",
+      "evidence": "Rama `feature/real-test-workspaces` desde `development` `ea4c979`; suite completa 533 passed. Sin merge: la migracion de los datos actuales requiere autorizacion explicita."
+    },
+    {
       "id": "test_isolation",
       "name": "Aislamiento de la suite de pruebas",
       "routes": "`tests/conftest.py`, `app/database.py`, `tests/test_test_isolation.py`",
@@ -207,6 +217,14 @@
       "status": "open",
       "mitigation": "Usar `sqlite3 data/app.db \".backup\"` o detener la app antes de copiar. Ver OPS-001/SEC-003.",
       "evidence": "`README.md:149` y `docs/user/WEB_USAGE_MANUAL.md` hacen `cp data/app.db` con la app corriendo."
+    },
+    {
+      "id": "RSK-009",
+      "title": "Migracion de la base historica sin ejecutar",
+      "severity": "medium",
+      "status": "open",
+      "mitigation": "`plan_migration()` audita sin mutar y se niega a sobrescribir un destino ocupado; la ejecucion exige la frase `MIGRAR`, genera un checkpoint con la API de backup de SQLite, renombra la base historica fuera del camino vivo, marca `.environments-migrated` y revierte ante cualquier fallo. Ese retiro impide que quede un tercer espacio de trabajo: el arranque deja de inicializar la raiz y las rutas sin prefijo redirigen a MODO REAL. No se ejecuta sin autorizacion explicita de Franco.",
+      "evidence": "`docs/development/REAL_TEST_WORKSPACES.md` §7; `tests/test_workspaces.py::test_plan_de_migracion_no_modifica_nada` y `::test_migracion_con_destino_ocupado_no_toca_nada`."
     }
   ],
   "tasks": [

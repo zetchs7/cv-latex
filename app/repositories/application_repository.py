@@ -137,6 +137,18 @@ def soft_delete_application(application_id: int) -> bool:
     return cursor.rowcount > 0
 
 
+def hard_delete_application(application_id: int) -> bool:
+    """Borrado FISICO de una postulacion, para el entorno de PRUEBAS."""
+
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "DELETE FROM applications WHERE id = ?", (application_id,)
+        )
+        connection.commit()
+
+    return cursor.rowcount > 0
+
+
 def _row_to_application(row) -> Application:
     return Application(
         id=int(row["id"]),
