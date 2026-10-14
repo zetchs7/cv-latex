@@ -147,8 +147,15 @@ El borrado es **fisico** (`hard_delete_*`), no soft delete. Los `hard_delete_*` 
 funciones nuevas en los repositorios: no comparten camino con el borrado normal que ve
 el usuario, que sigue siendo `soft_delete_*`.
 
-Los exportes se borran solo cuando el nombre corresponde a un CV borrado; los ajenos
-quedan.
+Los exportes se borran junto con su registro **cuando el nombre lo identifica**: el
+segmento que importa es `prefijo-id` (`cv-…` para currículums, `cover-letter-…` para
+cartas), porque asi los genera `_build_entity_export_filename`
+(`{prefijo}-{id}-{titulo}-{variante}-{timestamp}.{ext}`). Los ajenos quedan,
+incluido un CV que comparta el numero con la carta borrada.
+
+Si `hard_delete_*` no borro nada (el registro ya no existia), no se cuenta como
+borrado: aparece como `missing` y la respuesta lo avisa en vez de inflar el total.
+Tampoco pasa a `pending`, porque no hay nada que reintentar.
 
 ## 6. Vaciado completo
 
@@ -175,22 +182,35 @@ directorio antes y despues.
 El plan pasa a `blocked` si:
 
 - alguna de las tres tablas no se puede leer;
-- el destino (`real` o `test`) ya tiene una base — **nunca se sobrescribe**;
+- el destino (`real` o `test`) tiene contenido: registros, `exports` o
+  `import-drafts` — **nunca se sobrescribe**. Una base creada vacía por la
+  primera visita (`ensure_environment_ready`) **no** bloquea: no hay nada que
+  perder y la pantalla no ofrece ninguna acción para borrarla, así que tratarla
+  como destino ocupado dejaría la migración bloqueada para siempre;
 - `exports` o `import-drafts` existen pero no son directorios.
 
 ### 7.3 Ejecucion
 
 1. Exige la frase `MIGRAR` escrita en el servidor.
 2. Vuelve a correr el plan: si dejo de estar `ready`, se aborta.
-3. Genera un checkpoint con la **API de backup de SQLite** (`Connection.backup`), no
+3. Escribe `data/.environments-migrating` y **recién entonces drena**: espera a
+   que no quede ninguna petición admitida (10 s máximo). El orden no es
+   indiferente: el candado primero corta el paso a lo que entre durante la
+   espera; si se drenara primero, una petición ya admitida escribiría sobre la
+   base histórica después del snapshot y esa escritura quedaría solo en la base
+   retirada. Con el plazo agotado se aborta sin mutar nada y se reintenta.
+4. Genera un checkpoint con la **API de backup de SQLite** (`Connection.backup`), no
    con una copia de archivo, que podria tomar la base a mitad de una escritura.
-4. `os.replace` del checkpoint a `test/app.db`, y de `exports` e `import-drafts` a su
+5. `os.replace` del checkpoint a `test/app.db`, y de `exports` e `import-drafts` a su
    lugar dentro de `test/`.
-5. **Retira la vista historica**: renombra `data/app.db` a
+6. **Retira la vista historica**: renombra `data/app.db` a
    `data/app.db.retirado-<hex>` y escribe `data/.environments-migrated`.
-6. Ante cualquier `OSError`, revierte lo ya movido en orden inverso y lanza un error
+7. Ante cualquier `OSError`, revierte lo ya movido en orden inverso y lanza un error
    controlado. El mensaje distingue "se revirtio" de "el rollback quedo incompleto
    en ...": decir lo primero cuando no fue asi seria mentir.
+
+El candado se borra en `finally`, en el camino de éxito y en el de rollback: si
+quedara puesto, la app contestaría 503 para siempre y habría que borrarlo a mano.
 
 **La base historica NO se borra.** Sale del camino vivo con otro nombre, y ese archivo
 es la fuente del rollback. Ojo con una confusion facil: el checkpoint generado en el
@@ -371,6 +391,10 @@ Nada de esto se ejecuta sin su autorizacion. El orden importa.
 **Para migrar**
 
 - [ ] Autorizar la migracion de forma explicita.
+- [ ] Durante la ejecucion la app contesta `503` a todo lo que no sea `/health` ni
+      `/static`: es la ventana que impide escrituras concurrentes, no un error. Si la
+      pantalla dice "Hay peticiones todavia en curso", esperar y reintentar; no se
+      muta nada en ese caso.
 - [ ] Verificar que `data/app.db.retirado-*` existe, es SQLite legible y contiene los
       registros esperados. Es la unica copia del contenido historico.
 - [ ] Comprobar en el navegador que `MODO PRUEBAS` muestra los registros heredados.

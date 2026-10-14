@@ -7,6 +7,7 @@ asi que una fuga de aislamiento hace fallar la corrida completa, no solo un test
 
 from __future__ import annotations
 
+import asyncio
 import json
 import shutil
 import sqlite3
@@ -17,6 +18,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import database
+from app import workspace_middleware as middleware
 from app.environments import (
     MIGRATION_MARKER_FILENAME,
     MIGRATING_MARKER_FILENAME,
@@ -29,6 +31,7 @@ from app.environments import (
 )
 from app.main import app
 from app.repositories import application_repository, cover_letter_repository, cv_repository
+from app.routes import workspaces as workspaces_routes
 from app.schemas import ApplicationFormData, CoverLetterFormData, CVFormData
 from app.services import workspace_service
 from app.services.workspace_service import (
@@ -1396,3 +1399,236 @@ def test_el_candado_no_sobrevive_a_una_migracion_exitosa():
     _migrate()
 
     assert not (resolved_data_root() / MIGRATING_MARKER_FILENAME).exists()
+
+
+# --- Correcciones de la revision de codigo (ronda 2) --------------------------
+
+
+def test_el_drenaje_espera_a_las_peticiones_admitidas_y_descarta_la_propia():
+    """El candado corta el paso a lo nuevo, pero no alcanza una peticion que ya
+    entro: esa puede correr despues del snapshot y su escritura quedaria en la
+    base retirada. El drenaje la espera sin ceder el loop nunca podria esperarla.
+
+    `elapsed` es la prueba de que espero de verdad, no de que solo encontro la
+    lista vacia."""
+
+    async def scenario():
+        loop = asyncio.get_running_loop()
+        observed: dict = {}
+
+        async def slow_call_next(request):
+            await asyncio.sleep(0.05)
+            return "lenta"
+
+        async def migrating_call_next(request):
+            start = loop.time()
+            observed["drained"] = await middleware.drain_admitted_requests(timeout=2.0)
+            observed["elapsed"] = loop.time() - start
+            return "migracion"
+
+        en_vuelo = asyncio.create_task(middleware._admit(slow_call_next, None))
+        await asyncio.sleep(0)
+
+        observed["propia"] = await middleware._admit(migrating_call_next, None)
+        observed["esperada"] = await en_vuelo
+        observed["sobrantes"] = set(middleware._admitted)
+        return observed
+
+    observed = asyncio.run(scenario())
+
+    assert observed["drained"] is True
+    assert observed["elapsed"] >= 0.04, "tenia que esperar a la peticion en vuelo"
+    assert observed["esperada"] == "lenta"
+    assert observed["sobrantes"] == set()
+
+
+def test_el_drenaje_no_bloquea_sobre_su_propia_peticion():
+    """La ruta de migracion tambien esta admitida: sin descartarse a si misma el
+    drenaje esperaria su propia terminacion, que no llega hasta que drena."""
+
+    async def scenario():
+        observed: dict = {}
+
+        async def migrating_call_next(request):
+            observed["drained"] = await middleware.drain_admitted_requests(timeout=0.2)
+            return "ok"
+
+        return await middleware._admit(migrating_call_next, None), observed
+
+    _, observed = asyncio.run(scenario())
+
+    assert observed["drained"] is True
+
+
+def test_la_ruta_de_migracion_levanta_el_candado_antes_de_drenar(monkeypatch):
+    """Orden de los dos pasos: si se drenara primero, cualquier peticion que
+    entrara durante la espera escribiria sobre la base historica despues del
+    snapshot. La comprobacion es directa: el archivo tiene que existir en el
+    momento exacto en que se drena."""
+
+    root = resolved_data_root()
+    _install_legacy_database(root)
+
+    observed: dict = {}
+
+    async def spy_drain(*, timeout: float = 10.0) -> bool:
+        observed["candado_durante_drenaje"] = (root / MIGRATING_MARKER_FILENAME).exists()
+        return True
+
+    monkeypatch.setattr(workspaces_routes, "drain_admitted_requests", spy_drain)
+
+    with TestClient(app) as client:
+        client.get("/test/config/workspaces")
+        token = client.cookies["gentle_workspace_csrf"]
+        response = client.post(
+            "/test/config/workspaces/migrate",
+            data={"confirmation": "MIGRAR", "csrf_token": token},
+        )
+
+    assert response.status_code == 200
+    assert observed["candado_durante_drenaje"] is True
+    assert not (root / MIGRATING_MARKER_FILENAME).exists()
+
+
+def test_la_migracion_por_http_completa_el_drenaje_sin_agotarse(client):
+    """Prueba la ruta con el drenaje REAL, sin espías. El punto delicado es que
+    el drenaje descarta la propia peticion: si no lo hiciera, esperaria su propia
+    terminacion, que no llega hasta que drena, y la migracion se agotaria."""
+
+    root = resolved_data_root()
+    _install_legacy_database(root)
+
+    client.get("/test/config/workspaces")
+    token = client.cookies["gentle_workspace_csrf"]
+    response = client.post(
+        "/test/config/workspaces/migrate",
+        data={"confirmation": "MIGRAR", "csrf_token": token},
+    )
+
+    assert response.status_code == 200, response.text
+    assert (root / MIGRATION_MARKER_FILENAME).exists()
+    assert not (root / MIGRATING_MARKER_FILENAME).exists()
+    assert client.get("/", follow_redirects=False).status_code == 303
+
+
+def test_una_visita_previa_a_los_entornos_no_bloquea_la_migracion(client):
+    """La primera visita crea la base de destino con cero registros. Tratar esa
+    creacion como "destino ocupado" dejaba la migracion bloqueada para siempre:
+    la pantalla no ofrece ninguna accion para borrar una base vacia, y REAL no
+    se puede vaciar por diseno."""
+
+    root = resolved_data_root()
+    _install_legacy_database(root)
+
+    assert client.get("/test/").status_code == 200
+    assert client.get("/real/").status_code == 200
+    assert (environment_data_root(root, Environment.TEST) / "app.db").exists()
+
+    plan = plan_migration()
+    assert plan.status == "ready", plan.problems
+
+    result = workspace_service.execute_migration(require_confirmation="MIGRAR")
+    assert result["counts"]["cvs"] == 1
+
+
+def test_un_destino_solo_con_archivos_sigue_bloqueando():
+    """Vaciar no es lo mismo que estar vacio: un destino que ya tiene archivos no
+    se puede sobrescribir aunque no tenga registros."""
+
+    root = resolved_data_root()
+    _install_legacy_database(root)
+    exports = environment_data_root(root, Environment.TEST) / "exports"
+    exports.mkdir(parents=True, exist_ok=True)
+    (exports / "heredado.tex").write_text("% heredado", encoding="utf-8")
+
+    plan = plan_migration()
+
+    assert plan.status == "blocked"
+
+
+def test_el_borrado_tambien_se_lleva_los_exports_con_el_nombre_real():
+    """El nombre que genera la app es
+    `cv-{id}-{titulo}-{variante}-{timestamp}.tex`, donde nunca aparece `-{id}.`.
+    El prediccion viejo solo matcheaba con un nombre fabricado, asi que el
+    borrado fisico dejaba los archivos en disco mientras reportaba 0."""
+
+    generate_dummy_data(Environment.TEST, cvs=1, cover_letters=0, applications=0, seed=41)
+    with in_environment(Environment.TEST):
+        cv_id = cv_repository.list_cvs()[0].id
+        exports = workspace_service.managed_directories(Environment.TEST)["exports"]
+        exports.mkdir(parents=True, exist_ok=True)
+        real_name = exports / f"cv-{cv_id}-cv-de-prueba-texlivecv-20261014120000000000.tex"
+        legado = exports / f"cv-{cv_id}.tex"
+        ajeno = exports / f"cv-{cv_id + 900}-ajeno.tex"
+        for path in (real_name, legado, ajeno):
+            path.write_text("% export", encoding="utf-8")
+
+    result = delete_selected(
+        Environment.TEST, {"cvs": [cv_id], "cover_letters": [], "applications": []}
+    )
+
+    assert not real_name.exists()
+    assert not legado.exists()
+    assert ajeno.exists()
+    assert result["files"] == 2
+
+
+def test_borrar_una_carta_tambien_se_lleva_sus_exports():
+    """Mismo defecto, otro tipo: la limpieza solo miraba los CVs. El prefijo
+    importa igual: un CV que comparta el numero conserva sus archivos."""
+
+    letter_id = _seed_test_letter("Empresa Carta Export", "Puesto")
+    with in_environment(Environment.TEST):
+        exports = workspace_service.managed_directories(Environment.TEST)["exports"]
+        exports.mkdir(parents=True, exist_ok=True)
+        de_la_carta = exports / f"cover-letter-{letter_id}-empresa-carta-export-20261014120000000000.tex"
+        de_un_cv = exports / f"cv-{letter_id}-cv-que-comparte-numero-20261014120000000000.tex"
+        de_la_carta.write_text("% carta", encoding="utf-8")
+        de_un_cv.write_text("% cv", encoding="utf-8")
+
+    result = delete_selected(
+        Environment.TEST, {"cvs": [], "cover_letters": [letter_id], "applications": []}
+    )
+
+    assert not de_la_carta.exists()
+    assert de_un_cv.exists()
+    assert result["files"] == 1
+
+
+def test_un_registro_que_ya_no_existe_no_se_cuenta_como_borrado():
+    """`hard_delete_*` devuelve False si no borro nada. Contarlo como exito
+    mentia sobre lo que ocurrio."""
+
+    generate_dummy_data(Environment.TEST, cvs=1, cover_letters=0, applications=0, seed=42)
+    with in_environment(Environment.TEST):
+        victim = cv_repository.list_cvs()[0].id
+
+    delete_selected(Environment.TEST, {"cvs": [victim], "cover_letters": [], "applications": []})
+    resultado = delete_selected(
+        Environment.TEST, {"cvs": [victim], "cover_letters": [], "applications": []}
+    )
+
+    assert resultado["cvs"] == 0
+    assert resultado["missing"] == [f"cvs:{victim}"]
+    assert resultado["pending"] == [], "no hay nada que reintentar, no es un fallo"
+
+
+def test_un_id_inexistente_en_la_previsualizacion_no_finge_borrado(client):
+    """Camino HTTP del mismo defecto: la seleccion se revalida contra la base en
+    el momento de ejecutar, no contra la previsualizacion."""
+
+    with in_environment(Environment.TEST):
+        ensure_environment_ready(Environment.TEST)
+
+    client.get("/test/config/workspaces")
+    token = client.cookies["gentle_workspace_csrf"]
+    response = client.post(
+        "/test/config/workspaces/delete/execute",
+        data={
+            "cvs": "987654",
+            "csrf_token": token,
+            "typed_confirmation": "ELIMINAR 1 DE PRUEBAS",
+        },
+    )
+
+    assert "ya no existían" in response.text

@@ -429,3 +429,30 @@ Se detectó y corrigió un error propio durante la edición: al mover la exenci�
 
 **Advertencia benigna:** `app/routes/applications.py` y `app/routes/documentation.py` tienen fin de línea CRLF uniforme en el árbol de trabajo (propiedad preexistente de esos archivos, hoy visible porque esta ronda los modifica). `.gitattributes` declara `* text=auto eol=lf`, así que el blob commiteado queda en LF y `git diff --check` sale 0; las dos líneas son avisos de conversión, no errores de whitespace. No se tocaron para no reescribir 368 líneas por una propiedad que git normaliza.
 
+### L7 — Ronda 2 de corrección (revisión @codex), 2026-10-14
+
+La segunda revisión sobre `b54d743` volvió en **`COMMENTED`** (no es aprobación) con **4 hallazgos, los 4 confirmados contra el código** antes de corregir:
+
+| # | Hallazgo | Veredicto propio |
+| --- | --- | --- |
+| 1 | **P1**: el candado solo frena peticiones que entran al middleware *después* de escribirse; una ya admitida que queda suspendida en `await call_next` se reanuda después de `backup()` y escribe en la base ya renombrada a `retirado-*` o recrea `root/app.db` | **Confirmado material, pérdida de datos**: la migración bloquea el event loop, así que la petición en vuelo corre *después* de la migración completa |
+| 2 | **P2**: `plan_migration` bloquea con destino vacío generado por `ensure_environment_ready`, y REAL no tiene acción para vaciarse | **Confirmado material**: visita previa ⇒ bloqueo permanente de la migración |
+| 3 | **P2**: el predicado `-{id}.` no coincide con los nombres reales `cv-{id}-{titulo}-{variante}-{timestamp}.ext` | **Confirmado material**: el borrado reportaba 0 archivos y dejaba los exports en disco. El test existente fabricaba `cv-1.tex`, un nombre que la app nunca genera |
+| 4 | **P2**: se ignora el retorno de `hard_delete_*` (devuelve `False` con `rowcount == 0`) | **Confirmado**: se contaban como borrados registros que la base rechazó |
+
+**Correcciones aplicadas (5 archivos, +435 / −40):**
+
+1. **Candado + drenaje.** `execute_migration` se partió en `validate_migration()` / `migration_lock()` / `run_migration()`, quedando como envoltorio síncrono para los tests existentes. El middleware registra las peticiones admitidas (`_admitted` + `ContextVar` compartida por la misma vía que `set_environment`) y expone `drain_admitted_requests()`. La ruta ahora hace **candado → `await drain()` → `run_migration()`**, con timeout de 10 s y aborte sin mutar datos; las rutas exentas (`/health`, `/static`) no entran en el drenaje para no poder agotarlo.
+2. **Destino vacío permitido.** Se eliminó el guard `candidate.exists()` y ahora sólo bloquea un destino **con contenido** (registros, `exports` o `import-drafts`), base o no base.
+3. **Patrón de export.** Nuevo `_export_belongs_to(path, prefix, record_id)` sobre el segundo segmento del stem, acotado por prefijo (`cv-…`, `cover-letter-…`); la limpieza se extendió a cartas, que antes quedaban huérfanas.
+4. **`hard_delete_*`.** Si devuelve `False` no se incrementa: va a `missing` (nuevo), que la ruta traduce en "`N` registro(s) ya no existían y no se contaron". No va a `pending`, porque no hay nada que reintentar.
+
+**Docs actualizados** (`REAL_TEST_WORKSPACES.md` §5, §7.2, §7.3, §12): regla nueva de destino vacío, orden candado→drenaje, prefijos de export, y el `503` de la ventana como comportamiento esperado.
+
+**Evidencia RED** (árbol `b54d743` exportado con `git archive` a `/tmp/opencode`, fuera del repositorio, con el `tests/test_workspaces.py` nuevo copiado encima y borrado después): **10 pruebas comportamentales fallan en el código sin corregir** — las dos del drenaje, la del orden candado/drenaje, la de migración por HTTP con drenaje real, la de visita previa, la de destino sólo con archivos, la del nombre real de export, la de export de carta, la de `missing` por servicio y la de `missing` por HTTP.
+
+**Evidencia GREEN (árbol corregido):** `tests/test_workspaces.py` **89 passed** (79 + 10); suite completa **554 passed**; `compileall` 0; `git diff --check` 0; PCC `validate` "catalogo valido" y `check` "3 documentos en sync"; `node --test tests/test_structured_cv_editor_js.js` 1 pass 0 fail.
+
+**`data/` intacto:** 49 CVs, 10 cartas, 6 postulaciones; ningún archivo de `data/` con mtime posterior a `2026-10-13 18:55` (anterior a esta ronda); manifiesto `find data -type f -print0 | sort -z | xargs -0 md5sum | md5sum` = `0f3659d668f67e976ba3763efcfd995d` (175 archivos). El valor de L6 salía de otra forma de comando, por eso no es comparable byte a byte.
+
+

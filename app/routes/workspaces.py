@@ -30,13 +30,16 @@ from app.services.workspace_service import (
     DummyDataError,
     delete_selected,
     dependencies_of,
-    execute_migration,
     generate_dummy_data,
     inventory,
+    migration_lock,
     plan_migration,
     purge_environment,
+    run_migration,
     selected_records,
+    validate_migration,
 )
+from app.workspace_middleware import drain_admitted_requests
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -386,12 +389,18 @@ async def workspace_delete_execute(
             "error",
         )
 
-    return _message(
-        request,
+    message = (
         f"Borrados: {result['cvs']} currículums, {result['cover_letters']} cartas y "
-        f"{result['applications']} postulaciones, más {result['files']} archivos.",
-        "success",
+        f"{result['applications']} postulaciones, más {result['files']} archivos."
     )
+    if result["missing"]:
+        # No se cuentan como borrados: no se borro nada porque ya no estaban.
+        # Decir "borrados" sin avisar mentiria sobre lo que paso.
+        message += (
+            f" {len(result['missing'])} registro(s) ya no existían y no se contaron."
+        )
+
+    return _message(request, message, "success")
 
 
 # --- Vaciar todo el entorno de PRUEBAS ---------------------------------------
@@ -496,7 +505,20 @@ async def workspace_migrate(
 
     plan = plan_migration()
     try:
-        result = execute_migration(require_confirmation=confirmation.strip())
+        validate_migration(plan, require_confirmation=confirmation.strip())
+        with migration_lock():
+            # El orden cierra la ventana. Primero el candado, que corta el paso
+            # a lo nuevo; despues el drenaje, que espera a lo que ya estaba
+            # adentro. Al reves, una peticion admitida durante la espera
+            # escribiria sobre la base historica despues del snapshot y esa
+            # escritura quedaria en la base retirada, perdida para el usuario.
+            if not await drain_admitted_requests():
+                raise DummyDataError(
+                    "Hay peticiones todavia en curso sobre los datos. "
+                    "Espera unos segundos y volvé a intentarlo.",
+                    code="migration_busy",
+                )
+            result = run_migration(plan)
     except DummyDataError as error:
         return _render(
             request,

@@ -572,6 +572,31 @@ def dependencies_of(environment: Environment, selection: dict[str, list[int]]) -
     return result
 
 
+def _export_belongs_to(path: Path, prefix: str, record_id: int) -> bool:
+    """True si ese archivo de exportacion pertenece a ese registro.
+
+    Los nombres reales salen de `_build_entity_export_filename`, que compone
+    `{prefijo}-{id}-{titulo}-{variante}-{timestamp}.{ext}`. Lo que identifica al
+    registro es el segundo segmento del stem, y lo que lo sigue es un guion,
+    nunca un punto: por eso `-{id}.` no matchea con ningun archivo que la propia
+    app haya generado, y el borrado fisico dejaba los exports en disco mientras
+    reportaba 0 archivos.
+    """
+
+    stem = path.stem
+    head = f"{prefix}-{record_id}"
+    if stem == head or stem.startswith(f"{head}-"):
+        return True
+
+    # Forma legada `cv-1.tex` / `cover-letter_3.json`. Se conserva porque un
+    # archivo de una version anterior sigue siendo del registro, pero acotada al
+    # mismo prefijo: el borrado de una carta no se tiene que llevar los archivos
+    # de un CV que comparta el numero.
+    if not stem.startswith(f"{prefix}-") and not stem.startswith(f"{prefix}_"):
+        return False
+    return f"-{record_id}." in path.name or f"_{record_id}." in path.name
+
+
 def delete_selected(environment: Environment, selection: dict[str, list[int]]) -> dict:
     """Borrado FISICO de una seleccion, solo en el entorno pedido."""
 
@@ -602,7 +627,17 @@ def _delete_selected_impl(environment: Environment, selection: dict[str, list[in
 
     ensure_environment_ready(environment)
 
-    result = {"cvs": 0, "cover_letters": 0, "applications": 0, "files": 0, "pending": []}
+    result = {
+        "cvs": 0,
+        "cover_letters": 0,
+        "applications": 0,
+        "files": 0,
+        "pending": [],
+        # Registros que ya no estaban. No es un error y no va en `pending`:
+        # meterlo ahi convertiria la operacion en "quedaron elementos sin
+        # borrar" cuando en realidad no queda nada que reintentar.
+        "missing": [],
+    }
     # Las postulaciones primero: referencian a CVs y a cartas, asi que borrarlas
     # antes evita que una restriccion de clave externa deje la operacion a medias.
     tables = (
@@ -613,17 +648,27 @@ def _delete_selected_impl(environment: Environment, selection: dict[str, list[in
     for table, kind, hard_delete in tables:
         for record_id in selection.get(kind, []):
             try:
-                hard_delete(record_id)
-                result[kind] += 1
+                if hard_delete(record_id):
+                    result[kind] += 1
+                else:
+                    result["missing"].append(f"{table}:{record_id}")
             except Exception as error:  # noqa: BLE001 - se reporta, no se aborta
                 result["pending"].append(f"{table}:{record_id}: {error}")
 
-    # Exportaciones asociadas a los CVs borrados.
-    for path in paths["exports"].rglob("*") if paths["exports"].exists() else []:
-        if path.is_file() and any(
-            f"-{record_id}." in path.name or f"_{record_id}." in path.name
-            for record_id in selection.get("cvs", [])
-        ):
+    # Exportaciones asociadas a los registros borrados. El prefijo no es
+    # decorativo: sin el, borrar una carta se llevaria puestos los archivos de
+    # un CV que compartiera el numero.
+    for prefix, key in (("cv", "cvs"), ("cover-letter", "cover_letters")):
+        record_ids = selection.get(key, [])
+        if not record_ids or not paths["exports"].exists():
+            continue
+        for path in paths["exports"].rglob("*"):
+            if not path.is_file():
+                continue
+            if not any(
+                _export_belongs_to(path, prefix, record_id) for record_id in record_ids
+            ):
+                continue
             if _safe_write(path, paths["exports"]):
                 result["files"] += 1
             else:
@@ -736,12 +781,20 @@ def plan_migration() -> MigrationPlan:
         return MigrationPlan("blocked", legacy, counts, 0, 0, [str(error)])
 
     for environment in (Environment.REAL, Environment.TEST):
-        candidate = environment_root(environment) / database_filename()
-        if candidate.exists():
-            problems.append(
-                f"El destino {environment.value} ya tiene una base: la migracion "
-                "no sobrescribe. Recuperala o eliminala a mano antes de continuar."
-            )
+        # `ensure_environment_ready` crea la base en la primera visita aunque
+        # nadie haya escrito nada. Tratar esa creacion como "destino ocupado"
+        # dejaria la migracion bloqueada para siempre: la pantalla no ofrece
+        # ninguna accion para borrar una base vacia, y el entorno REAL no se
+        # puede vaciar por diseno. Solo un destino CON contenido manda a
+        # bloquear, base o no base: un directorio con archivos sueltos tambien
+        # se pierde si la migracion lo pisa.
+        summary = inventory(environment)
+        if summary.total == 0 and summary.exports == 0 and summary.drafts == 0:
+            continue
+        problems.append(
+            f"El destino {environment.value} ya tiene una base: la migracion "
+            "no sobrescribe. Recuperala o eliminala a mano antes de continuar."
+        )
 
     for label, path in (
         ("exports", root / EXPORTS_DIRECTORY_NAME),
@@ -763,12 +816,8 @@ def plan_migration() -> MigrationPlan:
     )
 
 
-def execute_migration(*, require_confirmation: str) -> dict:
-    """Migra la base historica al entorno PRUEBAS, verificable y recuperable.
-
-    No se ejecuta en esta sesion: queda reservado hasta la autorizacion de Franco
-    y nunca borra la base original.
-    """
+def validate_migration(plan: MigrationPlan, *, require_confirmation: str) -> None:
+    """Confirmacion y diagnostico. No muta nada y no levanta el candado."""
 
     if require_confirmation != "MIGRAR":
         raise DummyDataError(
@@ -776,7 +825,6 @@ def execute_migration(*, require_confirmation: str) -> dict:
             code="migration_confirmation",
         )
 
-    plan = plan_migration()
     if plan.status != "ready":
         raise DummyDataError(
             "La migracion no esta en condiciones de ejecutarse: "
@@ -784,12 +832,21 @@ def execute_migration(*, require_confirmation: str) -> dict:
             code="migration_blocked",
         )
 
-    # Ventana de escritura: mientras la base historica sigue en la raiz, las
-    # rutas sin prefijo siguen operando, y una escritura que entrara entre el
-    # checkpoint y el renombre quedaria presente en la base retirada pero no en
-    # el destino. El candado la cierra ANTES de tomar el snapshot: el middleware
-    # lo ve y contesta 503 a toda peticion que toque datos, asi que por el
-    # camino de la app no puede colarse ninguna escritura.
+
+@contextmanager
+def migration_lock():
+    """Candado de la ventana de escritura, levantado en los dos caminos.
+
+    Mientras la base historica sigue en la raiz, las rutas sin prefijo siguen
+    operando. El middleware lee este archivo y contesta 503 a toda peticion que
+    toque datos, asi que por el camino de la app no se cuela una escritura entre
+    el snapshot de SQLite y el renombre.
+
+    El orden importa: el candado se levanta ANTES de drenar, nunca despues. Solo
+    asi la espera de drenaje queda cerrada hacia afuera, porque las peticiones
+    que entren mientras drena ya ven el archivo y se van con 503.
+    """
+
     lock = resolved_data_root() / MIGRATING_MARKER_FILENAME
     try:
         lock.write_text(
@@ -804,12 +861,36 @@ def execute_migration(*, require_confirmation: str) -> dict:
         ) from error
 
     try:
-        with in_environment(Environment.TEST):
-            return _execute_migration_impl(plan)
+        yield
     finally:
         # En los dos caminos, exito y rollback: si quedara puesto, la app
         # quedaria respondiendo 503 para siempre y habria que borrarlo a mano.
         lock.unlink(missing_ok=True)
+
+
+def run_migration(plan: MigrationPlan) -> dict:
+    """Ejecuta un plan ya validado. El candado debe estar levantado."""
+
+    with in_environment(Environment.TEST):
+        return _execute_migration_impl(plan)
+
+
+def execute_migration(*, require_confirmation: str) -> dict:
+    """Migra la base historica al entorno PRUEBAS, verificable y recuperable.
+
+    No se ejecuta en esta sesion: queda reservado hasta la autorizacion de Franco
+    y nunca borra la base original.
+
+    La ruta asincrona NO pasa por esta funcion. Ella levanta el candado, drena
+    las peticiones que quedaron en vuelo con el candado puesto y recien ahi llama
+    a `run_migration`; pasar por ahi dejaria el drenaje despues de abrir la
+    ventana, que es exactamente el hueco que el candado viene a cerrar.
+    """
+
+    plan = plan_migration()
+    validate_migration(plan, require_confirmation=require_confirmation)
+    with migration_lock():
+        return run_migration(plan)
 
 
 def _execute_migration_impl(plan: MigrationPlan) -> dict:

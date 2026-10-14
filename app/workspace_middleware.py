@@ -18,6 +18,10 @@ pestanas abiertas en entornos distintos no se pisan.
 
 from __future__ import annotations
 
+import asyncio
+import itertools
+from contextvars import ContextVar
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse
@@ -73,6 +77,60 @@ def _migration_in_progress() -> HTMLResponse:
     )
 
 
+# Peticiones admitidas en este momento. El drenaje de la migracion la usa para
+# garantizar que no quede ninguna escritura en vuelo cuando empieza el snapshot:
+# una peticion que ya paso el chequeo del candado puede seguir corriendo despues
+# de que el archivo exista, y esa escritura quedaria presente en la base
+# retirada pero ausente del destino.
+_admitted: set[int] = set()
+_admission: ContextVar[int | None] = ContextVar("workspace_admission", default=None)
+_next_admission = itertools.count(1)
+
+
+async def _admit(call_next, request: Request):
+    """Corre la peticion y la deja registrada mientras esta admitida.
+
+    El identificador se comparte con el handler por la misma via con la que
+    `set_environment` comparte el entorno, asi que una vista puede descartar su
+    propia peticion al drenar sin depender de la identidad del objeto Request.
+    """
+
+    identifier = next(_next_admission)
+    _admitted.add(identifier)
+    token = _admission.set(identifier)
+    try:
+        return await call_next(request)
+    finally:
+        _admission.reset(token)
+        _admitted.discard(identifier)
+
+
+async def drain_admitted_requests(*, timeout: float = 10.0) -> bool:
+    """Espera a que no quede ninguna peticion admitida salvo la actual.
+
+    Se llama con el candado de migracion puesto, asi que ninguna peticion nueva
+    entra: solo resta esperar a las que ya estaban adentro. Drena cediendo el
+    loop, que es lo que permite a esas peticiones terminar; no puede esperarse
+    sin ceder, porque en ese caso nunca se ejecutarian y el tiempo se agotaria.
+
+    Devuelve False si se agota el plazo, y entonces no se migra nada: la
+    alternativa seria correr el riesgo que el drenaje viene a cerrar.
+    """
+
+    mine = _admission.get()
+    if not _admitted - {mine}:
+        return True
+
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    while _admitted - {mine}:
+        if loop.time() >= deadline:
+            return False
+        await asyncio.sleep(0.01)
+
+    return True
+
+
 def _redirect_to_real(request: Request, path: str) -> RedirectResponse:
     """Retira la vista historica mandando a REAL, no a PRUEBAS.
 
@@ -107,13 +165,18 @@ class WorkspaceMiddleware(BaseHTTPMiddleware):
             return _migration_in_progress()
 
         if matched is None:
+            exempt = _is_exempt_from_retirement(path)
             # Sin prefijo: mientras no se migro, la vista historica sigue
             # operando sobre la base de siempre. Una vez migrada se retira, para
             # que no quede un tercer espacio de trabajo conviviendo con REAL y
             # PRUEBAS.
-            if legacy_migrated(resolved_data_root()) and not _is_exempt_from_retirement(path):
+            if legacy_migrated(resolved_data_root()) and not exempt:
                 return _redirect_to_real(request, path)
-            return await call_next(request)
+            if exempt:
+                # No tocan datos: registrarlas en el drenaje solo le agrega
+                # ruido, y una forma de agotarlo sin motivo.
+                return await call_next(request)
+            return await _admit(call_next, request)
 
         prefix, environment = matched
         request.scope["root_path"] = prefix
@@ -125,7 +188,7 @@ class WorkspaceMiddleware(BaseHTTPMiddleware):
             # inicializa la base legacy. Sin esto, la primera peticion de cada
             # entorno muere antes de llegar a ninguna ruta.
             ensure_environment_ready(environment)
-            return await call_next(request)
+            return await _admit(call_next, request)
         finally:
             reset_environment(token)
 
