@@ -5,6 +5,12 @@ import sqlite3
 import sys
 import tempfile
 
+from app.environments import (
+    current_environment,
+    environment_data_root,
+    resolved_data_root,
+)
+
 
 DEFAULT_DATA_DIR = "/data"
 DEFAULT_DB_FILENAME = "app.db"
@@ -113,7 +119,13 @@ def ensure_isolated_path(path: Path, description: str) -> Path:
 
 
 def get_data_dir() -> Path:
-    data_dir = Path(os.getenv("APP_DATA_DIR", DEFAULT_DATA_DIR))
+    # El entorno es una subdivision de `APP_DATA_DIR`, no un reemplazo. Sin
+    # entorno declarado la ruta es identica a la de siempre, que es lo que
+    # mantiene operativos todos los modulos actuales sin tocar su logica.
+    data_dir = resolved_data_root()
+    environment = current_environment()
+    if environment is not None:
+        data_dir = environment_data_root(data_dir, environment)
 
     if _is_test_process():
         _ensure_test_data_dir_is_isolated(data_dir)

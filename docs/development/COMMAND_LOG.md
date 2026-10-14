@@ -5317,3 +5317,53 @@ Error completo:
 La primera pasada de correccion de recortes dejo tres instancias vivas que el review encontro. La causa fue tratar cada instancia como un hallazgo aislado en vez de enumerar la clase completa: cuando conte los `[:N]` del camino, habia unos sesenta.
 Reintento/correccion:
 Barrido sistematico con regla unica (valores enteros, validacion contra el schema al confirmar) y verificado con tres tests que afirman el invariante directamente. Leccion registrada como LL-030.
+
+2026-10-13 23:07:23 ART | Etapa 11.0/entornos-y-datos | CMD-101
+Accion:
+Implementar la separacion entre MODO REAL y MODO PRUEBAS: middleware por prefijo de URL, almacenamiento subdividido, generador de Dummy Data, borrado selectivo con confirmacion, vaciado completo, migracion controlada con dry-run, interfaz de configuracion y 46 pruebas de aislamiento.
+Motivo:
+Franco clasifico todos los registros actuales como Dummy Data. Con una sola base SQLite no hay forma de separarlos de la informacion real que va a cargar despues, y cualquier ensayo o borrado tocaba la base unica.
+Comando:
+`python -m pytest -p no:cacheprovider -q`; `python -m compileall -q app tests`; `git -c core.whitespace=cr-at-eol diff --check`; `python tools/project_control.py validate`; `python tools/project_control.py check`; `node --test tests/test_structured_cv_editor_js.js`.
+Argumentos:
+Rama `feature/real-test-workspaces` desde `development` `ea4c979`. Sin commit, sin push, sin PR, sin merge, sin tag. Sin tocar `main`. Sin ejecutar la migracion sobre los datos actuales. Sin recrear ni detener el contenedor de uso normal. Sin borrar ni sobrescribir `data/`.
+Resultado:
+Suite completa **511 passed** (465 base + 46 nuevos). `compileall` y `diff --check` en exit 0. Catalogo PCC valido y en sync. JS 1 passed, 0 failed. Aislamiento demostrado por tests: bases distintas, mismo ID sin confusion, crear/editar/borrar/vaciar en PRUEBAS sin alterar REAL, dos hilos concurrentes, dos `TestClient` simultaneos, prefijo desconocido con 404, CSRF invalido rechazado, dependencias sin borrado en silencio, enlace simbolico fuera del entorno rechazado, y migracion con dry-run sin mutaciones, bloqueo, rollback y reintento.
+Error completo:
+La primera version del generador usaba `create_cv`, que produce CVs legacy con `structured_schema_version` nulo, y `delete_selected` llamaba a un `repository.hard_delete` inexistente: el `except Exception` del bucle convertia cada AttributeError en un elemento de `pending` y el resultado salia con `cvs: 0` sin que la causa se viera a simple vista.
+Reintento/correccion:
+Se cambio a `create_structured_cv`, que valida contra el schema 2 y deja los CVs indistinguibles de los reales; los nombres de borrado fisico pasaron a ser referencias explicitas a `hard_delete_cv`, `hard_delete_cover_letter` y `hard_delete_application`. Se agrego un test que afirma el invariante (`result["cvs"] == 1` y el registro desaparecido de la base) en vez de solo comprobar que no lanza.
+
+2026-10-13 23:07:23 ART | Etapa 11.0/entornos-y-datos | CMD-102
+Accion:
+Completar la documentacion de arquitectura, el procedimiento de migracion y de rollback, los riesgos, las limitaciones y el checklist humano de la etapa 11.0.
+Motivo:
+El requisito exige que la arquitectura elegida, el procedimiento de migracion, el rollback, los riesgos, los comandos de validacion, los resultados reales y las limitaciones queden registrados antes de cualquier revision humana.
+Comando:
+Lectura de `AGENTS.md`, `PROJECT_PLAYBOOK.md`, `LESSONS_LEARNED.md` y ADRs; escritura de `docs/development/REAL_TEST_WORKSPACES.md`; actualizacion de `DEVELOPMENT_LOG.md`, `MODULE_INDEX.md`, `CHANGELOG_GENERAL.md`, `SECURITY_HARDENING_PROPOSAL.md` y `LESSONS_LEARNED.md`.
+Argumentos:
+Documentacion de desarrollo unicamente. Sin tocar README, manuales de usuario ni documentacion de release. Sin cambiar `VERSION`, sin tocar `main` ni tags. Sin editar a mano ningun archivo generado por el PCC.
+Resultado:
+Documento de etapa con arquitectura, comparacion de alternativas descartadas, matriz de requisitos de aislamiento cumplidos, procedimiento de migracion paso a paso, rollback con comandos concretos, tabla de validaciones con resultados observados, limitaciones explicitas (migracion no ejecutada, sin validacion visual en navegador, SEC-001 todavia abierto) y checklist humano de doce puntos.
+Error completo:
+Ninguno.
+Reintento/correccion:
+No aplicable.
+
+2026-10-14 02:50:29 | Etapa 11.1 | CMD-103
+Accion:
+Verificar los dos puntos pedidos antes de cerrar la etapa: que la vista historica sin prefijo quede exclusivamente transitoria y desaparezca como tercer espacio de trabajo despues de migrar, y que todas las operaciones POST que modifican datos tengan CSRF efectivo, validacion de entorno y tests negativos. Corregir lo necesario dentro del alcance autorizado.
+Motivo:
+La revision de Franco senalo que despues de la migracion podian quedar tres bases vivas a la vez. Se confirmo: `execute_migration` dejaba `root/app.db` en su lugar y el `lifespan` lo inicializaba en cada arranque, asi que las rutas sin prefijo seguan sirviendo datos historicos indefinidamente. La documentacion de rollback que se habia escrito describia un procedimiento que ya no correspondia al comportamiento real.
+Zona horaria:
+La invocacion de `date` devolvio `2026-10-14 02:50:29` con `%Z` reportado como `America`; la abreviatura exacta de la zona no reconstruyo con certeza.
+Comando:
+`python -m pytest -p no:cacheprovider -q`; `python -m pytest -p no:cacheprovider -q tests/test_workspaces.py`; `python -m compileall -q app tests`; `git -c core.whitespace=cr-at-eol diff --check`; `python tools/project_control.py render`; `python tools/project_control.py validate`; `python tools/project_control.py check`; `node --test tests/test_structured_cv_editor_js.js`.
+Argumentos:
+Rama `feature/real-test-workspaces`, todavia sin commits nuevos (`development` = `ea4c979`). Sin commit, sin push, sin PR, sin merge, sin tag. Sin ejecutar la migracion sobre los datos actuales. Sin recrear ni detener el contenedor de uso normal. Sin tocar `data/`. Sin editar a mano ningun archivo generado por el PCC: los tres documentos derivados se regeneraron con `project_control.py render`.
+Resultado:
+Suite completa **533 passed** (465 base + 68 de `test_workspaces.py`, 46 previos + 22 nuevos). `compileall`, `diff --check`, `validate` y `check` en exit 0. JS 1 passed, 0 failed. 0 skipped, 0 xfail. `git log` confirma que no se creo ningun commit. El listado de `data/` sigue sin `data/real` ni `data/test`.
+Error completo:
+`execute_migration` movia el checkpoint a `test/app.db` y dejaba `data/app.db` en su lugar. Como el `lifespan` llama `initialize_database()` en cada arranque, eso creaba o reutilizaba una base viva en la raiz: despues de migrar existian tres espacios de trabajo operativos y las rutas sin prefijo permitian leer y modificar datos historicos. El test `test_migracion_completa_mueve_datos_y_deja_real_vacio` afirmaba `legacy.exists()`, o sea que estaba probando el comportamiento incorrecto. Ademas la seccion 7.4 del documento de etapa describia un rollback que ya no correspondia a la implementacion.
+Reintento/correccion:
+`execute_migration` paso a renombrar la base historica a `data/app.db.retirado-<hex>` y a escribir `data/.environments-migrated`, con rollback que cubre ambos movimientos y que distingue entre "se revirtio" y "rollback incompleto". `legacy_migrated()` exige marcador presente Y sin `app.db` en la raiz, de modo que restaurar la base rehabilita la vista sin depender de que nadie recuerde borrar un archivo. El `lifespan` omite `initialize_database()` despues de migrar y las rutas sin prefijo redirigen a MODO REAL con 303, exentas `/health` y `/static`. Se corrigio el test que afirmaba el comportamiento viejo, se agregaron 22 pruebas nuevas (retiro, redirecciones, arranque, barrera estructural de CSRF parametrizada sobre las 6 rutas POST, y negativos de entorno via `/real/...`), y se reescribieron las secciones 2.2, 6, 7.3, 7.4, 8, 9, 10 y 12 del documento de etapa. Leccion registrada como LL-033.

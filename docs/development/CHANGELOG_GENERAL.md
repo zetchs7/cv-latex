@@ -424,3 +424,31 @@ Editor estructurado de CV. Implementado sobre `a28d1fd` y **no publicado**: sin 
 - Tracker de postulaciones.
 - ATS Basic Check.
 - IA.
+
+## [Sin release] Etapa 11.0 - Entornos y datos
+
+### Agregado
+
+- **Configuracion → Entornos y datos**: dos almacenamientos independientes, MODO REAL
+  y MODO PRUEBAS, resueltos por prefijo de URL (`/real/`, `/test/`) y no por una
+  bandera global ni una cookie.
+- Identificacion visual persistente de modo con texto, icono y colores propios en
+  light y dark.
+- Generador de Dummy Data con cantidades configurables, tope de 50 por operacion,
+  semilla determinista opcional y CVs validados contra el schema 2.
+- Borrado selectivo fisico con confirmacion en dos pasos, frase exacta validada en el
+  servidor, token CSRF y revalidacion de dependencias al ejecutar.
+- Vaciado completo del entorno de pruebas sin backup automatico.
+- Migracion controlada de la base historica al entorno de pruebas, con diagnostico
+  sin mutaciones, checkpoint SQLite, rollback y reintento seguro.
+- **Retiro de la vista historica al terminar la migracion**: la base se renombra
+  fuera del camino vivo, se marca `.environments-migrated`, el arranque deja de
+  inicializar la raiz y las rutas sin prefijo redirigen a MODO REAL. Despues de
+  migrar quedan solo dos espacios operativos; `/health` y `/static` quedan exentos
+  para no romper el healthcheck del contenedor.
+
+### Nota
+
+La migracion **no se ejecuto**. Solo existe y esta probada sobre fixtures aislados.
+Requiere autorizacion explicita. El token CSRF agregado protege solo los formularios
+nuevos; el hardening general (SEC-001) sigue siendo una etapa separada.

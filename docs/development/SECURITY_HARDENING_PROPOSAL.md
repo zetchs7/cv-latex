@@ -48,7 +48,9 @@ POST /cvs/{id}/delete
 ```
 
 Con `feature/pdf-cv-import` integrada son 17: las cuatro del importador de PDF
-sumadas a estas trece. La tabla de limites del §5.1 nombra las diecisiete.
+sumadas a estas trece. Con `feature/real-test-workspaces` integrada son 23: las
+seis de configuracion de entornos sumadas a esas diecisiete. La tabla de limites
+del §5.1 nombra las veintitres.
 
 **Mecanismo.** Un `<form method="post" enctype="application/x-www-form-urlencoded">` en un
 sitio atacante apuntando a `http://127.0.0.1:8000/cvs/` es una *simple request*: **no dispara
@@ -201,6 +203,8 @@ el nombre real del parámetro de ruta, para que se pueda auditar contra `app/rou
 | `/applications/{application_id}/delete` | POST | 8 KB | Un solo campo `confirm_delete`, que debe ser exactamente `yes` |
 | `/cvs/import/pdf` | POST | **10 MiB + 64 KB** | Multipart del archivo PDF; `MAX_PDF_BYTES` = 10 MiB + sobre multipart |
 | `/cvs/import/{draft_id}`, `/cvs/import/{draft_id}/confirm`, `/cvs/import/{draft_id}/discard` | POST | 2 MiB | Formulario de revisión: repite un par de campos por cada campo extraído, hasta `MAX_PDF_PAGES` = 20 |
+| `/config/workspaces/enter`, `/config/workspaces/generate` | POST | 64 KB | Formulario urlencoded; el cuerpo más grande repite tres contadores enteros y el token CSRF |
+| `/config/workspaces/delete/preview`, `/config/workspaces/delete/execute`, `/config/workspaces/purge`, `/config/workspaces/migrate` | POST | 64 KB | Formulario urlencoded; el borrado repite ids de selección, acotados a `MAX_SELECTION_PER_KIND` = 500 por tipo (misma cifra que el `LIMIT 500` del listado) |
 | Cualquier ruta GET | — | 8 KB | No deberían llevar cuerpo |
 
 Las dos filas de `/cvs/import/*` todavía **no existen en esta rama**: provienen del

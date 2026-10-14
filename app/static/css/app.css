@@ -2488,3 +2488,120 @@ html[data-theme="dark"] .metric-card-secondary {
   flex-direction: column;
   gap: 0.25rem;
 }
+/* --- Entornos y datos ---------------------------------------------------- */
+
+.workspace-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.workspace-banner__icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.workspace-banner__text {
+  flex: 1;
+  color: var(--text-soft);
+}
+
+.workspace-banner__text strong {
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+
+.workspace-banner__action {
+  color: var(--accent-strong);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.workspace-banner__action:hover {
+  text-decoration: underline;
+}
+
+.workspace-banner--test {
+  background: linear-gradient(90deg, rgba(124, 93, 250, 0.16), rgba(59, 130, 246, 0.12));
+  border-bottom-color: rgba(124, 93, 250, 0.4);
+}
+
+.workspace-banner--real {
+  background: linear-gradient(90deg, rgba(15, 118, 110, 0.12), rgba(15, 118, 110, 0.04));
+  border-bottom-color: rgba(15, 118, 110, 0.32);
+}
+
+.workspace-banner--pending {
+  background: var(--warning-bg);
+  border-bottom-color: var(--warning-border);
+}
+
+html[data-theme="dark"] .workspace-banner--test {
+  background: linear-gradient(90deg, rgba(139, 111, 255, 0.24), rgba(59, 130, 246, 0.16));
+}
+
+html[data-theme="dark"] .workspace-banner--real {
+  background: linear-gradient(90deg, rgba(45, 212, 191, 0.18), rgba(45, 212, 191, 0.06));
+}
+
+.workspace-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 22px;
+  margin: 24px 0;
+}
+
+.workspace-card--test {
+  border-color: rgba(124, 93, 250, 0.42);
+}
+
+.workspace-card--active {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.workspace-choice-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.workspace-feature-list {
+  margin: 14px 0 20px;
+  padding-left: 20px;
+  color: var(--text-soft);
+}
+
+.workspace-feature-list li {
+  margin: 4px 0;
+}
+
+.workspace-kind-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 22px;
+}
+
+.notice--success {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.notice--error {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+
+@media (max-width: 900px) {
+  .workspace-banner {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

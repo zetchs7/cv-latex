@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 
 from app.models import Application
 from app.repositories import application_repository, cover_letter_repository, cv_repository
 from app.schemas import ApplicationFormData
+from app.template_utils import create_templates
 from app.validations.application_validations import (
     APPLICATION_STATUSES,
     build_application_form_data,
@@ -13,7 +13,7 @@ from app.validations.application_validations import (
 
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
-templates = Jinja2Templates(directory="app/templates")
+templates = create_templates()
 
 
 @router.get("/", response_class=HTMLResponse, name="applications_list")

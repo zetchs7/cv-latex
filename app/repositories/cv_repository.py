@@ -309,6 +309,21 @@ def soft_delete_cv(cv_id: int) -> bool:
     return cursor.rowcount > 0
 
 
+def hard_delete_cv(cv_id: int) -> bool:
+    """Borrado FISICO de un CV, para el entorno de PRUEBAS.
+
+    `soft_delete_cv` solo marca. El vaciado de datos ficticios exige que el
+    registro desaparezca de la base, asi que esto es una operacion distinta y no
+    comparte camino con el borrado normal que ve el usuario.
+    """
+
+    with get_connection() as connection:
+        cursor = connection.execute("DELETE FROM cvs WHERE id = ?", (cv_id,))
+        connection.commit()
+
+    return cursor.rowcount > 0
+
+
 def _row_to_cv(row) -> CV:
     return CV(
         id=int(row["id"]),

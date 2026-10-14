@@ -1,0 +1,61 @@
+{% extends "layout.html" %}
+
+{% block title %}Vaciar MODO PRUEBAS - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">MODO PRUEBAS</p>
+    <h1>Vaciar todos los datos de Pruebas</h1>
+    <p class="section-copy">
+      Esta accion borra permanentemente todo lo que hay en MODO PRUEBAS.
+    </p>
+  </div>
+  <a class="button" href="{{ url_for('workspace_settings') }}">Cancelar</a>
+</section>
+
+{% if notice %}
+<div class="notice notice--error" role="alert">{{ notice }}</div>
+{% endif %}
+
+<section class="confirm-panel">
+  <h2>Se van a borrar</h2>
+  <ul class="workspace-feature-list">
+    <li>Currículums: {{ counts.cvs }}</li>
+    <li>Cartas de presentacion: {{ counts.cover_letters }}</li>
+    <li>Postulaciones: {{ counts.applications }}</li>
+    <li>Registros eliminados lógicamente: {{ counts.soft_total }}</li>
+    <li>Exportaciones: {{ counts.exports }}</li>
+    <li>Borradores de importacion: {{ counts.drafts }}</li>
+  </ul>
+
+  {% if not counts.purgeable %}
+  <div class="notice" role="status">
+    <p>MODO PRUEBAS esta vacio. No hay nada que borrar.</p>
+  </div>
+  {% else %}
+  <div class="notice" role="alert">
+    <strong>Esta accion es permanente y no se puede deshacer.</strong>
+    <p>
+      No se crea ninguna copia de seguridad de lo que vos decidis eliminar. Tu entorno
+      MODO REAL no se toca: su base de datos y sus archivos quedan exactamente igual.
+      Al terminar, MODO PRUEBAS queda vacio y listo para generar datos nuevos.
+    </p>
+  </div>
+
+  <form class="confirm-form" method="post" action="{{ url_for('workspace_purge') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <label>
+      <span>Escribi exactamente: <code>VACIAR PRUEBAS</code></span>
+      <input name="confirmation" autocomplete="off" required>
+    </label>
+
+    <div class="form-actions">
+      <button class="button danger-link" type="submit">Vaciar MODO PRUEBAS</button>
+      <a class="button" href="{{ url_for('workspace_settings') }}">Cancelar</a>
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

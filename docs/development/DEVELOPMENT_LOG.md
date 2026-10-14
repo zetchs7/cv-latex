@@ -1323,3 +1323,36 @@ No se implemento cartas de presentacion, tracker de postulaciones, ATS, IA, logi
 - Evidencia (CMD-092 y CMD-093): suite completa **sin `APP_DATA_DIR`** en el entorno con `240 passed, 1 warning`; manifiesto recursivo de `data/` identico antes y despues; cero temporales huerfanos; `compileall` y `diff --check` en exit 0.
 - Diagnostico de Docker: WSL2 con systemd activo; el motor es Docker Desktop del lado Windows y no esta corriendo. El contexto activo apunta a un socket unix sin demonio escuchando y el contexto `desktop-linux` a un named pipe de Windows inaccesible desde WSL. Sin sudo y sin instalar motor nativo, no se puede resolver desde esta sesion.
 - Pendiente: cuando Docker vuelva a estar disponible, reejecutar la suite en la imagen para confirmar el mismo resultado por la segunda via. LL-023 queda superada por LL-025.
+
+## Etapa 11.0 - Entornos y datos: MODO REAL y MODO PRUEBAS
+
+- Fecha: 2026-10-13
+- Rama: `feature/real-test-workspaces` (desde `development` `ea4c979`, sin push)
+- Objetivo: separar la informacion personal real de los datos ficticios de ensayo, con cambio seguro entre entornos, identificacion visual persistente, generacion configurable de Dummy Data, borrado selectivo, vaciado completo y migracion controlada de los registros actuales.
+- Causa raiz del problema: con una sola base SQLite no hay forma de clasificar los registros actuales, que Franco definio como Dummy Data, y cualquier ensayo tocaba la base unica.
+- Decision de arquitectura: el entorno se resuelve por prefijo de URL (`/real/`, `/test/`) mediante `root_path` de ASGI y un `ContextVar` por peticion. Se descartaron una bandera global (cambia el valor que ven todas las peticiones en vuelo) y una cookie (se comparte entre pestanas). Sin entorno declarado la ruta es identica a la de siempre, que es lo que mantiene operativos todos los modulos actuales sin tocar su logica.
+- Alcance ejecutado:
+  - `app/environments.py`: enum de entornos, `ContextVar`, mapa de prefijos y resolucion de raiz.
+  - `app/workspace_middleware.py`: fija `scope["root_path"]` y el entorno, e inicializa el almacenamiento en la primera peticion.
+  - `app/database.py`: `get_data_dir()` subdividido por entorno, sin cambiar el comportamiento legacy.
+  - `app/template_utils.py`: context processor que expone el entorno y la ruta sin prefijo, para que el menu marque bien la seccion activa en ambos modos.
+  - `app/services/workspace_service.py`: generador, inventario, borrado selectivo, vaciado, migracion con dry-run y rollback, todos ellos fijando el entorno explicitamente con `in_environment`.
+  - `app/routes/workspaces.py` y cinco plantillas: configuracion, gestion, dos confirmaciones y diagnostico de migracion, con token CSRF por sesion y frases de confirmacion validadas en servidor.
+  - `hard_delete_*` en los tres repositorios: borrado fisico separado del soft delete normal.
+  - `app/templates/layout.html` y `app/static/css/app.css`: banner persistente de modo con texto, icono y colores propios en light y dark.
+  - `tests/test_workspaces.py`: 46 pruebas de aislamiento, generacion, borrado, vaciado, CSRF, migracion y pantallas.
+- Evidencia (CMD-101): suite completa **511 passed**; `compileall`, `diff --check`, `validate` y `check` del PCC en exit 0; JS 1 passed. El manifiesto recursivo de `data/` y de `app/static/docs/` no cambio.
+- Limitaciones declaradas: la migracion NO se ejecuto, solo existe y esta probada sobre fixtures; no hay validacion visual en navegador; el CSRF implementado protege solo los formularios nuevos y SEC-001 sigue abierto; sin entorno declarado la app sigue viendo la base historica hasta que se migre.
+- Pendiente: autorizacion de Franco para ejecutar la migracion real, revision humana de la interfaz en navegador y decision sobre SEC-001.
+
+## Etapa 11.1 - Verificacion de cierre: retiro de la vista historica y CSRF
+
+- Fecha: 2026-10-14 (CMD-103; la rama sigue sin commits nuevos)
+- Objetivo: comprobar dos cosas antes de cerrar la etapa, corregir solo lo necesario si habia incumplimientos.
+- Verificacion 1: la vista sin prefijo debia ser exclusivamente transitoria. **No se cumplia.** `execute_migration` dejaba `data/app.db` en su lugar y `lifespan` lo inicializaba en cada arranque, asi que despues de migrar quedaban tres bases vivas y las rutas sin prefijo permitian leer y modificar datos historicos. El test de migracion existente afirmaba `legacy.exists()`, es decir que estaba probando el defecto.
+- Correccion aplicada: la migracion renombra la base a `data/app.db.retirado-<hex>` (no la borra), escribe `data/.environments-migrated` y el rollback cubre ambos movimientos; `legacy_migrated()` exige marcador Y sin base en la raiz, de modo que un rollback manual rehabilita la vista por si solo; el arranque deja de inicializar la raiz y las rutas sin prefijo redirigen a MODO REAL con 303, exentas `/health` y `/static` para no romper el healthcheck del contenedor.
+- Verificacion 2: CSRF efectivo en las seis operaciones POST que modifican datos. **Se cumplia** (las seis validan `_csrf_token` antes de cualquier logica), pero faltaban tests negativos.
+- Correccion aplicada: barrera estructural parametrizada que recorre las 6 rutas POST con cuerpo completo y afirma que no hubo mutacion, mas tests negativos de CSRF para generar, previsualizar borrado, elegir entorno y migrar, y tests negativos de entorno para borrar seleccion, vaciar, generar y previsualizar via `/real/...` con REAL intacto.
+- Evidencia (CMD-103): suite completa **533 passed** (465 base + 68 nuevos); 0 skipped, 0 xfail; `compileall`, `diff --check`, `validate` y `check` del PCC en exit 0; `render` regenero `PROJECT_STATUS.md`; JS 1 passed, 0 failed; `git log` sin commits nuevos; `data/` sin `data/real` ni `data/test`.
+- Documentacion corregida: las secciones 2.2, 6, 7.3, 7.4, 8, 9, 10 y 12 de `REAL_TEST_WORKSPACES.md` quedaron alineadas con la implementacion real, incluido el procedimiento de rollback, que estaba escrito para el comportamiento anterior. `CHANGELOG_GENERAL`, `MODULE_INDEX` y el catalogo PCC actualizados; `LESSONS_LEARNED` LL-033.
+- Pendiente sin cambiar: la migracion sigue sin ejecutarse y `data/app.db` no se toco.

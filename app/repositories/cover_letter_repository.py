@@ -117,6 +117,18 @@ def soft_delete_cover_letter(cover_letter_id: int) -> bool:
     return cursor.rowcount > 0
 
 
+def hard_delete_cover_letter(cover_letter_id: int) -> bool:
+    """Borrado FISICO de una carta, para el entorno de PRUEBAS."""
+
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "DELETE FROM cover_letters WHERE id = ?", (cover_letter_id,)
+        )
+        connection.commit()
+
+    return cursor.rowcount > 0
+
+
 def _row_to_cover_letter(row) -> CoverLetter:
     return CoverLetter(
         id=int(row["id"]),

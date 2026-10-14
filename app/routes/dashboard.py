@@ -60,12 +60,12 @@ def dashboard(request: Request) -> HTMLResponse:
             "is_active": True,
         },
         {
-            "name": "Configuracion local",
-            "status": "Placeholder",
-            "description": "Reservado para ajustes locales futuros fuera del alcance de esta etapa.",
-            "url_name": None,
-            "action_label": "Proximamente",
-            "is_active": False,
+            "name": "Entornos y datos",
+            "status": "Real / Pruebas",
+            "description": "Cambiar de entorno, generar datos ficticios y vaciarlos.",
+            "url_name": "workspace_settings",
+            "action_label": "Abrir configuracion",
+            "is_active": True,
         },
     ]
 

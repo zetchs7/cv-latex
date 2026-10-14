@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from app.services.documentation_service import list_documentation_assets, load_documentation_page
+from app.template_utils import create_templates
 
 
 router = APIRouter(prefix="/documentation", tags=["Documentation"])
-templates = Jinja2Templates(directory="app/templates")
+templates = create_templates()
 
 
 @router.get("/", response_class=HTMLResponse, name="documentation_index")

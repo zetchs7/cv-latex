@@ -1,0 +1,95 @@
+{% extends "layout.html" %}
+
+{% block title %}Migracion de datos - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Configuracion</p>
+    <h1>Migracion de datos</h1>
+    <p class="section-copy">
+      Mueve la base historica al entorno MODO PRUEBAS y deja MODO REAL vacio.
+      Esto todavia no se ejecuto.
+    </p>
+  </div>
+  <a class="button" href="{{ url_for('workspace_settings') }}">Volver a entornos</a>
+</section>
+
+{% if error %}
+<div class="notice notice--error" role="alert">{{ error }}</div>
+{% endif %}
+
+{% if done %}
+<div class="notice notice--success" role="status">{{ done }}</div>
+{% endif %}
+
+<section class="surface-panel">
+  <h2>Diagnostico</h2>
+  {% if plan.status == 'ready' %}
+  <p class="status-pill">La migracion esta lista para ejecutarse</p>
+  <p class="section-copy">
+    Encontramos datos actuales. Al ejecutar la migracion van a pasar a MODO PRUEBAS,
+    y MODO REAL va a quedar vacio.
+  </p>
+  <ul class="workspace-feature-list">
+    <li>Currículums: {{ counts.cvs }}</li>
+    <li>Cartas de presentacion: {{ counts.cover_letters }}</li>
+    <li>Postulaciones: {{ counts.applications }}</li>
+    <li>Exportaciones: {{ exports }}</li>
+    <li>Borradores de importacion: {{ drafts }}</li>
+  </ul>
+  {% elif plan.status == 'migrated' %}
+  <p class="status-pill">Ya esta migrado</p>
+  <p class="section-copy">
+    La base historica fue migrada y retirada del camino vivo. Solo MODO REAL y
+    MODO PRUEBAS quedan operativos: las rutas sin prefijo ya no sirven datos y
+    redirigen a MODO REAL.
+  </p>
+  {% elif plan.status == 'blocked' %}
+  <p class="notice notice--error" role="alert">
+    La migracion no esta en condiciones de ejecutarse.
+  </p>
+  <ul class="workspace-feature-list">
+    {% for problem in problems %}
+    <li>{{ problem }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="section-copy">
+    No hay base historica pendiente de migrar.
+  </p>
+  {% endif %}
+</section>
+
+{% if plan.status == 'ready' %}
+<section class="confirm-panel">
+  <h2>Como se ejecuta</h2>
+  <ul class="workspace-feature-list">
+    <li>Se guarda un checkpoint consistente de la base, con la API de respaldo de SQLite.</li>
+    <li>La base historica NO se borra: queda hasta que vos autorices retirarla.</li>
+    <li>Se verifica cada archivo antes de moverlo; si algo falla, se revierte todo.</li>
+    <li>Podes interrumpir el proceso y volver a ejecutarlo sin riesgo de duplicar nada.</li>
+  </ul>
+
+  <div class="notice" role="alert">
+    <strong>Esta accion no esta autorizada todavia.</strong>
+    <p>
+      Solo puede ejecutarse despues de que Franco revise y apruebe el procedimiento.
+      El formulario de abajo queda visible a proposito para que puedas leerlo y
+      discutirlo antes de decidir.
+    </p>
+  </div>
+
+  <form class="confirm-form" method="post" action="{{ url_for('workspace_migrate') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>
+      <span>Escribi exactamente: <code>MIGRAR</code></span>
+      <input name="confirmation" autocomplete="off">
+    </label>
+    <div class="form-actions">
+      <button class="button danger-link" type="submit">Ejecutar migracion</button>
+    </div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

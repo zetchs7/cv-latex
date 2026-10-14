@@ -1,0 +1,102 @@
+{% extends "layout.html" %}
+
+{% block title %}Confirmar borrado - CV LaTeX Builder{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">MODO PRUEBAS</p>
+    <h1>Confirmar borrado</h1>
+    <p class="section-copy">
+      Revisa la lista exacta. Esta accion no se puede deshacer.
+    </p>
+  </div>
+  <a class="button" href="{{ url_for('workspace_manage', kind=kind) }}">Cancelar</a>
+</section>
+
+{% if notice %}
+<div class="notice notice--error" role="alert">{{ notice }}</div>
+{% endif %}
+
+<section class="confirm-panel">
+  <h2>Vas a borrar {{ total }} registro(s)</h2>
+  <ul class="workspace-feature-list">
+    <li>Currículums: {{ selection.cvs|length }}</li>
+    <li>Cartas de presentacion: {{ selection.cover_letters|length }}</li>
+    <li>Postulaciones: {{ selection.applications|length }}</li>
+  </ul>
+
+  <h3>Registros seleccionados</h3>
+  {% if records %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th scope="col">Tipo</th><th scope="col">Titulo</th><th scope="col">ID</th></tr>
+      </thead>
+      <tbody>
+        {% for record in records %}
+        <tr>
+          <td>{{ record.kind_label }}</td>
+          <td>{{ record.title }}</td>
+          <td><code>{{ record.id }}</code></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if dependencies %}
+  <div class="notice notice--error" role="alert">
+    <strong>No se puede borrar todavia.</strong>
+    <p>
+      Hay {{ dependencies|length }} postulacion(es) que usan estos registros y no estaban
+      seleccionadas. No se borra nada automaticamente: volve, incluilas en la seleccion
+      o desvincularlas antes de continuar.
+    </p>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th scope="col">Empresa</th><th scope="col">ID</th></tr></thead>
+        <tbody>
+          {% for dependency in dependencies %}
+          <tr><td>{{ dependency.company }}</td><td><code>{{ dependency.id }}</code></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="notice" role="alert">
+    <strong>Esta accion es permanente.</strong>
+    <p>
+      Los registros y sus archivos asociados se borran fisicamente. No se crea ninguna
+      copia de seguridad de lo que vos decidis eliminar.
+    </p>
+  </div>
+
+  <form class="confirm-form" method="post" action="{{ url_for('workspace_delete_execute') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="confirmation" value="{{ expected_phrase }}">
+    {% for record_id in selection.cvs %}
+    <input type="hidden" name="cvs" value="{{ record_id }}">
+    {% endfor %}
+    {% for record_id in selection.cover_letters %}
+    <input type="hidden" name="cover_letters" value="{{ record_id }}">
+    {% endfor %}
+    {% for record_id in selection.applications %}
+    <input type="hidden" name="applications" value="{{ record_id }}">
+    {% endfor %}
+
+    <label>
+      <span>Escribi exactamente: <code>{{ expected_phrase }}</code></span>
+      <input name="typed_confirmation" autocomplete="off" required>
+    </label>
+
+    <div class="form-actions">
+      <button class="button danger-link" type="submit">Borrar definitivamente</button>
+      <a class="button" href="{{ url_for('workspace_manage', kind=kind) }}">Cancelar</a>
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}
