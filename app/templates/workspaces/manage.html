@@ -54,13 +54,13 @@
           </td>
           <td>
             {% if kind == 'cvs' %}{{ record.title }}
-            {% elif kind == 'cover_letters' %}{{ record.title }}
+            {% elif kind == 'cover_letters' %}{{ record.company }}
             {% else %}{{ record.company }}
             {% endif %}
           </td>
           <td>
             {% if kind == 'cvs' %}{{ record.full_name }}
-            {% elif kind == 'cover_letters' %}{{ record.recipient_company }}
+            {% elif kind == 'cover_letters' %}{{ record.position }}
             {% else %}{{ record.position }}
             {% endif %}
           </td>

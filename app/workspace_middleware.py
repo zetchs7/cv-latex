@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import HTMLResponse, RedirectResponse
 
 from app.environments import (
     ENVIRONMENT_PREFIXES,
@@ -28,6 +28,7 @@ from app.environments import (
     PREFIX_BY_ENVIRONMENT,
     current_environment,
     legacy_migrated,
+    migration_in_progress,
     prefix_of,
     reset_environment,
     resolved_data_root,
@@ -39,12 +40,37 @@ from app.services.workspace_service import ensure_environment_ready
 # Rutas sin prefijo que no leen ni escriben datos, y que por eso siguen igual
 # despues de la migracion. `/health` es el healthcheck del contenedor: si se
 # redirigiera, `urllib.urlopen` caeria en `/real/health` (404) y el contenedor
-# quedaria unhealthy aunque la app este bien.
+# quedaria unhealthy aunque la app este bien. Mismo criterio durante el candado
+# de migracion: `health` y `static` no tocan datos, y tumbar el healthcheck
+# durante unos segundos haria que el contenedor se reiniciara en peor momento.
 _UNPREFIXED_EXEMPT = ("/static", "/health")
 
 
 def _is_exempt_from_retirement(path: str) -> bool:
     return path in _UNPREFIXED_EXEMPT or path.startswith("/static/")
+
+
+def _migration_in_progress() -> HTMLResponse:
+    """503 mientras se copia la base historica.
+
+    No es un error de la aplicacion sino una ventana deliberada: contestar
+    cualquier cosa que no sea leer `/health` o `/static` durante el snapshot
+    permitiria una escritura que quedaria solo en la base retirada. El mensaje
+    incluye la salida porque el candado vive en el disco de datos: si un corte
+    abrupto lo dejara puesto, nadie puede llegar a la pantalla de migracion para
+    enterarse, y esta respuesta es la unica que va a ver.
+    """
+
+    return HTMLResponse(
+        "<h1>La migracion de entornos esta en curso</h1>"
+        "<p>Se estan moviendo los datos historicos. Espera unos segundos y "
+        "recarga.</p>"
+        "<p>Si esto sigue igual mas tarde, revisa el archivo "
+        "<code>.environments-migrating</code> en la raiz de datos: borrarlo "
+        "vuelve a habilitar la aplicacion.</p>",
+        status_code=503,
+        headers={"Retry-After": "5"},
+    )
 
 
 def _redirect_to_real(request: Request, path: str) -> RedirectResponse:
@@ -74,6 +100,11 @@ class WorkspaceMiddleware(BaseHTTPMiddleware):
             if path == prefix or path.startswith(prefix + "/"):
                 matched = (prefix, environment)
                 break
+
+        if not _is_exempt_from_retirement(path) and migration_in_progress(
+            resolved_data_root()
+        ):
+            return _migration_in_progress()
 
         if matched is None:
             # Sin prefijo: mientras no se migro, la vista historica sigue

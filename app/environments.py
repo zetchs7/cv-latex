@@ -76,6 +76,19 @@ def environment_data_root(data_root: Path, environment: Environment | None) -> P
     return data_root / environment.value
 
 
+def database_filename() -> str:
+    """Nombre real del archivo de base dentro de un directorio de datos.
+
+    `app.database` acepta `APP_DB_FILENAME` (documentado en `.env.example`) y
+    abre ese nombre en vez del por defecto. Si la gestion de entornos resolviera
+    otro, miraria un archivo que la aplicacion no usa: el inventario saldria
+    vacio, el vaciado no borraria la base real y la migracion apuntaria al lugar
+    equivocado. Una sola funcion para los dos lados hace que coincidan siempre.
+    """
+
+    return os.getenv("APP_DB_FILENAME", DEFAULT_DB_FILENAME)
+
+
 def legacy_storage_in_use(data_root: Path) -> bool:
     """True si la raiz sigue teniendo la base historica sin migrar.
 
@@ -84,7 +97,7 @@ def legacy_storage_in_use(data_root: Path) -> bool:
     fallback silencioso que el requisito prohibe.
     """
 
-    return (data_root / DEFAULT_DB_FILENAME).exists()
+    return (data_root / database_filename()).exists()
 
 
 def legacy_migrated(data_root: Path) -> bool:
@@ -128,3 +141,13 @@ DEFAULT_DB_FILENAME = "app.db"
 # Marcador de que la vista historica sin prefijo ya quedo retirada. Se escribe
 # solo al final de una migracion exitosa; ver `legacy_migrated`.
 MIGRATION_MARKER_FILENAME = ".environments-migrated"
+# Marcador de que hay una migracion EN CURSO. Vive solo durante la ventana en la
+# que se copia la base y se mueven los archivos; el middleware lo usa para
+# responder 503 y no dejar que una escritura se cuel entre el snapshot y el
+# renombre. Un `SIGKILL` a mitad de camino lo dejaria puesto a mano, que es a
+# proposito: ante la duda la app se niega a servir en vez de mezclar datos.
+MIGRATING_MARKER_FILENAME = ".environments-migrating"
+
+
+def migration_in_progress(data_root: Path) -> bool:
+    return (data_root / MIGRATING_MARKER_FILENAME).exists()

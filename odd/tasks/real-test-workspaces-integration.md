@@ -399,10 +399,33 @@ Ambas corridas delegadas a `gentle-ai-verify`, en paralelo, sobre el código fin
 **Observación advisory del verificador (no bloqueante):** `confirmation.strip()` hace que `MIGRAR ` con espacio final ejecute la migración. No es pérdida de datos ni cruce de entornos: sigue exigiendo la frase exacta módulo espacios circundantes. No se corrige por estar fuera del alcance solicitado.
 
 ### L5 — Decisión de split de commits
-
 Aplicado el skill `work-unit-commits`: **no se divide por tipo de archivo**. El criterio del skill es "Avoid `models`, then `services`, then `tests` if none works alone", "Keep tests with code" y "Keep docs with the user-visible change". Ningún subconjunto de esta feature funciona por separado: `environments.py` sin el middleware no hace nada, y las rutas sin el servicio no existen.
 
 Consecuencia: **un único commit atómico `feat(workspaces)`** con código, tests y documentación juntos. Checklist del skill cumplido — propósito único; el repo tiene sentido al aplicar solo ese commit; tests y docs incluidos; rollback razonable (quitar los archivos nuevos y revertir los 7 trackeados); comando de test focalizado y resultado registrados (533 passed / 68 workspaces); frontera de rollback nombrada.
 
 Se descarta explícitamente agregar `tests/test_workspace_http_probes.py` propuesto por el verificador Docker: sus casos se solapan con la cobertura existente de `tests/test_workspaces.py` (vista transicional, banners, generación solo en PRUEBAS, CSRF negativo, concurrencia, dry-run, retiro, `/health` y `/static` exentos). `LESSONS_LEARNED.md:170` (LL-016) prohíbe cambios no bloqueantes en un PR limpio.
+
+### L6 — Ronda 1 de corrección (revisión @codex), 2026-10-14
+
+La revisión sobre `71ee665` llegó en **207 s** con estado `COMMENTED` (no es aprobación) y 7 hallazgos. Cada uno se verificó contra el código antes de corregir:
+
+| # | Hallazgo | Veredicto propio |
+| --- | --- | --- |
+| 1 | Sin banner en `/applications/` y `/documentation/` (P1) | **Confirmado material**: los dos únicos `Jinja2Templates(directory=...)` directos del proyecto, sin context processor |
+| 2 | Carrera entre `source.backup()` y el renombre de la base (P1) | **Confirmado material**: riesgo de pérdida de datos |
+| 3 | `confirmation.strip()` acepta `MIGRAR ` con espacio | **Confirmado menor, no corregido**: convención preexistente en `cover_letters.py:198`, `cvs.py:459`, `pdf_import.py:306` |
+| 4 | Enlace "Administrar datos" sin comilla de cierre (P1) | **Confirmado material**: el valor se tragaba el texto y el enlace desaparecía del DOM |
+| 5 | `cover_letters` consultaba `title, recipient_company` | **Confirmado material y más grave de lo informado**: esas columnas no existen (`app/database.py:234`), el `except sqlite3.Error` devolvía `[]`, y como `_records_for` alimenta también `_selected_rows`, la previsualización de borrado de cartas salía vacía |
+| 6 | `app.db` hard-codeado frente a `APP_DB_FILENAME` | **Confirmado**: inventario vacío, vaciado sin efecto y migración al destino equivocado si se configura la variable |
+| 7 | Vaciado oculto cuando solo quedan archivos | **Confirmado material**: `counts.total` solo suma registros |
+
+**Correcciones aplicadas (10 archivos, +318 / −24):** `create_templates()` en las dos vistas; comilla de cierre; columnas y celdas de cartas; flag `counts.purgeable`; `database_filename()` en `environments` y en las 5 resoluciones de `workspace_service`; candado `.environments-migrating` levantado antes del snapshot y limpiado en `finally`, con el middleware devolviendo 503 a toda petición que no sea `/health` o `/static`.
+
+Se detectó y corrigió un error propio durante la edición: al mover la exención de `_is_exempt_from_retirement` al chequeo del candado se eliminó del redirect de retiro, lo que habría vuelto a romper el healthcheck del contenedor; se restauró.
+
+**Evidencia RED** (árbol pre-fix exportado con `git archive 71ee665` a `/tmp/opencode`, fuera del repositorio, borrado después): **6 pruebas comportamentales fallan en el código sin corregir** — banner en aplicaciones y documentación, banner en REAL, href del enlace, listado de cartas, previsualización de borrado de cartas (falla en la 2ª asertación: el formulario se renderiza pero sin la empresa) y vaciado con solo archivos. `test_el_vaciado_no_se_ofrece_si_no_hay_nada_que_borrar` pasa en la base: es guarda de comportamiento existente, no test de defecto.
+
+**Evidencia GREEN (árbol corregido):** `tests/test_workspaces.py` **79 passed** (68 + 11); suite completa **544 passed**; `tests/test_project_control.py` **74 passed**; `compileall` exit 0; `git diff --check` exit 0; PCC `validate` "catalogo valido" y `check` "en sync"; `node --test` 1 pass 0 fail. Manifiesto de `data/` idéntico antes y después (`360e0ffa8f91ec37c508aa3302dc5a55`), `ls -la data/` sin cambios.
+
+**Advertencia benigna:** `app/routes/applications.py` y `app/routes/documentation.py` tienen fin de línea CRLF uniforme en el árbol de trabajo (propiedad preexistente de esos archivos, hoy visible porque esta ronda los modifica). `.gitattributes` declara `* text=auto eol=lf`, así que el blob commiteado queda en LF y `git diff --check` sale 0; las dos líneas son avisos de conversión, no errores de whitespace. No se tocaron para no reescribir 368 líneas por una propiedad que git normaliza.
 

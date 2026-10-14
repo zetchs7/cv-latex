@@ -29,7 +29,7 @@
     <li>Borradores de importacion: {{ counts.drafts }}</li>
   </ul>
 
-  {% if counts.total == 0 %}
+  {% if not counts.purgeable %}
   <div class="notice" role="status">
     <p>MODO PRUEBAS esta vacio. No hay nada que borrar.</p>
   </div>

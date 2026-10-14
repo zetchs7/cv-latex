@@ -19,9 +19,12 @@ from fastapi.testclient import TestClient
 from app import database
 from app.environments import (
     MIGRATION_MARKER_FILENAME,
+    MIGRATING_MARKER_FILENAME,
     Environment,
     environment_data_root,
     legacy_migrated,
+    legacy_storage_in_use,
+    migration_in_progress,
     resolved_data_root,
 )
 from app.main import app
@@ -52,7 +55,13 @@ def clean_environments():
     # ahi una base historica y dejaria contaminada a las siguientes.
     leftovers = ["app.db", "app.db-wal", "app.db-shm", "app.db-journal", "exports", "import-drafts"]
     leftovers.append(MIGRATION_MARKER_FILENAME)
-    for pattern in ("app.db.retirado-*", "app.db.tmp-legacy-*", "app.db.pre-migracion-*"):
+    # El candado de migracion tiene que quedar limpio igual: si una prueba lo
+    # dejara puesto, todas las siguientes verian 503 y el error no apuntaria a
+    # la prueba que lo dejo.
+    leftovers.append(MIGRATING_MARKER_FILENAME)
+    # `*.db` ademas de `app.db`: una base con nombre personalizado por
+    # `APP_DB_FILENAME` contaminaria la prueba siguiente igual que `app.db`.
+    for pattern in ("*.db", "app.db.retirado-*", "app.db.tmp-legacy-*", "app.db.pre-migracion-*"):
         leftovers.extend(item.name for item in root.glob(pattern))
 
     for name in leftovers:
@@ -1186,3 +1195,204 @@ def test_no_se_puede_borrar_seleccion_en_real_por_previsualizacion():
     assert "solo funcionan en MODO PRUEBAS" in response.text
     assert "Confirmar borrado" not in response.text
     assert _table_count(Environment.REAL, "cvs", real_id) == 1
+
+
+# --- Correcciones de la revision de codigo (ronda 1) --------------------------
+#
+# Cada prueba de este bloque replica un hallazgo de la revision contra el codigo
+# real. Sin estas pruebas los seis defectos pasaban la suite completa: ninguno
+# era cubierto por lo que ya existia.
+
+
+def _seed_test_letter(company: str, position: str) -> int:
+    with in_environment(Environment.TEST):
+        ensure_environment_ready(Environment.TEST)
+        return cover_letter_repository.create_cover_letter(
+            CoverLetterFormData(
+                company=company,
+                position=position,
+                contact="rrhh@ejemplo.invalid",
+                greeting="Saludos:",
+                introduction="Introduccion.",
+                body="Cuerpo.",
+                closing="Atentamente.",
+                signature="Persona",
+                associated_cv_id=None,
+            )
+        )
+
+
+def test_el_indicador_de_modo_tambien_se_ve_en_aplicaciones_y_documentacion(client):
+    """Las dos vistas que construian su propio `Jinja2Templates` se quedaban sin
+    context processor, asi que el banner no aparecia y una persona en MODO
+    PRUEBAS podia creer que estaba viendo sus datos reales."""
+
+    applications_page = client.get("/test/applications/").text
+    documentation_page = client.get("/test/documentation/").text
+
+    for name, page in (
+        ("aplicaciones", applications_page),
+        ("documentacion", documentation_page),
+    ):
+        assert 'data-workspace-banner="test"' in page, f"falta el indicador en {name}"
+        assert "MODO PRUEBAS" in page, f"falta el texto del modo en {name}"
+
+
+def test_en_real_esas_mismas_vistas_tambien_muestran_su_indicador(client):
+    for path in ("/real/applications/", "/real/documentation/"):
+        page = client.get(path).text
+        assert 'data-workspace-banner="real"' in page, f"falta el indicador en {path}"
+
+
+def test_el_enlace_a_administrar_cierra_el_atributo_href(client):
+    """Faltaba la comilla de cierre: el valor se tragaba el texto del enlace y
+    la pantalla de administrar quedaba inalcanzable desde la configuracion."""
+
+    page = client.get("/test/config/workspaces").text
+
+    assert '">Administrar datos</a>' in page
+
+
+def test_el_listado_de_cartas_muestra_empresa_y_puesto(client):
+    """La consulta pedia `title` y `recipient_company`, columnas que no existen
+    en `cover_letters`. El `except sqlite3.Error` devolvia `[]` y la pestaña de
+    cartas salia vacia, lo que ademas dejaba sin previsualizar el borrado."""
+
+    _seed_test_letter("Empresa Carta", "Puesto Carta")
+
+    page = client.get("/test/config/workspaces/manage/cover_letters").text
+
+    assert "Empresa Carta" in page
+    assert "Puesto Carta" in page
+    assert "Todavia no hay registros de este tipo" not in page
+
+
+def test_con_cartas_el_borrado_se_puede_previsualizar(client):
+    """Cierre del mismo defecto por el camino que mas importa: si el listado
+    esta vacio, `_selected_rows` no encuentra nada y la confirmacion nunca
+    llega."""
+
+    letter_id = _seed_test_letter("Empresa Borrable", "Puesto Borrable")
+
+    with TestClient(app) as probe:
+        probe.get("/test/config/workspaces")
+        token = probe.cookies["gentle_workspace_csrf"]
+        preview = probe.post(
+            "/test/config/workspaces/delete/preview",
+            data={"cover_letters": str(letter_id), "csrf_token": token},
+        )
+
+    assert "Confirmar borrado" in preview.text
+    assert "Empresa Borrable" in preview.text
+
+
+def test_el_vaciado_se_ofrece_cuando_solo_quedan_archivos(client):
+    """`counts.total` solo suma registros: con exportaciones o borradores
+    encima, el formulario del vaciado desaparecia y esos archivos quedaban
+    sin forma de limpiarlos desde la pantalla."""
+
+    with in_environment(Environment.TEST):
+        ensure_environment_ready(Environment.TEST)
+        exports = workspace_service.managed_directories(Environment.TEST)["exports"]
+        (exports / "cv.tex").write_text("% export", encoding="utf-8")
+
+    page = client.get("/test/config/workspaces/purge-confirm").text
+
+    assert 'name="confirmation"' in page
+    assert "MODO PRUEBAS esta vacio" not in page
+
+
+def test_el_vaciado_no_se_ofrece_si_no_hay_nada_que_borrar(client):
+    with in_environment(Environment.TEST):
+        ensure_environment_ready(Environment.TEST)
+
+    page = client.get("/test/config/workspaces/purge-confirm").text
+
+    assert 'name="confirmation"' not in page
+    assert "MODO PRUEBAS esta vacio" in page
+
+
+def test_los_entornos_usan_el_mismo_nombre_de_base_que_app_database(monkeypatch):
+    """`APP_DB_FILENAME` esta documentado en `.env.example` y `app.database` lo
+    respeta. Si los entornos ignoraran la variable mirarian un archivo que la
+    aplicacion no usa: inventario vacio, vaciado sin efecto y migracion al
+    lugar equivocado."""
+
+    monkeypatch.setenv("APP_DB_FILENAME", "base-personalizada.db")
+    root = resolved_data_root()
+    custom = root / "base-personalizada.db"
+    stray = root / "app.db"
+    custom.write_bytes(b"")
+    try:
+        assert legacy_storage_in_use(root) is True
+
+        stray.write_bytes(b"")
+        custom.unlink()
+
+        # Con `app.db` presente pero apuntando a otro nombre, el historico no
+        # esta "en uso": mirar el archivo equivocado dejaria la migracion
+        # ofreciendose sobre una base que la app no abre.
+        assert legacy_storage_in_use(root) is False
+
+        for environment in (Environment.REAL, Environment.TEST):
+            database = workspace_service.managed_directories(environment)["database"]
+            assert database.name == "base-personalizada.db"
+    finally:
+        for path in (custom, stray):
+            if path.exists():
+                path.unlink()
+
+
+def test_la_migracion_levanta_el_candado_antes_de_tocar_la_base(monkeypatch):
+    """Cierra la ventana de escritura: entre el `backup()` y el renombre de la
+    base historica, una escritura sin prefijo quedaria presente en el archivo
+    retirado pero ausente del destino. El candado se levanta ANTES del snapshot
+    y el middleware la responde con 503."""
+
+    root = resolved_data_root()
+    _install_legacy_database(root)
+
+    observed: dict = {}
+    original_impl = workspace_service._execute_migration_impl
+
+    def spy(plan):
+        observed["locked"] = migration_in_progress(root)
+        with TestClient(app) as probe:
+            observed["sin_prefijo"] = probe.get(
+                "/cvs/", follow_redirects=False
+            ).status_code
+            observed["prefijada"] = probe.get(
+                "/test/cvs/", follow_redirects=False
+            ).status_code
+            observed["health"] = probe.get("/health").status_code
+        return original_impl(plan)
+
+    monkeypatch.setattr(workspace_service, "_execute_migration_impl", spy)
+    workspace_service.execute_migration(require_confirmation="MIGRAR")
+
+    assert observed["locked"] is True
+    assert observed["sin_prefijo"] == 503
+    assert observed["prefijada"] == 503
+    assert observed["health"] == 200
+    assert not (root / MIGRATING_MARKER_FILENAME).exists()
+
+
+def test_un_candado_olvidado_explica_como_volver_a_habilitar_la_app():
+    root = resolved_data_root()
+    _install_legacy_database(root)
+    (root / MIGRATING_MARKER_FILENAME).write_text("en curso", encoding="utf-8")
+
+    with TestClient(app) as client:
+        response = client.get("/cvs/", follow_redirects=False)
+
+    # Falla cerrado y explicado: no sirve datos y dice que hacer, porque nadie
+    # puede llegar a la pantalla de migracion mientras esto este puesto.
+    assert response.status_code == 503
+    assert "Retry-After" in response.headers
+    assert MIGRATING_MARKER_FILENAME in response.text
+
+
+def test_el_candado_no_sobrevive_a_una_migracion_exitosa():
+    _migrate()
+
+    assert not (resolved_data_root() / MIGRATING_MARKER_FILENAME).exists()

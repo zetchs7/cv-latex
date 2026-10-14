@@ -22,9 +22,10 @@ import string
 
 from app.database import get_data_dir
 from app.environments import (
-    DEFAULT_DB_FILENAME,
     Environment,
     MIGRATION_MARKER_FILENAME,
+    MIGRATING_MARKER_FILENAME,
+    database_filename,
     legacy_migrated,
     legacy_storage_in_use,
     reset_environment,
@@ -116,7 +117,7 @@ def managed_directories(environment: Environment) -> dict[str, Path]:
 
     root = environment_root(environment)
     return {
-        "database": root / "app.db",
+        "database": root / database_filename(),
         "exports": root / EXPORTS_DIRECTORY_NAME,
         "drafts": root / DRAFTS_DIRECTORY_NAME,
         "documentation": root / DOCUMENTATION_BUILD_SUBDIRECTORY,
@@ -161,7 +162,7 @@ def ensure_environment_ready(environment: Environment) -> Path:
     for name in (EXPORTS_DIRECTORY_NAME, DRAFTS_DIRECTORY_NAME):
         (root / name).mkdir(parents=True, exist_ok=True)
 
-    database = root / "app.db"
+    database = root / database_filename()
     if environment in _ready and database.exists():
         return database
 
@@ -511,10 +512,10 @@ def selected_records(environment: Environment, kind: str) -> list[dict]:
     try:
         columns = {
             "cvs": "id, title, full_name",
-            "cover_letters": "id, title, recipient_company",
+            "cover_letters": "id, company, position",
             "applications": "id, company, position",
         }[kind]
-        order = {"cvs": "title", "cover_letters": "title", "applications": "company"}[kind]
+        order = {"cvs": "title", "cover_letters": "company", "applications": "company"}[kind]
         rows = connection.execute(
             f"SELECT {columns} FROM {kind} WHERE deleted_at IS NULL ORDER BY {order} LIMIT 500"
         ).fetchall()
@@ -696,7 +697,7 @@ def plan_migration() -> MigrationPlan:
     """Diagnostico de la instalacion. No modifica nada."""
 
     root = resolved_data_root()
-    legacy = root / "app.db"
+    legacy = root / database_filename()
     problems: list[str] = []
     counts = {"cvs": 0, "cover_letters": 0, "applications": 0}
 
@@ -735,7 +736,7 @@ def plan_migration() -> MigrationPlan:
         return MigrationPlan("blocked", legacy, counts, 0, 0, [str(error)])
 
     for environment in (Environment.REAL, Environment.TEST):
-        candidate = environment_root(environment) / "app.db"
+        candidate = environment_root(environment) / database_filename()
         if candidate.exists():
             problems.append(
                 f"El destino {environment.value} ya tiene una base: la migracion "
@@ -783,8 +784,32 @@ def execute_migration(*, require_confirmation: str) -> dict:
             code="migration_blocked",
         )
 
-    with in_environment(Environment.TEST):
-        return _execute_migration_impl(plan)
+    # Ventana de escritura: mientras la base historica sigue en la raiz, las
+    # rutas sin prefijo siguen operando, y una escritura que entrara entre el
+    # checkpoint y el renombre quedaria presente en la base retirada pero no en
+    # el destino. El candado la cierra ANTES de tomar el snapshot: el middleware
+    # lo ve y contesta 503 a toda peticion que toque datos, asi que por el
+    # camino de la app no puede colarse ninguna escritura.
+    lock = resolved_data_root() / MIGRATING_MARKER_FILENAME
+    try:
+        lock.write_text(
+            "Migracion de entornos en curso. Si este archivo queda atras por un "
+            "corte abrupto, borrarlo rehabilita la vista sin prefijo.\n",
+            encoding="utf-8",
+        )
+    except OSError as error:
+        raise DummyDataError(
+            f"No se pudo marcar la migracion como en curso: {error}",
+            code="migration_failed",
+        ) from error
+
+    try:
+        with in_environment(Environment.TEST):
+            return _execute_migration_impl(plan)
+    finally:
+        # En los dos caminos, exito y rollback: si quedara puesto, la app
+        # quedaria respondiendo 503 para siempre y habria que borrarlo a mano.
+        lock.unlink(missing_ok=True)
 
 
 def _execute_migration_impl(plan: MigrationPlan) -> dict:
@@ -814,7 +839,7 @@ def _execute_migration_impl(plan: MigrationPlan) -> dict:
 
     retired: Path | None = None
     try:
-        move(checkpoint, target_root / DEFAULT_DB_FILENAME)
+        move(checkpoint, target_root / database_filename())
 
         for label in (EXPORTS_DIRECTORY_NAME, DRAFTS_DIRECTORY_NAME):
             directory = root / label
@@ -825,7 +850,7 @@ def _execute_migration_impl(plan: MigrationPlan) -> dict:
         # con otro nombre, y el checkpoint de arriba sigue disponible aparte.
         # Sin esto quedarian tres bases vivas a la vez y las rutas sin prefijo
         # seguirian sirviendo datos historicos.
-        retired = root / f"{DEFAULT_DB_FILENAME}.retirado-{secrets.token_hex(6)}"
+        retired = root / f"{database_filename()}.retirado-{secrets.token_hex(6)}"
         move(plan.legacy_database, retired)
 
         (root / MIGRATION_MARKER_FILENAME).write_text(
@@ -855,7 +880,7 @@ def _execute_migration_impl(plan: MigrationPlan) -> dict:
     return {
         "counts": plan.counts,
         "moved": {
-            "database": str(target_root / DEFAULT_DB_FILENAME),
+            "database": str(target_root / database_filename()),
             "exports": str(target_root / EXPORTS_DIRECTORY_NAME),
             "drafts": str(target_root / DRAFTS_DIRECTORY_NAME),
         },

@@ -422,6 +422,11 @@ async def workspace_purge_confirm(request: Request):
                 "exports": summary.exports,
                 "drafts": summary.drafts,
                 "total": summary.total,
+                # No alcanza con `total`: un entorno que quedo solo con
+                # exportaciones o borradores tiene cosas que vaciar, y sin esta
+                # bandera la pantalla esconde el formulario y la base queda con
+                # esos archivos adentro sin manera de limpiarla desde la UI.
+                "purgeable": bool(summary.total or summary.exports or summary.drafts),
             }
         },
     )
