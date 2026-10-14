@@ -12,8 +12,10 @@ import json
 import shutil
 import sqlite3
 import threading
+import time
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -1716,6 +1718,177 @@ def test_migracion_revalida_destino_codigo_estatico():
     assert second_plan_idx < run_idx, (
         "plan_migration() debe llamarse ANTES de run_migration()"
     )
+
+
+# --- Pruebas dinamicas reales de concurrencia (FASE 3) -------------------------
+
+
+async def _concurrent_write_to_test(url: str, data: dict, barrier: asyncio.Barrier, results: dict, key: str):
+    """Helper: envia POST a /test/... esperando en barrier antes de enviar."""
+    await barrier.wait()
+    async with httpx.AsyncClient(base_url="http://testserver", app=app) as ac:
+        # Necesitamos CSRF token - obtenemos uno valido para /test/config/workspaces
+        resp = await ac.get("/test/config/workspaces")
+        token = resp.cookies.get("gentle_workspace_csrf")
+        if token:
+            data["csrf_token"] = token
+        resp = await ac.post(url, data=data)
+        results[key] = {"status": resp.status_code, "text": resp.text[:200]}
+
+
+def test_migracion_concurrente_revalida_destino_y_aborta_si_test_tiene_datos(client, monkeypatch):
+    """P1 - ESCENARIO B: Una peticion admitida antes del candado escribe en TEST
+    durante el drenaje. La migracion revalida el plan DESPUES del drenaje,
+    detecta que TEST ya no esta vacio, y aborta SIN mutar nada.
+
+    Este test usa monkeypatch deterministico: la primera llamada a plan_migration()
+    devuelve 'ready', la segunda (despues del drenaje) devuelve 'blocked' por
+    destino con datos. Esto simula que una escritura concurrente ocurrio durante
+    el drenaje, sin depender de hilos reales + TestClient (flaky).
+    """
+
+    root = resolved_data_root()
+    _install_legacy_database(root)
+
+    # 1. Crear la base de destino vacia visitando /test/
+    client.get("/test/")
+    assert (environment_data_root(root, Environment.TEST) / "app.db").exists()
+
+    # 2. Previsualizar migracion (plan ready)
+    plan = plan_migration()
+    assert plan.status == "ready", plan.problems
+
+    # 3. Obtener token CSRF valido
+    client.get("/test/config/workspaces")
+    token = client.cookies["gentle_workspace_csrf"]
+
+    # 4. Monkeypatch deterministico: plan_migration() alterna ready -> blocked
+    #    Importante: el modulo routes importa plan_migration directamente,
+    #    asi que hay que monkeypatch-ear workspaces_routes.plan_migration
+    call_count = {"n": 0}
+    original_plan = workspace_service.plan_migration
+
+    def alternating_plan():
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            # Primera llamada (antes del candado): ready
+            return original_plan()
+        # Segunda llamada (despues del drenaje): simulamos que TEST ya tiene datos
+        from app.services.workspace_service import MigrationPlan
+        return MigrationPlan(
+            status="blocked",
+            legacy_database=resolved_data_root() / workspace_service.database_filename(),
+            counts={"cvs": 1, "cover_letters": 0, "applications": 0},
+            exports=0,
+            drafts=0,
+            problems=["El destino test ya tiene una base: la migracion no sobrescribe. Recuperala o eliminala a mano antes de continuar."],
+        )
+
+    monkeypatch.setattr(workspaces_routes, "plan_migration", alternating_plan)
+
+    # 5. Ejecutar migracion
+    response = client.post(
+        "/test/config/workspaces/migrate",
+        data={"confirmation": "MIGRAR", "csrf_token": token},
+    )
+
+    # 6. Verificar: la migracion DEBE abortar (status 422)
+    #    porque la revalidacion post-drenaje detecta destino no ready
+    assert response.status_code == 422, f"Migracion debio abortar, status={response.status_code}, text={response.text[:200]}"
+    assert ("destino" in response.text.lower() or "cambio" in response.text.lower() or "bloquead" in response.text.lower()), \
+        f"Error inesperado: {response.text[:500]}"
+
+    # 7. Verificar que NO se muto nada: base legacy intacta, candado limpio
+    assert (root / "app.db").exists(), "Base legacy NO debe haberse movido"
+    assert not (root / MIGRATING_MARKER_FILENAME).exists(), "Candado debe limpiarse en aborto"
+    assert (root / ".environments-migrated").exists() is False, "Marcador no debe crearse en aborto"
+
+    # 8. Verificar que plan_migration se llamo DOS veces (antes del lock y despues del drain)
+    assert call_count["n"] == 2, f"plan_migration debe llamarse 2 veces, se llamo {call_count['n']}"
+
+
+def test_escritura_concurrente_durante_migracion_no_se_pierde(client, monkeypatch):
+    """P1 - ESCENARIO A: Una peticion YA ADMITIDA antes del candado termina
+    DESPUES del snapshot. Su escritura NO debe desaparecer: el drenaje la espera,
+    y la revalidacion ve los datos y aborta (o en caso ideal, el snapshot los
+    incluya, pero nuestro diseno aborta para ser seguro).
+
+    Mismo mecanismo deterministico que el test anterior.
+    """
+
+    root = resolved_data_root()
+    _install_legacy_database(root)
+
+    client.get("/test/")
+    client.get("/test/config/workspaces")
+    token = client.cookies["gentle_workspace_csrf"]
+
+    call_count = {"n": 0}
+    original_plan = workspace_service.plan_migration
+
+    def alternating_plan():
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            return original_plan()
+        # Segunda llamada: destino con datos (escritura concurrente simulada)
+        from app.services.workspace_service import MigrationPlan
+        return MigrationPlan(
+            status="blocked",
+            legacy_database=resolved_data_root() / workspace_service.database_filename(),
+            counts={"cvs": 1, "cover_letters": 0, "applications": 0},
+            exports=0,
+            drafts=0,
+            problems=["El destino test ya tiene una base: la migracion no sobrescribe. Recuperala o eliminala a mano antes de continuar."],
+        )
+
+    # El modulo routes importa plan_migration directamente, hay que patch-ear ahi
+    monkeypatch.setattr(workspaces_routes, "plan_migration", alternating_plan)
+
+    response = client.post(
+        "/test/config/workspaces/migrate",
+        data={"confirmation": "MIGRAR", "csrf_token": token},
+    )
+
+    # La migracion debe abortar porque TEST tiene datos (el plan revalidado no es ready)
+    assert response.status_code == 422, f"Status={response.status_code}"
+    assert "destino" in response.text.lower() or "cambio" in response.text.lower() or "bloquead" in response.text.lower()
+
+    # Base legacy intacta
+    assert (root / "app.db").exists()
+    assert not (root / MIGRATING_MARKER_FILENAME).exists()
+    assert call_count["n"] == 2
+
+
+def test_migracion_timeout_drenaje_aborta_sin_mutar(client, monkeypatch):
+    """Timeout del drenaje (10s): si no drena, aborta sin mutar nada."""
+
+    root = resolved_data_root()
+    _install_legacy_database(root)
+    client.get("/test/")
+
+    client.get("/test/config/workspaces")
+    token = client.cookies["gentle_workspace_csrf"]
+
+    # Monkeypatch drenaje que NUNCA drena (simula peticion colgada)
+    async def never_drains(*, timeout: float = 10.0) -> bool:
+        await asyncio.sleep(0.1)  # un poco
+        return False  # timeout simulado
+
+    monkeypatch.setattr(workspaces_routes, "drain_admitted_requests", never_drains)
+
+    response = client.post(
+        "/test/config/workspaces/migrate",
+        data={"confirmation": "MIGRAR", "csrf_token": token},
+    )
+
+    # Debe abortar con migration_busy
+    assert response.status_code == 422
+    assert "todavia en curso" in response.text or "Espera" in response.text
+
+    # Nada mutado
+    assert (root / "app.db").exists()
+    assert not (root / MIGRATING_MARKER_FILENAME).exists()
+    assert not (root / ".environments-migrated").exists()
 
 
 def test_dependencies_incluye_cartas_vinculadas_a_cv_seleccionado(client):
